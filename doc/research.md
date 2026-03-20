@@ -1,4 +1,4 @@
-# DocGraph — Research
+# Weft — Research
 
 ## Problem Statement
 
@@ -61,7 +61,7 @@ graph that lives alongside the code.
 
 The combination of features that doesn't exist in any single tool:
 
-| Capability | Swimm | Structurizr | Portals | DocGraph |
+| Capability | Swimm | Structurizr | Portals | Weft |
 |---|---|---|---|---|
 | Lives in repo, versions with code | ✅ | ✅ | ❌ | ✅ |
 | Multiple artifact types as first-class nodes | ❌ | ❌ | ❌ | ✅ |
@@ -76,13 +76,13 @@ The combination of features that doesn't exist in any single tool:
 ## Prior Art — Related Concepts
 
 - **Docs-as-code:** Treat documentation with the same discipline as source code — version
-  control, review process, CI/CD. DocGraph extends this to all artifact types.
+  control, review process, CI/CD. Weft extends this to all artifact types.
 - **Living documentation:** Documentation that stays synchronized with the system it describes,
-  rather than drifting over time. DocGraph enforces this via embedded links and import-time
+  rather than drifting over time. Weft enforces this via embedded links and import-time
   conversion.
 - **Bidirectional traceability:** Requirements engineering concept — ability to trace from a
-  requirement to its implementation and back. DocGraph generalizes this across all artifact types.
-- **Knowledge graphs:** Structured representation of entities and relationships. DocGraph applies
+  requirement to its implementation and back. Weft generalizes this across all artifact types.
+- **Knowledge graphs:** Structured representation of entities and relationships. Weft applies
   this model to a project's documentation artifacts.
 
 ---

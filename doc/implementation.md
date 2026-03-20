@@ -1,9 +1,4 @@
-# DocGraph — Implementation
-
-## Project Name
-**DocGraph** *(working title)*
-
----
+# Weft — Implementation
 
 ## Tech Stack
 
@@ -26,14 +21,14 @@
 ## Repository Structure
 
 ```
-docgraph/
+weft/
 ├── packages/
 │   ├── core/          # Graph model, link parsing, manifest builder, import pipeline
 │   ├── ui/            # React browser app (graph browser, renderers, split pane)
-│   ├── cli/           # docgraph serve / import / index / check commands
+│   ├── cli/           # weft serve / import / index / check commands
 │   └── vscode/        # VSCode extension (webview, gutter decorations)
-├── docs/              # DocGraph's own documentation (eats its own dog food)
-├── docgraph.config.ts # Example config
+├── docs/              # Weft's own documentation (eats its own dog food)
+├── weft.config.ts # Example config
 └── package.json
 ```
 
@@ -48,11 +43,11 @@ docs/
 ├── db-schema.md
 ├── slides/
 │   ├── overview.html          # Converted from PPTX/Google Slides
-│   └── overview.pptx.docgraph # Sidecar: links authored via UI
+│   └── overview.pptx.weft # Sidecar: links authored via UI
 ├── wireframes/
 │   ├── dashboard.png          # Imported Figma frame
-│   └── dashboard.png.docgraph # Sidecar: links authored via UI
-└── .docgraph/
+│   └── dashboard.png.weft # Sidecar: links authored via UI
+└── .weft/
     └── manifest.json          # Derived index — never hand-edited
 ```
 
@@ -60,10 +55,10 @@ docs/
 
 ## Configuration
 
-`docgraph.config.ts` at repo root:
+`weft.config.ts` at repo root:
 
 ```typescript
-import { defineConfig } from 'docgraph';
+import { defineConfig } from 'weft';
 
 export default defineConfig({
   docsDir: 'docs',           // default
@@ -76,7 +71,7 @@ export default defineConfig({
 
 ## Graph Manifest
 
-Auto-generated at `docs/.docgraph/manifest.json`. Rebuilt by `docgraph index` and on file
+Auto-generated at `docs/.weft/manifest.json`. Rebuilt by `weft index` and on file
 watch during `serve`. Never hand-edited.
 
 ```json
@@ -124,7 +119,7 @@ around. Users author links via the UI; these are the serialization formats.
 
 All paths are relative to repo root.
 
-### Sidecar Schema (`<file>.docgraph`)
+### Sidecar Schema (`<file>.weft`)
 
 Used for binary and converted-format sources where embedding links in the source is not possible
 (PPTX, PDF, Figma).
@@ -167,7 +162,7 @@ interface Importer {
 
 interface ImportResult {
   convertedPath: string;   // path to output artifact in docs/
-  sidecarPath?: string;    // path to .docgraph sidecar if created
+  sidecarPath?: string;    // path to .weft sidecar if created
   anchors: string[];       // extracted anchor IDs
 }
 ```
@@ -231,9 +226,9 @@ labels show relationship type. Node color/shape encodes document type.
 ## VSCode Extension
 
 ### Side Panel
-- VS Code Webview panel hosting the DocGraph UI (same React app, different entry point)
-- Launched via command: `DocGraph: Open`
-- Communicates with local DocGraph server (must be running) or spawns its own if not
+- VS Code Webview panel hosting the Weft UI (same React app, different entry point)
+- Launched via command: `Weft: Open`
+- Communicates with local Weft server (must be running) or spawns its own if not
 
 ### Gutter Decorations
 - On file open/change: scan for `@doc` comment patterns via regex
@@ -242,17 +237,17 @@ labels show relationship type. Node color/shape encodes document type.
 
 ### Communication
 - Extension ↔ Webview: VS Code message passing API
-- Webview ↔ DocGraph server: standard HTTP/WebSocket to localhost
+- Webview ↔ Weft server: standard HTTP/WebSocket to localhost
 
 ---
 
 ## CLI Commands
 
 ```
-docgraph serve            Start local server + open browser UI (default port 7777)
-docgraph import <path>    Import and convert an artifact into docs/
-docgraph index            Rebuild manifest from embedded links (no server)
-docgraph check            Validate all links; report broken anchors; exit 1 if any broken
+weft serve            Start local server + open browser UI (default port 7777)
+weft import <path>    Import and convert an artifact into docs/
+weft index            Rebuild manifest from embedded links (no server)
+weft check            Validate all links; report broken anchors; exit 1 if any broken
 ```
 
 ---
