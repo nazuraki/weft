@@ -114,6 +114,15 @@ export default defineConfig({
 
 ---
 
+## File Watching
+
+During `weft serve`, SvelteKit/Vite's built-in file watcher (chokidar under the hood) handles
+doc file changes — triggers manifest rebuild and pushes updates to the browser via WebSocket.
+No separate watcher needed. For CLI commands that need file watching outside of `weft serve`,
+chokidar is available as a transitive dependency from Vite. No new dependency either way.
+
+---
+
 ## Graph Manifest
 
 Auto-generated at `docs/.weft/manifest.json`. Rebuilt by `weft index` and on file
@@ -160,37 +169,32 @@ around. Users author links via the UI; these are the serialization formats.
 | Code comment | `@doc path/to/doc#anchor` | Any anchor |
 | OpenAPI | `x-doc: path/to/doc#anchor` | Per operation or schema |
 | HTML slides | `data-doc="path/to/doc#anchor"` on any element | Any element with attribute |
-| Sidecar JSON | See sidecar schema below | Slide/page index or named region |
+| Sidecar YAML | See sidecar schema below | Slide/page index or named region |
 
 All paths are relative to repo root.
 
 ### Sidecar Schema (`<file>.weft`)
 
-Used for binary and converted-format sources where embedding links in the source is not possible
-(PPTX, PDF, Figma).
+YAML format (DD-7). Used for binary and converted-format sources where embedding links in
+the source is not possible (PPTX, PDF, Figma).
 
-```json
-{
-  "source": "docs/slides/overview.pptx",
-  "converted": "docs/slides/overview.html",
-  "links": [
-    {
-      "anchor": "slide-4",
-      "elementSelector": "#slide-4 .shape-3",
-      "target": "docs/api.yaml#/paths/users/get",
-      "type": "references",
-      "label": "User API"
-    }
-  ],
-  "annotations": [
-    {
-      "anchor": "slide-2",
-      "author": "wil",
-      "created": "2025-03-19T00:00:00Z",
-      "body": "This slide understates the caching layer complexity."
-    }
-  ]
-}
+```yaml
+# overview.pptx.weft
+source: docs/slides/overview.pptx
+converted: docs/slides/overview.html
+
+links:
+  - anchor: slide-4
+    elementSelector: "#slide-4 .shape-3"
+    target: docs/api.yaml#/paths/users/get
+    type: references
+    label: User API
+
+annotations:
+  - anchor: slide-2
+    author: wil
+    created: 2025-03-19
+    body: This slide understates the caching layer complexity.
 ```
 
 ---

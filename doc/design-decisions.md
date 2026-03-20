@@ -359,3 +359,257 @@ derived from the filesystem — no shared mutable state between processes.
   network hop, no dependency on `weft serve` running.
 - The CLI does not need a server at all for commands like `weft check` and `weft analyze`.
 - All business logic is testable against `WeftService` without standing up HTTP or MCP.
+
+---
+
+## DD-6: Search engine
+
+**Status:** Decided
+
+### Context
+Search is a primary entry point (DD-3 — users start from a search, not a graph overview).
+It's used by the browser UI, MCP server, CLI, and VSCode extension. The search needs to cover:
+- Document titles and full text
+- Anchor names (headings, operation IDs, schema names)
+- Annotations and decision log entries
+
+There are two fundamentally different search models:
+
+**Keyword/full-text search** — user types exact or partial terms, engine matches tokens.
+Good for "find the auth endpoint spec" where the user knows the terminology.
+
+**Vector similarity search** — content is embedded into vectors, queries find semantically
+similar content. Good for "find docs related to how we handle user sessions" where the user
+describes intent rather than exact terms. Also enables "find docs similar to this code change"
+which is central to UC-7 (AI updates docs) and UC-9 (PR review flags stale docs).
+
+### Options
+
+#### MiniSearch (full-text only)
+
+Lightweight in-memory full-text search library (~7KB). Builds an inverted index from
+document content. Supports prefix matching, fuzzy matching, field boosting.
+
+| Dimension | Assessment |
+|---|---|
+| Index size | In-memory; fine for hundreds of docs, may strain at thousands |
+| Query speed | Sub-millisecond for typical corpus sizes |
+| Dependencies | Single npm package, no native modules |
+| Rebuild cost | Fast — full reindex on `weft index`, incremental on file watch |
+| Semantic understanding | None — keyword matching only |
+| Works offline | Yes — no external services |
+
+#### SQLite FTS5 (full-text only)
+
+Full-text search via SQLite's FTS5 extension. Persisted index on disk. Supports ranking,
+phrase queries, boolean operators.
+
+| Dimension | Assessment |
+|---|---|
+| Index size | On disk; handles large corpora well |
+| Query speed | Fast, even for large datasets |
+| Dependencies | better-sqlite3 (native module — adds build complexity, Bun compat risk) |
+| Rebuild cost | Fast; supports incremental updates |
+| Semantic understanding | None — keyword matching only |
+| Works offline | Yes |
+
+**Concern:** Native module complicates the Bun optional binary story (DD-1) and adds
+platform-specific build steps.
+
+#### Embedded vectors (semantic search)
+
+Embed document chunks into vectors at index time, store in a local vector index, query
+by embedding the search string and finding nearest neighbors.
+
+Embedding options:
+- **Local model (e.g., Xenova/transformers.js with a small model):** Runs in-process,
+  no API key, ~50-100MB model download. Slow first load, fast after.
+- **API-based (OpenAI, Anthropic, Cohere, Voyage):** Fast, high quality, requires API key
+  and network. Privacy concern — doc content leaves the machine.
+
+Vector storage options:
+- **In-memory (hnswlib-node, vectra):** Simple, fast, no external deps beyond the native
+  HNSW module. Rebuilt on index.
+- **SQLite + sqlite-vss:** Vector search extension for SQLite. Same native module concern
+  as FTS5, but gets both FTS and vector search from one dependency.
+- **LanceDB:** Embedded vector database, serverless, supports JS. No external service.
+
+| Dimension | Assessment |
+|---|---|
+| Index size | Vectors add ~1-4KB per chunk (depends on model dimension) |
+| Query speed | Sub-millisecond for nearest-neighbor on typical corpus |
+| Dependencies | Embedding model or API + vector storage library |
+| Rebuild cost | Slow if re-embedding entire corpus; incremental helps |
+| Semantic understanding | Yes — "find docs about authentication" matches "login flow", "OAuth", "session management" |
+| Works offline | Only with local embedding model |
+
+**Key advantage for AI use cases:** When an AI agent asks the MCP server "find documentation
+related to this code change," vector similarity surfaces semantically relevant docs even when
+there's no keyword overlap. This directly supports UC-6 (AI context), UC-7 (AI updates docs),
+UC-9 (PR review), and UC-12 (impact scoping).
+
+#### Hybrid: MiniSearch + embedded vectors
+
+Full-text search for exact/keyword queries, vector similarity for semantic queries. Results
+merged with a scoring strategy (e.g., reciprocal rank fusion). Search API accepts both modes
+or auto-detects.
+
+| Dimension | Assessment |
+|---|---|
+| Complexity | Two indexes to build and maintain |
+| Coverage | Best of both — exact term matches AND semantic similarity |
+| Configuration | Users who don't want vector search can disable it (no API key, no model download) |
+| Default experience | Full-text works out of the box, vector search is opt-in |
+
+### Analysis
+
+Full-text search is table stakes — it must work out of the box with zero configuration.
+MiniSearch handles this with no native dependencies and trivial integration.
+
+Vector similarity is where the differentiation is, especially for MCP/AI use cases. An agent
+asking "what docs relate to this code change" gets dramatically better results from semantic
+search than keyword matching. But it comes with a cost: either a model download or an API key.
+
+The hybrid approach lets the tool work immediately (full-text) while offering an upgrade path
+(vectors) that's most valuable for the AI-assisted workflows. The embedding provider can be
+configurable — local model by default for privacy, API-based as an option for quality.
+
+### Decision
+
+**Hybrid: MiniSearch (always on) + local embedding model (opt-in). Unified search API.**
+
+- **MiniSearch** for full-text/keyword search — zero config, no native deps, always available.
+- **Semantic search** via transformers.js with a local ONNX model (e.g., `all-MiniLM-L6-v2`) —
+  opt-in via config. Runs on CPU, no GPU required. ~25-80MB model downloaded once, cached.
+  ~10-50ms per chunk for embedding, queries ~10ms.
+- **Embedding provider is configurable** — local model by default when enabled. Can be
+  overridden to use an API provider (OpenAI, Voyage, etc.) via `weft.config.ts` for teams
+  that prefer higher-quality embeddings and accept the privacy/network tradeoff.
+
+#### Index persistence and staleness
+
+Both indexes (full-text and vector) are persisted to `.weft/` and support incremental updates.
+CLI commands load the cached index rather than rebuilding from scratch on every invocation.
+
+- **Full-text index:** Serialized via `MiniSearch.exportJSON()` to `.weft/search-index.json`.
+  An mtime map is stored alongside it.
+- **Vector index:** Stored at `.weft/vectors.bin` with its own mtime map.
+- **Staleness check on CLI startup:** Stat all doc files, compare mtimes against stored values.
+  Changed files are incrementally re-indexed (MiniSearch `remove()` + `add()`, re-embed changed
+  chunks). Unchanged files are not touched.
+- **Full rebuild** on `weft index`, on corrupt/missing index files, or when the index format
+  version changes.
+- **During `weft serve`:** File watcher triggers incremental updates and re-serializes to disk.
+  The in-memory index stays warm; the disk cache stays current for the next CLI invocation.
+
+| Scenario (500 docs, 1 changed) | Cost |
+|---|---|
+| Full rebuild every time | ~500ms-1s |
+| Load cached index, no changes detected | ~10-15ms |
+| Load cached index, incremental update (1 doc) | ~15-25ms |
+
+#### Unified search API
+
+Single `search()` method on `WeftService`. Consumers never merge results themselves.
+
+```typescript
+search(query: string, options?: SearchOptions): SearchResult[]
+
+interface SearchOptions {
+  mode?: 'all' | 'fulltext' | 'semantic';  // default: 'all'
+  limit?: number;
+}
+
+interface SearchResult {
+  nodeId: string;
+  anchor?: string;
+  title: string;
+  snippet: string;
+  score: number;           // unified score (reciprocal rank fusion when both modes active)
+  matchedBy: ('fulltext' | 'semantic')[];
+}
+```
+
+- `mode: 'all'` (default) runs both engines if semantic is enabled, merges via reciprocal
+  rank fusion, returns one ranked list. Falls back to fulltext-only if semantic is disabled.
+- `matchedBy` tells consumers how each result was found — useful for UI indicators and
+  debugging.
+- Explicit `mode: 'fulltext'` or `mode: 'semantic'` available for consumers that need one
+  specifically (e.g., an agent looking up an exact function name vs finding conceptually
+  related docs).
+
+#### Configuration
+
+```typescript
+// weft.config.ts
+export default defineConfig({
+  search: {
+    semantic: {
+      enabled: false,       // opt-in
+      provider: 'local',    // 'local' | 'openai' | 'voyage' | custom
+      model: 'all-MiniLM-L6-v2',  // default local model
+    },
+  },
+});
+```
+
+---
+
+## DD-7: Sidecar file format
+
+**Status:** Decided
+
+### Context
+Sidecar files (`<file>.weft`) store links and annotations for binary or converted-format
+sources where embedding metadata in the source is not possible (PPTX, PDF, Figma). These
+files are committed to the repo, reviewed in PRs, and occasionally hand-edited.
+
+### Options considered
+- **JSON** — universal, strict syntax, no comments, noisy for arrays of objects (closing
+  braces/brackets), poor multiline string support.
+- **YAML** — human-readable, supports comments, clean multiline strings, compact for arrays
+  of objects. Already in the ecosystem (OpenAPI specs, Markdown frontmatter).
+- **TOML** — good for flat config, but `[[array]]` syntax adds visual noise when the file
+  is primarily arrays of objects (links, annotations). Scales poorly at 20+ entries.
+
+### Decision
+
+**YAML.**
+
+- Sidecars are arrays of structured objects with occasional free-text (annotation bodies,
+  labels). YAML's indented list syntax is the most scannable format for this shape of data.
+- Supports inline comments — useful for noting why a link exists or flagging a broken one.
+- Already familiar in the ecosystem — OpenAPI specs are YAML, Markdown frontmatter is YAML.
+  No new format for users to learn.
+- Multiline strings (`|` or `>` block scalars) handle annotation bodies cleanly.
+
+```yaml
+# overview.pptx.weft
+source: docs/slides/overview.pptx
+converted: docs/slides/overview.html
+
+links:
+  - anchor: slide-4
+    elementSelector: "#slide-4 .shape-3"
+    target: docs/api.yaml#/paths/users/get
+    type: references
+    label: User API
+
+  - anchor: slide-7
+    target: docs/db-schema.md#users-table
+    type: references
+    label: Users table schema
+
+annotations:
+  - anchor: slide-2
+    author: wil
+    created: 2025-03-19
+    body: This slide understates the caching layer complexity.
+
+  - anchor: slide-4
+    author: dana
+    created: 2025-03-20
+    body: |
+      The API contract shown here is outdated.
+      See the updated spec for the new pagination params.
+```
