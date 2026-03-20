@@ -12,13 +12,13 @@
   deleted pages, do not silently drop them
 - CLI: `weft import <file-or-url>`
 
-## Graph Browser UI
+## Browser UI
 *Supports: UC-1, UC-3, UC-5, UC-10, UC-12, UC-14, UC-15*
 
-- Split pane layout (primary): left pane + right pane, each independently navigable
+- Split pane layout: left pane + right pane, each independently navigable
 - Navigation history per pane (back/forward)
-- Graph overview mode: visual node graph showing documents and their relationships
-- Click any edge/link to load the target in the opposite pane
+- Linked-items sidebar: list of documents/anchors related to the current view
+- Click any link to load the target in the opposite pane
 - Keyboard navigation (arrow keys, Escape to dismiss overlay, Back/Forward)
 - Search across all documents (full text + anchor names)
 - Broken link detection and visual flagging
