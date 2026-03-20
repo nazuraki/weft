@@ -95,7 +95,14 @@ finding which projects consume a shared API, or researching how other teams solv
 problem. The agent doesn't need to clone or navigate each repo; it queries each project's
 documentation graph as a service and synthesizes results across the organization.
 
-## UC-14: Stakeholder review without code access
-A non-technical stakeholder receives a `docs/` folder export. They run `weft serve`
-(or a future hosted version) and can navigate the design documents, wireframes, and functional
-specs without access to the codebase.
+## UC-14: Versioned documentation for releases
+A project publishes releases on GitHub. A developer needs to check the API spec as it existed
+in v2.3, not the current main branch. They run `weft serve --repo org/project --tag v2.3`
+(or select the version in the browser UI). Weft pulls the docs tarball from the GitHub release,
+builds the graph, and serves it. The developer can navigate the full documentation graph as it
+existed at that release — no need to check out old branches or dig through git history.
+
+## UC-15: Stakeholder review without code access
+A non-technical stakeholder receives a `docs/` folder export. They open a hosted static site
+(published via `weft build`) or run `weft serve` locally and can navigate the design documents,
+wireframes, and functional specs without access to the codebase.
