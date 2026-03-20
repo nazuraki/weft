@@ -7,7 +7,7 @@
 ### Context
 Weft has three deployment contexts that share core logic:
 1. **CLI + local server** — single Node process: CLI commands, HTTP/WebSocket API for the UI
-2. **Browser UI** — Vite-bundled React app (graph browser, renderers, split pane)
+2. **Browser UI** — Vite-bundled Svelte app (renderers, split pane, search)
 3. **VSCode extension** — webview panel + gutter decorations (runs in VS Code's Node host)
 
 The graph model, link parser, anchor registry, and manifest builder are core logic needed
@@ -613,3 +613,51 @@ annotations:
       The API contract shown here is outdated.
       See the updated spec for the new pagination params.
 ```
+
+---
+
+## DD-8: Licensing and distribution model
+
+**Status:** Decided
+
+### Context
+Weft is a developer tool that reads and writes files in a project repository. Decisions
+about open source vs proprietary and license choice affect adoption, community contributions,
+corporate usability, and future commercial options.
+
+### Options considered
+- **MIT** — maximally permissive, universal default. No restrictions on use, modification,
+  or redistribution. No protection against a competitor hosting the software as a service.
+- **Apache 2.0** — like MIT with explicit patent grant. Slightly more formal contributor
+  protections. Same permissiveness otherwise.
+- **AGPL** — copyleft. Requires anyone serving the software over a network to open-source
+  their modifications. Protects against cloud strip-mining but many companies have blanket
+  AGPL bans.
+- **ELv2 (Elastic License v2)** — source-available, not OSI-approved. Permits everything
+  except offering the software as a managed service. Used by Elastic, others.
+- **BSL / FSL** — source-available, converts to open source after 2-4 years. Not
+  OSI-approved. Used by HashiCorp, Sentry.
+
+### Decision
+
+**Open source under MIT license.**
+
+- **Adoption first.** Developer tools live or die on adoption. MIT has zero friction — no
+  corporate legal review, no license compatibility concerns, no "is this really open source?"
+  confusion.
+- **Trust.** Weft reads and writes files in your repo. Open source lets people audit what
+  it does. Source-available licenses (ELv2, BSL) technically allow this but carry perception
+  baggage.
+- **Ecosystem fit.** MCP is open, the tooling around it is open. A non-OSI Weft would be
+  the odd one out.
+- **Community contributions.** Document renderers, import pipelines, and templates are
+  natural extension points. MIT maximizes contributor willingness.
+- **Commercial path is unaffected.** A future proprietary product would be a separate
+  codebase that imports Weft as a dependency and adds commercial features on top (hosted
+  multi-tenant, team management, enterprise auth). MIT on the core does not constrain the
+  proprietary layer — it's a different product with different value.
+- **SaaS risk is near-zero.** Weft is a local tool that runs in your repo against your docs.
+  The "someone hosts it as a competing service" scenario that AGPL/ELv2 protect against is
+  not a realistic threat for this category of tool.
+- **Patent grant (Apache 2.0) is unnecessary.** No patent-relevant innovation in a JS
+  documentation tool. The added formality isn't worth the marginal complexity.

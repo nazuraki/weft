@@ -16,6 +16,7 @@
 | OpenAPI rendering | Redoc or Stoplight Elements | Embedded in renderer pane |
 | Syntax highlighting | Shiki | Code file renderer |
 | Package manager | pnpm | Monorepo workspace |
+| License | MIT | Open source (DD-8) |
 
 ---
 
