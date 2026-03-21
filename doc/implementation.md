@@ -10,12 +10,14 @@
 | Server | SvelteKit + adapter-node | UI and API in one process (DD-5) |
 | VSCode extension | VS Code Extension API | Webview panel + gutter decorations |
 | MCP server | @modelcontextprotocol/sdk | stdio transport, imports `@weft/core` directly (DD-5) |
-| PPTX conversion | LibreOffice headless | Subprocess via CLI wrapper |
+| Google Slides rendering | Custom Svelte components | Slides API JSON, element-level anchors (DD-13) |
 | PDF rendering | pdf.js | In-browser canvas render |
 | Mermaid rendering | @mermaid-js/mermaid-cli | SVG output at import time |
-| OpenAPI rendering | Redoc or Stoplight Elements | Embedded in renderer pane |
+| OpenAPI rendering | Custom Svelte components | Parsed spec + Shiki for examples (DD-12) |
 | Syntax highlighting | Shiki | Code file renderer |
-| Package manager | pnpm | Monorepo workspace |
+| Test runner | Vitest | Shares Vite transform pipeline (DD-11) |
+| CLI parsing | cleye | Flat commands, typed args (DD-10) |
+| Package manager | pnpm | Monorepo workspace (DD-9) |
 | License | MIT | Open source (DD-8) |
 
 ---
@@ -84,11 +86,12 @@ docs/
 ├── api.yaml
 ├── db-schema.md
 ├── slides/
-│   ├── overview.html          # Converted from PPTX/Google Slides
-│   └── overview.pptx.weft     # Sidecar: links authored via UI
-├── wireframes/
-│   ├── dashboard.png          # Imported Figma frame
-│   └── dashboard.png.weft     # Sidecar: links authored via UI
+│   ├── overview.json          # Cached Google Slides API JSON
+│   ├── overview.json.weft     # Sidecar: links authored via UI
+│   └── images/                # Cached image assets referenced by slides
+│       └── shape-abc123.png
+├── diagrams/
+│   └── data-flow.svg          # Converted from Mermaid/PlantUML
 └── .weft/
     └── manifest.json          # Derived index — never hand-edited
 ```
@@ -169,30 +172,30 @@ around. Users author links via the UI; these are the serialization formats.
 | Markdown | `[label](@doc:path/to/doc#anchor)` | Heading slug |
 | Code comment | `@doc path/to/doc#anchor` | Any anchor |
 | OpenAPI | `x-doc: path/to/doc#anchor` | Per operation or schema |
-| HTML slides | `data-doc="path/to/doc#anchor"` on any element | Any element with attribute |
-| Sidecar YAML | See sidecar schema below | Slide/page index or named region |
+| Google Slides | Sidecar YAML (see schema below) | Element ID from Slides API |
+| Sidecar YAML | See sidecar schema below | Slide/page index or element ID |
 
 All paths are relative to repo root.
 
 ### Sidecar Schema (`<file>.weft`)
 
-YAML format (DD-7). Used for binary and converted-format sources where embedding links in
-the source is not possible (PPTX, PDF, Figma).
+YAML format (DD-7). Used for sources where embedding links in the source is not possible
+(Google Slides, PDF).
 
 ```yaml
-# overview.pptx.weft
-source: docs/slides/overview.pptx
-converted: docs/slides/overview.html
+# overview.json.weft
+source: https://docs.google.com/presentation/d/1abc123/edit
+cached: docs/slides/overview.json
 
 links:
-  - anchor: slide-4
-    elementSelector: "#slide-4 .shape-3"
+  - anchor: element-abc123       # Element ID from Slides API
+    slide: slide-004
     target: docs/api.yaml#/paths/users/get
     type: references
     label: User API
 
 annotations:
-  - anchor: slide-2
+  - anchor: slide-002
     author: wil
     created: 2025-03-19
     body: This slide understates the caching layer complexity.
@@ -233,7 +236,7 @@ Built by `packages/core/src/anchors/` during indexing. Per-format extractors:
 
 - **Markdown:** Extract `## Heading` → slug via same algorithm as GitHub (`#my-heading`)
 - **OpenAPI:** Extract operation IDs and schema names from parsed spec
-- **HTML slides:** Extract `id` attributes on slide container elements
+- **Google Slides:** Extract element IDs from cached Slides API JSON; slide IDs as parent anchors
 - **PDF:** Extract page numbers as anchors (`#page-3`); text extraction for search
 - **Code files:** Extract function/class names; line ranges for `@doc` references
 
@@ -241,33 +244,107 @@ Built by `packages/core/src/anchors/` during indexing. Per-format extractors:
 
 ## UI Architecture
 
-No graph overview visualization (DD-3). The graph is the engine, not the interface. The
-primary UI is a split-pane document browser with search and a linked-items sidebar.
+No graph overview visualization (DD-3). The graph is the engine, not the interface.
+Three-panel layout: left-hand nav (LHN), main view pane, linked-items sidebar (RHS).
+Two specialized modes alter this layout: **reviewing** and **presenting**.
 
-### Split Pane
-- Two independent pane components, each with its own navigation stack
-- Clicking a link in the active pane loads the target in the inactive pane (or same pane with
-  Cmd/Ctrl+click for same-pane navigation)
-- Navigation stack: push on navigate, pop on Back, breadcrumb display
+### Layout — Default Mode
 
-### Linked-Items Sidebar
-- Shows documents and anchors related to the current view
+```
+┌──────┬───────────────────────────┬────────────┐
+│      │                           │  Linked    │
+│ LHN  │       Main View           │  Items     │
+│      │                           │            │
+│ Tree │   (document renderer)     │  (graph    │
+│      │                           │   edges)   │
+│      │                           │            │
+└──────┴───────────────────────────┴────────────┘
+```
+
+### Left-Hand Nav (LHN)
+- Doc tree: file/folder hierarchy derived from `docsDir`
+- Click a node to load it in the main view
+- Collapsible; remembers expand/collapse state per session
+
+### Search
+- Command-palette overlay (not inline in the LHN)
+- Triggered by keyboard shortcut or search icon
+- Searches document titles, anchors, and full-text content
+- Selecting a result navigates the main view
+
+### Main View Pane
+- Single document renderer with its own navigation stack (push on navigate, pop on Back)
+- Breadcrumb display for stack history
+
+### Linked-Items Sidebar (RHS)
+- Shows documents and anchors related to the current main view
 - Populated by traversing graph edges from the active document/anchor
-- Click an item to load it in the opposite pane
+
+### Cross-Reference Navigation
+Configurable behavior when interacting with linked items (RHS sidebar or inline links):
+
+| Config option | Hover | Click | Modifier+Click |
+|---|---|---|---|
+| `peek-first` (default) | Peek (slide-in modal) | Navigate main view | — |
+| `click-direct` | — | Navigate main view | Peek (slide-in modal) |
+
+Config key: `ui.crossRefBehavior` (`"peek-first"` | `"click-direct"`)
+
+### Layout — Reviewing Mode
+RHS splits vertically: linked items on top, comment history on bottom.
+
+```
+┌──────┬───────────────────────────┬────────────┐
+│      │                           │  Linked    │
+│ LHN  │       Main View           │  Items     │
+│      │                           ├────────────┤
+│      │                           │  Comment   │
+│      │                           │  History   │
+│      │                           │  (scroll)  │
+└──────┴───────────────────────────┴────────────┘
+```
+
+- Comment history: chronological scrollable list (all annotations for the active doc)
+- Not filtered by scroll position — shows full doc history
+- Click a comment to jump to its anchor in the main view
+- Inline edit/delete on each comment for corrections
+
+### Layout — Presenting Mode
+LHN and RHS hidden. Main view fills the viewport. Context is accessed via slide-in modal.
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│                  Main View                      │
+│                  (full width)                   │
+│                                                 │
+└─────────────────────────────────────────────────┘
+        ↑ slide-in modal overlays from left or right
+```
+
+- Toggled explicitly via toolbar button or keyboard shortcut (never auto-engaged)
+- Slide-in direction: opposite of the source action's position, so the selection
+  point stays visible and content doesn't shift
+- Modal has its own independent navigation stack (push/pop/breadcrumb),
+  separate from the main view
+- Navigating within the modal does not affect the main view
 
 ### Document Renderers
 One renderer component per document type, registered in a renderer registry.
-All renderers expose a link-click callback that the split pane handles — renderers don't
-know about pane management. Renderers wrap vanilla JS libraries via Svelte `use:action`
-directives where appropriate (pdf.js, Mermaid SVG, Redoc/Stoplight web components, Shiki).
+All renderers expose a link-click callback that the layout shell handles — renderers don't
+know about pane or modal management. Renderers wrap vanilla JS libraries via Svelte
+`use:action` directives where appropriate (pdf.js, Mermaid SVG, Shiki). OpenAPI and
+Google Slides renderers are custom Svelte components (DD-12, DD-13).
 
 ### Link Authoring UI
-- Triggered by text selection in any renderer
-- Floating toolbar: "Add link" button
-- Opens a command-palette-style picker: search documents and anchors
+- **Session-only toggle**: disabled by default, user enables it explicitly, resets to
+  off on app close (not persisted)
+- When enabled: text selection in any renderer shows floating toolbar with "Add link"
+- Opens command-palette-style picker: search documents and anchors
 - On confirm: sends write request to SvelteKit API route, which updates the source file
   or sidecar
 - Renderer re-fetches and re-renders
+- Available in all three modes (default, reviewing, presenting)
 
 ---
 
@@ -321,46 +398,3 @@ weft new <template>     Scaffold a new document from a template
 weft log                Append a decision log entry to a document node
 ```
 
----
-
-## Development Phases
-
-### Phase 1 — Core graph + Markdown
-- `packages/core`: WeftService, manifest builder, Markdown link parser, anchor extractor
-- `packages/cli`: `serve` and `index` commands
-- `packages/ui`: SvelteKit app — split pane, linked-items sidebar, Markdown renderer, search
-- No import pipeline yet — Markdown and OpenAPI YAML only
-
-### Phase 2 — Import pipeline + additional renderers
-- PPTX → HTML (LibreOffice)
-- Google Slides → HTML (export API)
-- Mermaid/PlantUML → SVG
-- PDF renderer (pdf.js)
-- Sidecar format + re-import merge logic
-
-### Phase 3 — Link authoring UI
-- Text selection → link picker → write-back per format
-- Sidecar authoring for converted formats
-
-### Phase 4 — MCP server
-- `packages/mcp`: tool definitions over WeftService
-- stdio transport, queryable by AI agents
-
-### Phase 5 — VSCode extension
-- Side panel webview (Svelte app, different entry point)
-- Gutter decorations for `@doc` references
-
-### Phase 6 — Annotation system + decision log
-- Annotation document type
-- Sidecar annotation schema
-- Decision log format and `weft log` command
-- Annotation renderer in split pane
-
-### Phase 7 — Analysis + CI integration
-- `weft analyze`: coverage, staleness, orphaned docs, connectivity
-- `weft check --staleness` for CI
-- Static export via `weft build`
-
-### Phase 8 — Figma integration
-- Figma REST API importer
-- Frame-level anchors and overlay links

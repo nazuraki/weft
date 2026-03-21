@@ -661,3 +661,298 @@ corporate usability, and future commercial options.
   not a realistic threat for this category of tool.
 - **Patent grant (Apache 2.0) is unnecessary.** No patent-relevant innovation in a JS
   documentation tool. The added formality isn't worth the marginal complexity.
+
+---
+
+## DD-9: Package manager
+
+**Status:** Decided
+
+### Context
+Weft is a TypeScript monorepo with five workspace packages (`core`, `ui`, `cli`, `mcp`,
+`vscode`). The package manager choice affects install speed, dependency correctness,
+cross-package build orchestration, and the npm publish story.
+
+This is a dev toolchain decision — independent of DD-1's consumer-facing runtime choice.
+End users install via `npm`/`npx` regardless.
+
+### Options considered
+
+#### npm workspaces
+Native workspaces since v7. Flat `node_modules`, no topological script ordering — would
+require Turborepo or nx on top for build orchestration. Weakest monorepo implementation.
+
+#### pnpm
+Content-addressable store with symlinked `node_modules`. Strict dependency isolation —
+packages can only import declared deps. `pnpm -r run build` runs topologically by default.
+`workspace:*` protocol auto-replaced with real versions on `pnpm publish`.
+
+#### Yarn Berry (v4)
+Strong workspace support. PnP mode eliminates `node_modules` entirely but breaks tools
+that assume it exists (some VSCode extensions, Jest configs). Falling back to
+`nodeLinker: node-modules` negates PnP's advantages, leaving a tool roughly equivalent
+to pnpm with more configuration surface.
+
+#### Bun
+Fastest installs (~2-5x over pnpm). Supports workspaces and `workspace:*` protocol.
+However: no strict `node_modules` (flat hoisting like npm), `bun.lock` format still
+evolving, and `bun publish` with workspace replacement is less battle-tested. Scripts
+run under the Bun runtime, meaning dev-time behavior diverges from the Node runtime
+most consumers will use.
+
+### Decision
+
+**pnpm.**
+
+- **Dev/prod parity.** Most consumers run Weft on Node (DD-1). Developing on Node via
+  pnpm means Node-specific issues surface during development, not after publish. The Bun
+  optional binary is a runtime swap — if it works on Node, it almost certainly works on Bun.
+  The reverse is less reliable.
+- **Strict `node_modules`.** Packages can only import their declared dependencies. With
+  five packages sharing deps and cross-importing `@weft/core`, phantom dependency bugs
+  are a when, not an if. pnpm catches them at dev time; npm and Bun silently hoist.
+- **Topological build orchestration.** `pnpm -r run build` builds `core` before its
+  consumers. `--filter` targets specific packages and their dependency chains. No
+  Turborepo or nx needed.
+- **Proven publish story.** `workspace:*` references are auto-replaced with real versions
+  on `pnpm publish`. Five scoped packages publishing to npm — this needs to be rock solid.
+- **Contributor friction is minimal.** `corepack enable && pnpm install` — corepack ships
+  with Node 16+.
+
+---
+
+## DD-10: CLI argument parsing
+
+**Status:** Decided
+
+### Context
+Weft has eight CLI commands (`serve`, `import`, `index`, `check`, `analyze`, `build`,
+`new`, `log`). All are top-level — no nested sub-commands. Arguments are simple: a path,
+a flag or two, a template name. The CLI package (`@weft/cli`) needs a parser that handles
+this cleanly with good TypeScript DX.
+
+### Options considered
+
+#### commander
+Chained builder API. Mature (10+ years), massive ecosystem. Auto-generated `--help`.
+~50KB. TypeScript support via generics but not inferred from definitions.
+
+#### yargs
+Similar maturity and ecosystem to commander. ~130KB. TypeScript types are notoriously
+awkward — the generics don't compose well and often require manual casting.
+
+#### citty
+Declarative object API from the UnJS ecosystem. ~3KB. Native TypeScript inference —
+args are typed from the definition object. Supports sub-commands via nested objects.
+Barebones help output — no auto-styled `--help` formatting.
+
+#### cleye
+Declarative object API, TypeScript-native — args inferred from definition. ~7KB.
+Auto-generates styled `--help` output. No built-in sub-command routing — commands
+are flat. Built by the author of `tsx`.
+
+### Decision
+
+**cleye.**
+
+- **Flat command model fits Weft.** All eight commands are top-level with simple args.
+  No sub-command nesting needed. cleye's flat routing is a natural match; citty's
+  sub-command support and commander's `.command()` chaining would be unused complexity.
+- **TypeScript inference.** Parsed args are typed from the definition — no manual
+  generics or casting. Matches the TypeScript-throughout philosophy (DD-1).
+- **Auto-styled `--help`.** citty was the other lightweight contender but requires
+  DIY help formatting. cleye generates clean help output automatically — one less
+  thing to build and maintain.
+- **Small.** ~7KB. CLI parsing is not where Weft's complexity lives — the dependency
+  should reflect that.
+
+---
+
+## DD-11: Testing strategy
+
+**Status:** Decided
+
+### Context
+Weft is a TypeScript monorepo with five packages. The ports-and-adapters architecture
+(DD-5) concentrates business logic in `@weft/core`, with three thin adapter layers
+(`ui`, `mcp`, `cli`) and a VSCode extension. The core operates on real files — the
+graph is derived from the filesystem. The test strategy must reflect this.
+
+### Test runner
+
+**Vitest.** SvelteKit already uses Vite (DD-2). Vitest shares the transform pipeline —
+TypeScript, Svelte components, path aliases all work without duplicate configuration.
+`vitest.workspace.ts` runs all packages in one process. Native ESM, fast watch mode
+via Vite's module graph. Jest would require separate transform config for TypeScript
+and Svelte; `node:test` lacks workspace support and Svelte transforms.
+
+### Test philosophy
+
+**Filesystem-based integration tests as the backbone. No mocking the filesystem.**
+
+The graph is derived from files. Mocking the filesystem means testing a fiction. Core
+tests operate against real files in temp directories.
+
+#### Fixture strategy
+
+Test fixtures are checked-in example doc structures under `packages/core/test/fixtures/`.
+Each fixture is a minimal docs directory representing a specific scenario (broken links,
+circular references, mixed formats, sidecar files, etc.). Tests copy a fixture to a temp
+directory, run WeftService operations against it, and assert on results and side effects.
+
+```
+packages/core/test/fixtures/
+├── basic/              # Simple markdown docs with valid links
+│   ├── README.md
+│   ├── api.yaml
+│   └── architecture.md
+├── broken-links/       # Links targeting missing anchors/docs
+├── circular/           # Circular link references
+├── sidecar/            # Binary files with .weft sidecars
+└── mixed-formats/      # Markdown, OpenAPI, HTML slides, code files
+```
+
+### Per-package testing
+
+**`@weft/core`** — bulk of the tests.
+- **Unit tests:** Graph model, link parsing, anchor extraction, manifest builder, search
+  index. Pure functions, no I/O.
+- **Integration tests:** WeftService methods against fixture-based temp directories.
+  `search()`, `traverse()`, `read()`, `write()`, `authorLink()` against real file
+  structures. Validates the full pipeline without HTTP or MCP.
+
+**`@weft/cli`** — invoke commands programmatically (not shelling out), assert on
+WeftService side effects against temp directories. Integration tests through the CLI
+entry point using the same fixture copy strategy.
+
+**`@weft/mcp`** — thin adapter. Mock WeftService to verify tool definitions map
+arguments correctly. Real behavior is tested in core.
+
+**`@weft/ui`** — two concerns:
+- **API routes:** Thin adapters over WeftService. Light tests, same as MCP.
+- **Svelte components:** Vitest + `@testing-library/svelte`. Test wiring — link click
+  callbacks, pane navigation, content loading — not third-party renderer DOM output.
+
+**`@weft/vscode`** — minimal automated tests. Command registration, message passing
+contracts. VS Code extension tests require `@vscode/test-electron` (launches a real
+VS Code instance) — slow, flaky, CI-unfriendly. Manual testing for webview integration.
+
+---
+
+## DD-12: OpenAPI renderer
+
+**Status:** Decided
+
+### Context
+Weft needs to render OpenAPI specs in the split-pane document viewer. The renderer must
+integrate with Weft's anchor system (operation IDs, schema names) and emit link-click
+callbacks that the pane handles. Shiki is already in the stack for syntax highlighting.
+The spec is parsed at index time for anchor extraction.
+
+### Options considered
+
+#### Redoc
+Redocly's open-source renderer. Web component, ~500KB. Three-panel portal-style layout
+with its own sidebar navigation. Read-only. React bundled internally.
+
+#### Stoplight Elements
+Stoplight's renderer. Web component, ~800KB+. Similar portal layout plus a "Try It"
+panel for live API requests. React bundled internally. Maintenance trajectory uncertain
+after SmartBear acquisition.
+
+#### Scalar
+Newer entrant. Web component, ~150-200KB. Cleaner design than Redoc but still a
+portal-style renderer with its own navigation.
+
+#### Custom Svelte components
+Parse the spec with a YAML parser (already needed for sidecar files) +
+`@apidevtools/swagger-parser` for `$ref` dereferencing. Render operations and schemas
+as Svelte components. Use Shiki (already in the stack) for example code blocks.
+
+### Decision
+
+**Custom Svelte components. No third-party OpenAPI renderer.**
+
+- **Portal renderers fight the pane model.** Redoc, Stoplight, and Scalar are standalone
+  documentation portals — they bring their own sidebar navigation, scroll behavior, and
+  layout. Embedding one inside Weft's split pane means fighting their nav to intercept
+  clicks, mapping Weft anchors to their DOM, and overriding their design system. The
+  integration cost exceeds the build cost.
+- **Anchors are native.** Weft already parses the spec at index time for anchor
+  extraction. A custom renderer generates anchor IDs directly — no mapping layer between
+  Weft's graph and a third-party renderer's DOM.
+- **No new dependencies.** Shiki is already in the stack for code rendering. A YAML
+  parser is already needed for sidecar files. `@apidevtools/swagger-parser` adds `$ref`
+  dereferencing — the only new dependency, and a small one.
+- **Bounded scope.** The OpenAPI spec structure is well-defined: paths → operations →
+  parameters + request/response schemas. A Svelte component that walks this tree with
+  collapsible sections and Shiki code blocks is not a large surface area. Build what
+  Weft needs, skip the portal features it doesn't.
+
+---
+
+## DD-13: Google Slides rendering
+
+**Status:** Decided
+
+### Context
+Google Slides is a primary documentation format in many teams — architecture overviews,
+design reviews, status decks. Weft needs to import and render slide decks in the
+split-pane viewer with element-level anchors so users can link to specific shapes, text
+boxes, and diagrams — not just whole slides.
+
+The Google Slides API returns a full structural JSON representation: slides → page
+elements (text boxes, shapes, images, tables, charts) with positions, sizes, text
+content with formatting, and unique element IDs.
+
+### Options considered
+
+#### Export as images
+Fetch a PNG per slide via the Slides API thumbnail endpoint. Simple, perfect fidelity,
+but slides are opaque pictures — no text selection, no search, no element-level anchors,
+and fixed-size images that can't adapt to the viewport.
+
+#### Parse JSON, render with custom Svelte components
+Parse the presentation JSON from the Slides API. Render each slide as positioned DOM
+elements in a Svelte component. Elements are responsive to viewport size. Each element
+gets an anchor ID. Text is extractable for search.
+
+#### Hybrid (image base + interactive overlays)
+Slide thumbnail as the base layer, clickable overlay regions from JSON element positions.
+Good visual fidelity but images are fixed-size — can't reflow or resize for different
+viewports. Coordinate mapping between Slides API dimensions and image pixels adds
+fragility.
+
+### Decision
+
+**Parse the JSON, render with custom Svelte components. Incremental element type support.**
+
+- **Viewport-responsive.** Slides rendered as positioned DOM elements scale to the pane
+  width. Users can adjust the split pane for better viewing during calls or on smaller
+  screens. Image-based approaches produce fixed-size output.
+- **Element-level anchors.** Each page element has a unique ID from the API. The renderer
+  generates anchor IDs directly — a sidecar link can target a specific shape or text box,
+  not just a slide. This is the key differentiator for Weft's graph model.
+- **Searchable text.** Text content is extracted from the JSON and indexed. Users can
+  search for content within slides, and the MCP server can find semantically relevant
+  slides for AI workflows.
+- **Incremental build-up.** The Slides JSON schema is large but element types are
+  independent. Each tier is self-contained and testable — feed a slide JSON fixture,
+  assert on rendered DOM and extracted anchors:
+  1. Text boxes + basic shapes (covers ~80% of typical slides)
+  2. Images (referenced by URL, fetched and cached on import)
+  3. Tables (structured grid with cell text)
+  4. Groups (nested element containers)
+  5. Charts (image fallback initially, parsed later)
+- **Testable.** The Slides API JSON is a well-documented schema. Fixtures are small JSON
+  files representing specific element configurations. No external service needed for
+  tests — only the import step requires API access.
+
+### Auth and caching
+
+- Import requires OAuth2 with read-only Slides scope. One-time auth flow during
+  `weft import`.
+- Presentation JSON and referenced image URLs are cached locally in the docs directory.
+  After import, rendering is fully offline.
+- Re-import fetches the latest JSON, diffs against cached version, updates sidecar links
+  by element ID, flags removed elements as broken.
