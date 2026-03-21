@@ -3,8 +3,9 @@
 ## UC-1: In-repo documentation navigation
 A developer opens a terminal in a project repo and runs `weft serve`. A browser UI opens
 showing the document graph. They can navigate from the high-level design doc to the relevant
-API spec section to the database schema to the code file that implements it — all in a split
-pane, with each navigation step preserving the history so they can go back.
+API spec section to the database schema to the code file that implements it — using the doc
+tree, main view, and linked-items sidebar, with each navigation step preserving history so
+they can go back.
 
 ## UC-2: VSCode side panel
 While reading a code file in VSCode, the developer sees gutter annotations where `@doc`
@@ -14,10 +15,10 @@ without leaving the editor.
 
 ## UC-3: Presentation during a call
 A developer is presenting an architecture overview (imported from a Google Slides deck) during
-a Zoom call. A stakeholder asks about the behavior of a specific API endpoint. The developer
-clicks an overlay link on the relevant slide, and the right pane loads the OpenAPI spec section
-for that endpoint. They answer the question, dismiss the pane, and continue the presentation
-from where they left off.
+a Zoom call. A stakeholder asks about the behavior of a specific API endpoint. With **presenting
+mode** enabled, the developer clicks a link on the slide; a **slide-in modal** opens to the
+OpenAPI spec section for that endpoint (without shrinking the main slide view). They answer the
+question, dismiss the modal, and continue the deck from where they left off.
 
 ## UC-4: Document review / annotation
 A reviewer receives a zip of project documentation. They drop it in a folder, run
@@ -26,7 +27,8 @@ architecture doc, add a comment, and optionally link the comment to a related se
 ("see also: api.yaml#/paths/users"). The tool writes the annotation to a
 `architecture.md.weft` sidecar file. The reviewer sends back that file (or the whole
 `docs/` folder). The original author drops it in, runs `weft serve`, and sees the
-annotations in context with the referenced sections in the opposite pane.
+annotations in context: the main view shows the document while **reviewing mode** surfaces
+comment history and links in the sidebar layout.
 
 ## UC-5: Onboarding a new team member
 A new developer runs `weft serve` on day one. Starting from the README or a designated
@@ -74,7 +76,7 @@ spec depends on the current behavior. The graph surfaces blast radius across art
 that wouldn't show up in a code-only dependency analysis.
 
 ## UC-11: Documentation coverage analysis
-A tech lead runs `weft coverage` to audit the state of project documentation. The tool reports
+A tech lead runs `weft analyze --coverage` to audit the state of project documentation. The tool reports
 code files with no `@doc` links, documentation nodes with zero inbound edges (orphaned docs),
 and graph regions with sparse connectivity. The output highlights gaps systematically —
 undocumented features, stale docs that nothing references anymore, and areas where the

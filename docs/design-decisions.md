@@ -24,7 +24,7 @@ UI, and VSCode extension. No serialization boundary between layers.
 | Dimension | Assessment |
 |---|---|
 | Code sharing | Full — same `@weft/core` package imported by CLI, browser, and VSCode |
-| UI/VSCode | Native fit — React, VS Code Extension API are JS/TS |
+| UI/VSCode | Native fit — browser UI and VS Code extension are JS/TS (Svelte + Extension API) |
 | CLI performance | Node startup overhead (~100-300ms); acceptable for `serve`, noticeable for `check` in CI |
 | Distribution | `npm install -g weft` or `npx weft` — requires Node runtime on target machine |
 | Ecosystem | Rich — every rendering lib needed (pdf.js, mermaid, OpenAPI renderers) is JS-native |
@@ -81,7 +81,7 @@ executable, has faster startup than Node, and is a drop-in replacement for most 
 | Dimension | Assessment |
 |---|---|
 | Code sharing | Full — same `@weft/core` package imported by CLI, browser, and VSCode |
-| UI/VSCode | Same — React, VS Code Extension API |
+| UI/VSCode | Same — Svelte/browser bundle + VS Code Extension API |
 | CLI performance | Better than Node — ~50ms startup, fast file I/O |
 | Distribution | `bun build --compile` produces a single binary — no runtime dependency |
 | Ecosystem | High compatibility with npm packages; some edge cases with native modules |

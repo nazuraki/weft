@@ -58,6 +58,10 @@ Ports-and-adapters (DD-5). All business logic lives in `@weft/core` as a transpo
 Each consumer instantiates its own `WeftService` from the project config. The graph is
 derived from the filesystem — no shared mutable state between processes.
 
+**`traverse(nodeId, direction)`:** `direction` is one of `outbound` (edges from this node),
+`inbound` (edges to this node), or `both`, for listing linked documents/anchors in the UI and
+for analysis.
+
 ---
 
 ## Repository Structure

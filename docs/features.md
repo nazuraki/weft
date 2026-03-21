@@ -1,10 +1,13 @@
 # Weft — Features
 
+Full capability inventory mapped to use cases.
+
 ## Import Pipeline
 *Supports: UC-1, UC-3, UC-4, UC-5, UC-14, UC-15*
 
 - Import PPTX → normalized HTML (LibreOffice headless conversion), stored in `docs/`
-- Import Google Slides → HTML (via Slides export API)
+- Import Google Slides → cached Slides API JSON in `docs/`, rendered with custom Svelte
+  components (element-level anchors; see DD-13)
 - Import PDF → page images + extracted text, stored in `docs/`
 - Import Figma file → per-frame PNG/SVG (via Figma REST API), stored in `docs/`
 - Import Mermaid/PlantUML → rendered SVG, source preserved
@@ -15,12 +18,15 @@
 ## Browser UI
 *Supports: UC-1, UC-3, UC-5, UC-10, UC-12, UC-14, UC-15*
 
-- Split pane layout: left pane + right pane, each independently navigable
-- Navigation history per pane (back/forward)
-- Linked-items sidebar: list of documents/anchors related to the current view
-- Click any link to load the target in the opposite pane
-- Keyboard navigation (arrow keys, Escape to dismiss overlay, Back/Forward)
-- Search across all documents (full text + anchor names)
+- Three-panel layout: left-hand doc tree (`docsDir`), main document view, right-hand
+  **linked-items** sidebar (edges from the active document/anchor)
+- Main view has its own navigation stack (back/forward) and breadcrumbs
+- **Presenting mode:** chrome minimized; linked context opens in a slide-in modal with its own
+  stack (see [implementation.md](implementation.md#layout--presenting-mode))
+- **Reviewing mode:** RHS splits — linked items above, comment/annotation history below
+- Cross-reference behavior configurable (`peek-first` vs `click-direct`; see implementation.md)
+- Command-palette search (full text + anchor names; optional semantic search per DD-6)
+- Keyboard navigation (arrow keys, Escape, Back/Forward where applicable)
 - Broken link detection and visual flagging
 
 ## Document Renderers
@@ -33,7 +39,8 @@
 - PDF: pdf.js canvas render per page
 - Figma frames: image display with overlay link layer
 - Code files: syntax-highlighted view with `@doc` reference highlights
-- Annotation documents: rendered alongside their target document in split pane
+- Annotation documents: surfaced in **reviewing mode** alongside the target (layout in
+  implementation.md)
 
 ## Link Authoring
 *Supports: UC-1, UC-4, UC-7, UC-8, UC-10*
@@ -49,7 +56,8 @@
 - Annotation document type: structured YAML/Markdown, references anchors in target documents
 - Comments can contain links to other graph nodes
 - Stored as `<file>.weft` sidecar, portable alongside the target document
-- Rendered in split pane: annotation on one side, referenced section on the other
+- In reviewing mode, annotations and referenced sections use the split sidebar + main layout
+  (see implementation.md)
 - Author attribution, timestamp
 
 ## Decision Log
@@ -137,8 +145,9 @@
 - Configurable docs directory (default: `docs/`)
 - Configurable entry point document
 - Ignored paths
-- Custom document templates
-- MCP server options (port, auth, read-only mode)
+- MCP server options (e.g. read-only); transport is **stdio** — no listen port (see
+  implementation.md)
+- Search options (full-text always; optional semantic / embedding provider per DD-6)
 
 ---
 

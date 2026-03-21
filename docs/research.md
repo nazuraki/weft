@@ -95,9 +95,13 @@ The combination of features that doesn't exist in any single tool:
 - **pptx2html (npm):** Lighter weight, JS-native, less complete layout support.
 - **Recommendation:** LibreOffice for fidelity; wrap in a CLI subprocess from Node.
 
-### Google Slides → HTML
-- **Google Slides Export API:** `https://docs.google.com/presentation/d/{id}/export/html` —
-  produces clean HTML directly. Requires OAuth for private presentations.
+### Google Slides → navigable, anchor-rich format
+- **Slides API JSON (chosen for product):** Fetch presentation structure via the Google Slides
+  API; cache JSON under `docs/`; render with custom components so slides reflow, text is
+  selectable/searchable, and **element-level anchors** match API IDs (see DD-13 in
+  design-decisions.md).
+- **Export as HTML:** `…/presentation/d/{id}/export/html` — simpler pipeline but poor fit for
+  element-level anchors and responsive layout; kept here as prior research only.
 
 ### PDF → navigable format
 - **pdf.js:** Renders PDF pages to canvas in-browser. Good for display; limited for
