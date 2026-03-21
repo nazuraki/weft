@@ -1,2 +1,8 @@
 CLAUDE.md
 .claude
+node_modules
+dist
+build
+.svelte-kit
+.weft
+node-compile-cache

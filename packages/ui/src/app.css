@@ -1,0 +1,35 @@
+:root {
+	--lhn-width: 260px;
+	--rhs-width: 300px;
+	--header-height: 48px;
+	--color-bg: #ffffff;
+	--color-bg-secondary: #f8f9fa;
+	--color-border: #e1e4e8;
+	--color-text: #1f2328;
+	--color-text-secondary: #656d76;
+	--color-link: #0969da;
+	--color-link-hover: #0550ae;
+	--color-accent: #0969da;
+	--color-accent-subtle: #ddf4ff;
+	--font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial,
+		sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	font-family: var(--font-sans);
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--color-text);
+	background: var(--color-bg);
+}
