@@ -13,7 +13,7 @@ references appear in comments. Clicking an annotation opens the Weft side panel 
 to the referenced document section. The panel is navigable — they can follow links within it
 without leaving the editor.
 
-## UC-3: Presentation during a call
+## UC-3: Presentation during a call *(deferred — requires import pipeline)*
 A developer is presenting an architecture overview (imported from a Google Slides deck) during
 a Zoom call. A stakeholder asks about the behavior of a specific API endpoint. With **presenting
 mode** enabled, the developer clicks a link on the slide; a **slide-in modal** opens to the
@@ -90,7 +90,7 @@ entries, wireframes that reference affected behavior. The result is a complete i
 all artifact types, scoping the migration before it begins rather than discovering surprises
 mid-flight.
 
-## UC-13: Cross-repo documentation queries via MCP
+## UC-13: Cross-repo documentation queries *(deferred — requires MCP server)*
 An organization runs Weft MCP servers in multiple project repos. An AI agent working in one
 repo can query Weft servers across all of them — searching for cross-repo dependencies,
 finding which projects consume a shared API, or researching how other teams solved a similar

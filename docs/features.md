@@ -2,19 +2,6 @@
 
 Full capability inventory mapped to use cases.
 
-## Import Pipeline
-*Supports: UC-1, UC-3, UC-4, UC-5, UC-14, UC-15*
-
-- Import PPTX → normalized HTML (LibreOffice headless conversion), stored in `docs/`
-- Import Google Slides → cached Slides API JSON in `docs/`, rendered with custom Svelte
-  components (element-level anchors; see DD-13)
-- Import PDF → page images + extracted text, stored in `docs/`
-- Import Figma file → per-frame PNG/SVG (via Figma REST API), stored in `docs/`
-- Import Mermaid/PlantUML → rendered SVG, source preserved
-- Re-import: merge existing sidecar links back by slide/page index; flag broken links on
-  deleted pages, do not silently drop them
-- CLI: `weft import <file-or-url>`
-
 ## Browser UI
 *Supports: UC-1, UC-3, UC-5, UC-10, UC-12, UC-14, UC-15*
 
@@ -34,10 +21,6 @@ Full capability inventory mapped to use cases.
 
 - Markdown: rendered with heading anchors
 - OpenAPI/Swagger YAML/JSON: interactive API explorer (operations, schemas, examples)
-- HTML slides (converted): slide-per-page view with overlay link layer
-- Mermaid/PlantUML: rendered SVG with clickable shapes (where shape IDs are defined)
-- PDF: pdf.js canvas render per page
-- Figma frames: image display with overlay link layer
 - Code files: syntax-highlighted view with `@doc` reference highlights
 - Annotation documents: surfaced in **reviewing mode** alongside the target (layout in
   implementation.md)
@@ -66,7 +49,7 @@ Full capability inventory mapped to use cases.
 - Structured entry format: what changed, why, alternatives considered, who approved
 - Entries linked to affected graph nodes (API spec, schema, architecture doc)
 - Navigable history — trace from any artifact to the decisions that shaped it
-- Append via UI, CLI (`weft log`), or programmatically via MCP
+- Append via UI or CLI (`weft log`)
 
 ## Document Templates
 *Supports: UC-5, UC-8*
@@ -108,15 +91,6 @@ Full capability inventory mapped to use cases.
 - Version selector in browser UI to switch between releases
 - Works with static export: `weft build --tag <version>` for versioned hosted sites
 
-## MCP Server
-*Supports: UC-6, UC-7, UC-9, UC-13*
-
-- Weft exposes its graph as an MCP server, queryable by AI agents and tools
-- Query operations: search nodes, traverse edges, resolve anchors, read document content
-- Write operations: update doc content, author links, append decision log entries
-- Multiple Weft MCP servers (one per repo) can be queried by a single agent for cross-repo
-  discovery and dependency analysis
-
 ## VSCode Extension
 *Supports: UC-2*
 
@@ -126,10 +100,9 @@ Full capability inventory mapped to use cases.
 - Panel persists across file navigation; tracks current position in graph
 
 ## CLI
-*Supports: UC-1, UC-5, UC-9, UC-11, UC-12, UC-14*
+*Supports: UC-1, UC-5, UC-9, UC-11, UC-12, UC-14, UC-15*
 
 - `weft serve` — start local server, open browser UI
-- `weft import <file>` — import and convert an artifact into `docs/`
 - `weft index` — rebuild graph manifest without serving
 - `weft check` — validate all links, report broken anchors; `--staleness` flag for drift detection
 - `weft analyze` — graph analysis: coverage gaps, orphaned docs, staleness, feature↔use-case
@@ -145,8 +118,6 @@ Full capability inventory mapped to use cases.
 - Configurable docs directory (default: `docs/`)
 - Configurable entry point document
 - Ignored paths
-- MCP server options (e.g. read-only); transport is **stdio** — no listen port (see
-  implementation.md)
 - Search options (full-text always; optional semantic / embedding provider per DD-6)
 
 ---

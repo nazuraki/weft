@@ -4,15 +4,11 @@
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Language | TypeScript | All packages — core, UI, CLI, MCP, VSCode (DD-1) |
+| Language | TypeScript | All packages — core, UI, CLI, VSCode (DD-1) |
 | Runtime | Node (default), Bun (optional) | Bun via optional `weft-bun-<arch>` package (DD-1) |
 | UI framework | Svelte 5 + Vite | Compiler-based, no runtime overhead (DD-2) |
 | Server | SvelteKit + adapter-node | UI and API in one process (DD-5) |
 | VSCode extension | VS Code Extension API | Webview panel + gutter decorations |
-| MCP server | @modelcontextprotocol/sdk | stdio transport, imports `@weft/core` directly (DD-5) |
-| Google Slides rendering | Custom Svelte components | Slides API JSON, element-level anchors (DD-13) |
-| PDF rendering | pdf.js | In-browser canvas render |
-| Mermaid rendering | @mermaid-js/mermaid-cli | SVG output at import time |
 | OpenAPI rendering | Custom Svelte components | Parsed spec + Shiki for examples (DD-12) |
 | Syntax highlighting | Shiki | Code file renderer |
 | Test runner | Vitest | Shares Vite transform pipeline (DD-11) |
@@ -25,7 +21,7 @@
 ## Architecture
 
 Ports-and-adapters (DD-5). All business logic lives in `@weft/core` as a transport-agnostic
-`WeftService`. Three thin adapter layers consume it:
+`WeftService`. Thin adapter layers consume it:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -42,17 +38,17 @@ Ports-and-adapters (DD-5). All business logic lives in `@weft/core` as a transpo
 │  └── watch(callback) → unsubscribe                  │
 │                                                     │
 │  Graph model, link parsing, anchor registry,        │
-│  manifest builder, import pipeline, analyzers       │
-└──────────┬──────────────┬──────────────┬────────────┘
-           │              │              │
-     ┌─────┴─────┐  ┌────┴────┐  ┌──────┴──────┐
-     │  @weft/ui  │  │@weft/mcp│  │  @weft/cli  │
-     │            │  │         │  │             │
-     │ SvelteKit  │  │  stdio  │  │  direct     │
-     │ server     │  │  MCP    │  │  calls      │
-     │ routes →   │  │  tools →│  │  →          │
-     │ WeftService│  │  Weft.. │  │  WeftService│
-     └────────────┘  └─────────┘  └─────────────┘
+│  manifest builder, analyzers                        │
+└──────────┬─────────────────────────┬────────────────┘
+           │                         │
+     ┌─────┴─────┐            ┌──────┴──────┐
+     │  @weft/ui  │            │  @weft/cli  │
+     │            │            │             │
+     │ SvelteKit  │            │  direct     │
+     │ server     │            │  calls      │
+     │ routes →   │            │  →          │
+     │ WeftService│            │  WeftService│
+     └────────────┘            └─────────────┘
 ```
 
 Each consumer instantiates its own `WeftService` from the project config. The graph is
@@ -70,10 +66,9 @@ for analysis.
 weft/
 ├── packages/
 │   ├── core/          # WeftService, graph model, link parsing, manifest builder,
-│   │                  # anchor registry, import pipeline, analyzers
+│   │                  # anchor registry, analyzers
 │   ├── ui/            # SvelteKit app — browser UI + API server routes
-│   ├── cli/           # CLI commands (weft serve / import / check / analyze / build)
-│   ├── mcp/           # MCP server (stdio transport, tool definitions)
+│   ├── cli/           # CLI commands (weft serve / check / analyze / build)
 │   └── vscode/        # VSCode extension (webview panel, gutter decorations)
 ├── doc/               # Weft's own documentation (eats its own dog food)
 ├── weft.config.ts     # Example config
@@ -89,13 +84,6 @@ docs/
 ├── architecture.md
 ├── api.yaml
 ├── db-schema.md
-├── slides/
-│   ├── overview.json          # Cached Google Slides API JSON
-│   ├── overview.json.weft     # Sidecar: links authored via UI
-│   └── images/                # Cached image assets referenced by slides
-│       └── shape-abc123.png
-├── diagrams/
-│   └── data-flow.svg          # Converted from Mermaid/PlantUML
 └── .weft/
     └── manifest.json          # Derived index — never hand-edited
 ```
@@ -114,9 +102,6 @@ export default defineConfig({
   entryPoint: 'docs/README.md',
   ignore: ['docs/archive/**'],
   templates: {},             // custom document templates
-  mcp: {                     // MCP server options
-    readOnly: false,
-  },
 });
 ```
 
@@ -173,64 +158,37 @@ around. Users author links via the UI; these are the serialization formats.
 
 | Format | Syntax | Anchor unit |
 |---|---|---|
-| Markdown | `[label](@doc:path/to/doc#anchor)` | Heading slug |
+| Markdown | `[label](relative/path.md#anchor)` | Heading slug |
 | Code comment | `@doc path/to/doc#anchor` | Any anchor |
 | OpenAPI | `x-doc: path/to/doc#anchor` | Per operation or schema |
-| Google Slides | Sidecar YAML (see schema below) | Element ID from Slides API |
-| Sidecar YAML | See sidecar schema below | Slide/page index or element ID |
+| Sidecar YAML | See sidecar schema below | Format-specific anchor |
 
-All paths are relative to repo root.
+Markdown links use standard relative paths — no custom prefix or protocol. This means links
+render correctly on GitHub and other Markdown viewers without Weft installed. Weft identifies
+graph edges by resolving relative links against the docs directory; any link targeting a file
+within the docs tree is treated as a graph edge.
+
+Code comment and OpenAPI paths are relative to repo root.
 
 ### Sidecar Schema (`<file>.weft`)
 
-YAML format (DD-7). Used for sources where embedding links in the source is not possible
-(Google Slides, PDF).
+YAML format (DD-7). Used for annotations and for sources where embedding links in the
+source is not possible.
 
 ```yaml
-# overview.json.weft
-source: https://docs.google.com/presentation/d/1abc123/edit
-cached: docs/slides/overview.json
-
+# architecture.md.weft
 links:
-  - anchor: element-abc123       # Element ID from Slides API
-    slide: slide-004
+  - anchor: "#data-flow"
     target: docs/api.yaml#/paths/users/get
     type: references
     label: User API
 
 annotations:
-  - anchor: slide-002
+  - anchor: "#overview"
     author: wil
     created: 2025-03-19
-    body: This slide understates the caching layer complexity.
+    body: This section understates the caching layer complexity.
 ```
-
----
-
-## Import Pipeline
-
-Each importer lives in `packages/core/src/importers/`. Importers implement a common interface:
-
-```typescript
-interface Importer {
-  accepts(filePath: string): boolean;
-  import(filePath: string, docsDir: string): Promise<ImportResult>;
-}
-
-interface ImportResult {
-  convertedPath: string;   // path to output artifact in docs/
-  sidecarPath?: string;    // path to .weft sidecar if created
-  anchors: string[];       // extracted anchor IDs
-}
-```
-
-### Re-import Behavior
-On re-import of an existing artifact:
-1. Re-convert source to output format
-2. Load existing sidecar (if present)
-3. Re-match sidecar links by slide/page index
-4. Flag links whose target slide/page no longer exists as broken (do not drop silently)
-5. Write updated sidecar
 
 ---
 
@@ -240,8 +198,6 @@ Built by `packages/core/src/anchors/` during indexing. Per-format extractors:
 
 - **Markdown:** Extract `## Heading` → slug via same algorithm as GitHub (`#my-heading`)
 - **OpenAPI:** Extract operation IDs and schema names from parsed spec
-- **Google Slides:** Extract element IDs from cached Slides API JSON; slide IDs as parent anchors
-- **PDF:** Extract page numbers as anchors (`#page-3`); text extraction for search
 - **Code files:** Extract function/class names; line ranges for `@doc` references
 
 ---
@@ -337,8 +293,8 @@ LHN and RHS hidden. Main view fills the viewport. Context is accessed via slide-
 One renderer component per document type, registered in a renderer registry.
 All renderers expose a link-click callback that the layout shell handles — renderers don't
 know about pane or modal management. Renderers wrap vanilla JS libraries via Svelte
-`use:action` directives where appropriate (pdf.js, Mermaid SVG, Shiki). OpenAPI and
-Google Slides renderers are custom Svelte components (DD-12, DD-13).
+`use:action` directives where appropriate (Shiki). OpenAPI renderer is a custom Svelte
+component (DD-12).
 
 ### Link Authoring UI
 - **Session-only toggle**: disabled by default, user enables it explicitly, resets to
@@ -370,29 +326,10 @@ Google Slides renderers are custom Svelte components (DD-12, DD-13).
 
 ---
 
-## MCP Server
-
-Separate process (`packages/mcp/`), stdio transport. Tool definitions are thin adapters
-over `WeftService` methods:
-
-- `weft_search` → `service.search(query)`
-- `weft_read` → `service.read(nodeId, anchor?)`
-- `weft_traverse` → `service.traverse(nodeId, direction)`
-- `weft_write` → `service.write(nodeId, content)`
-- `weft_link` → `service.authorLink(from, to, type)`
-- `weft_log` → `service.appendDecisionLog(nodeId, entry)`
-- `weft_analyze` → `service.analyze(options)`
-
-Does not depend on `weft serve` running — instantiates its own `WeftService` from the
-project config.
-
----
-
 ## CLI Commands
 
 ```
 weft serve              Start SvelteKit server + open browser UI (default port 7777)
-weft import <path>      Import and convert an artifact into docs/
 weft index              Rebuild manifest from embedded links (no server)
 weft check              Validate all links; report broken anchors; exit 1 if any broken
 weft check --staleness  Also flag docs whose linked code has changed
