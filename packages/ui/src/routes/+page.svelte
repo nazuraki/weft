@@ -67,7 +67,12 @@
 		{#if $canGoBack}
 			<button class="back-btn" onclick={handleBack}>← Back</button>
 		{/if}
-		<DocView nodeId={$currentNode.nodeId} anchor={$currentNode.anchor} onnavigate={handleNavigate} />
+		<DocView
+			nodeId={$currentNode.nodeId}
+			anchor={$currentNode.anchor}
+			nodeType={data.manifest.nodes.find((n) => n.id === $currentNode.nodeId)?.type}
+			onnavigate={handleNavigate}
+		/>
 	{:else}
 		<p class="empty">No documents found.</p>
 	{/if}

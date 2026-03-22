@@ -1,5 +1,16 @@
 import { parse } from 'yaml';
 
+/** Parse an OpenAPI YAML/JSON spec and return the raw object, or undefined if invalid. */
+export function parseOpenApiSpec(content: string): Record<string, unknown> | undefined {
+	try {
+		const spec = parse(content);
+		if (!spec || typeof spec !== 'object') return undefined;
+		return spec as Record<string, unknown>;
+	} catch {
+		return undefined;
+	}
+}
+
 /** Extract anchors from an OpenAPI YAML/JSON spec: operation IDs and schema names. */
 export function extractOpenApiAnchors(content: string): string[] {
 	const spec = parse(content);

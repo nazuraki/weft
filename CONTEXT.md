@@ -20,17 +20,17 @@ Phase 1 implementation is complete. The monorepo has three packages:
 ### `@weft/ui` (packages/ui)
 - SvelteKit app with adapter-node
 - Three-panel layout: doc tree (LHN), main view, linked-items sidebar (RHS)
-- API routes: `/api/manifest`, `/api/doc/[...path]`, `/api/search?q=`, `/api/traverse?node=&direction=`
-- Components: DocTree, DocView, MarkdownRenderer (with in-app link interception), LinkedItems, Breadcrumbs, SearchPalette (Cmd+K)
+- API routes: `/api/manifest`, `/api/doc/[...path]`, `/api/search?q=`, `/api/traverse?node=&direction=`, `/api/openapi/[...path]`
+- Components: DocTree, DocView, MarkdownRenderer (with in-app link interception), OpenApiRenderer, LinkedItems, Breadcrumbs, SearchPalette (Cmd+K)
 - Navigation store with stack, breadcrumbs, back/forward
 
 ## Key Decisions
 - `@weft/core` exports TypeScript source directly (`main: src/index.ts`) — Vite handles transpilation, no separate build step needed for dev
 - Standard relative Markdown links (not `@doc:` prefix) — renders on GitHub, Weft identifies graph edges by resolving against docs dir
 - MiniSearch for full-text search (semantic search is future opt-in per DD-6)
+- OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core` (uses existing `yaml` dep); parsed spec served via `/api/openapi/[...path]`; `$ref` dereferencing deferred
 
 ## What's Not Built Yet
-- OpenAPI custom renderer (currently shows raw YAML)
 - Link authoring UI (Phase 2)
 - VSCode extension (Phase 3)
 - Annotation system / decision log (Phase 4)

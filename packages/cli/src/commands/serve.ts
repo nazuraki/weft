@@ -20,28 +20,31 @@ export const serveCommand = command({
 		}
 	}
 }, async (argv) => {
-	const rootDir = argv._.rootDir ?? process.cwd();
-	const config = await loadConfig(rootDir);
-	const service = new WeftService(config);
-
-	// Build initial manifest
-	await service.rebuild();
-	await service.writeManifest();
-
 	const port = argv.flags.port;
 
-	// Pass root dir via env so the SvelteKit server-side can find the config
+	const { createServer } = await import('vite');
+	const { resolve } = await import('node:path');
+	const uiRoot = resolve(new URL(import.meta.url).pathname, '../../../ui');
+
+	// Set WEFT_ROOT_DIR before creating the Vite server so the weft-config-loader
+	// plugin (in vite.config.ts) can find the user's config and set WEFT_CONFIG.
+	const rootDir = resolve(argv._.rootDir ?? process.cwd());
 	process.env.WEFT_ROOT_DIR = rootDir;
 
-	// Start the SvelteKit dev server
+	// Start the SvelteKit dev server — the weft-config-loader plugin runs in
+	// configureServer and populates WEFT_CONFIG from the user's weft.config.ts.
 	try {
-		const { createServer } = await import('vite');
-		const { resolve } = await import('node:path');
-		const uiRoot = resolve(new URL(import.meta.url).pathname, '../../../ui');
 		const server = await createServer({
 			root: uiRoot,
 			server: { port }
 		});
+
+		// Config is now in WEFT_CONFIG (set by the Vite plugin above).
+		const config = await loadConfig(rootDir);
+		const service = new WeftService(config);
+
+		await service.rebuild();
+		await service.writeManifest();
 
 		await server.listen();
 		console.log(`Weft server running at http://localhost:${port}`);

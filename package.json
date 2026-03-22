@@ -4,7 +4,7 @@
   "scripts": {
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
-    "dev": "pnpm --filter @weft/ui dev"
+    "dev": "WEFT_ROOT_DIR=$(pwd) pnpm --filter @weft/ui dev"
   },
   "engines": {
     "node": ">=20"

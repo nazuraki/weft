@@ -1,20 +1,22 @@
 <script lang="ts">
 	import MarkdownRenderer from './MarkdownRenderer.svelte';
+	import OpenApiRenderer from './OpenApiRenderer.svelte';
 
 	interface Props {
 		nodeId: string;
 		anchor?: string;
+		nodeType?: 'markdown' | 'openapi';
 		onnavigate: (nodeId: string, anchor?: string) => void;
 	}
 
-	let { nodeId, anchor, onnavigate }: Props = $props();
+	let { nodeId, anchor, nodeType, onnavigate }: Props = $props();
 
 	let content = $state('');
 	let loading = $state(true);
 	let error = $state('');
 
 	$effect(() => {
-		loadDoc(nodeId);
+		if (nodeType !== 'openapi') loadDoc(nodeId);
 	});
 
 	async function loadDoc(id: string) {
@@ -32,9 +34,9 @@
 		}
 	}
 
-	// Scroll to anchor after content loads
+	// Scroll to anchor after content loads (markdown only; openapi renderer handles its own)
 	$effect(() => {
-		if (!loading && anchor) {
+		if (!loading && anchor && nodeType !== 'openapi') {
 			const el = document.getElementById(anchor.replace('#', ''));
 			if (el) el.scrollIntoView({ behavior: 'smooth' });
 		}
@@ -42,12 +44,12 @@
 </script>
 
 <div class="doc-view">
-	{#if loading}
+	{#if nodeType === 'openapi'}
+		<OpenApiRenderer {nodeId} {anchor} />
+	{:else if loading}
 		<p class="loading">Loading...</p>
 	{:else if error}
 		<p class="error">{error}</p>
-	{:else if nodeId.endsWith('.yaml') || nodeId.endsWith('.yml')}
-		<pre class="code-block"><code>{content}</code></pre>
 	{:else}
 		<MarkdownRenderer {content} {onnavigate} />
 	{/if}
@@ -63,15 +65,5 @@
 	}
 	.error {
 		color: #d1242f;
-	}
-	.code-block {
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		padding: 16px;
-		overflow-x: auto;
-		font-family: var(--font-mono);
-		font-size: 13px;
-		line-height: 1.45;
 	}
 </style>
