@@ -1,8 +1,9 @@
 CLAUDE.md
-.claude
 node_modules
 dist
 build
 .svelte-kit
 .weft
 node-compile-cache
+.claude/settings.local.json
+.DS_Store
