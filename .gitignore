@@ -7,3 +7,4 @@ build
 node-compile-cache
 .claude/settings.local.json
 .DS_Store
+.gitnexus
