@@ -1,15 +1,21 @@
 {
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
-    "dev": "WEFT_ROOT_DIR=$(pwd) pnpm --filter @weft/ui dev"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
-  }
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "pnpm -r run build",
+		"test": "pnpm -r run test",
+		"typecheck": "pnpm -r run typecheck",
+		"lint": "biome check .",
+		"fix": "biome check . --write",
+		"dev": "WEFT_ROOT_DIR=$(pwd) pnpm --filter @weft/ui dev"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": ["esbuild"]
+	}
 }

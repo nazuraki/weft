@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { breadcrumbs } from '$lib/stores/navigation.js';
+import { breadcrumbs } from "$lib/stores/navigation.js";
 
-	interface Props {
-		onnavigate: (nodeId: string, anchor?: string) => void;
-	}
+interface Props {
+	onnavigate: (nodeId: string, anchor?: string) => void;
+}
 
-	let { onnavigate }: Props = $props();
+let { onnavigate }: Props = $props();
 </script>
 
 <nav class="breadcrumbs">

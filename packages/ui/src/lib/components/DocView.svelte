@@ -1,46 +1,46 @@
 <script lang="ts">
-	import MarkdownRenderer from './MarkdownRenderer.svelte';
-	import OpenApiRenderer from './OpenApiRenderer.svelte';
+import MarkdownRenderer from "./MarkdownRenderer.svelte";
+import OpenApiRenderer from "./OpenApiRenderer.svelte";
 
-	interface Props {
-		nodeId: string;
-		anchor?: string;
-		nodeType?: 'markdown' | 'openapi';
-		onnavigate: (nodeId: string, anchor?: string) => void;
+interface Props {
+	nodeId: string;
+	anchor?: string;
+	nodeType?: "markdown" | "openapi";
+	onnavigate: (nodeId: string, anchor?: string) => void;
+}
+
+let { nodeId, anchor, nodeType, onnavigate }: Props = $props();
+
+let content = $state("");
+let loading = $state(true);
+let error = $state("");
+
+$effect(() => {
+	if (nodeType !== "openapi") loadDoc(nodeId);
+});
+
+async function loadDoc(id: string) {
+	loading = true;
+	error = "";
+	try {
+		const res = await fetch(`/api/doc/${id}`);
+		if (!res.ok) throw new Error(`Failed to load: ${res.statusText}`);
+		const data = await res.json();
+		content = data.content;
+	} catch (e) {
+		error = e instanceof Error ? e.message : "Failed to load document";
+	} finally {
+		loading = false;
 	}
+}
 
-	let { nodeId, anchor, nodeType, onnavigate }: Props = $props();
-
-	let content = $state('');
-	let loading = $state(true);
-	let error = $state('');
-
-	$effect(() => {
-		if (nodeType !== 'openapi') loadDoc(nodeId);
-	});
-
-	async function loadDoc(id: string) {
-		loading = true;
-		error = '';
-		try {
-			const res = await fetch(`/api/doc/${id}`);
-			if (!res.ok) throw new Error(`Failed to load: ${res.statusText}`);
-			const data = await res.json();
-			content = data.content;
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load document';
-		} finally {
-			loading = false;
-		}
+// Scroll to anchor after content loads (markdown only; openapi renderer handles its own)
+$effect(() => {
+	if (!loading && anchor && nodeType !== "openapi") {
+		const el = document.getElementById(anchor.replace("#", ""));
+		if (el) el.scrollIntoView({ behavior: "smooth" });
 	}
-
-	// Scroll to anchor after content loads (markdown only; openapi renderer handles its own)
-	$effect(() => {
-		if (!loading && anchor && nodeType !== 'openapi') {
-			const el = document.getElementById(anchor.replace('#', ''));
-			if (el) el.scrollIntoView({ behavior: 'smooth' });
-		}
-	});
+});
 </script>
 
 <div class="doc-view">

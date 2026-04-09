@@ -1,61 +1,61 @@
 <script lang="ts">
-	import type { SearchResult } from '@weft/core';
+import type { SearchResult } from "@weft/core";
 
-	interface Props {
-		onclose: () => void;
-		onselect: (id: string, anchor?: string) => void;
+interface Props {
+	onclose: () => void;
+	onselect: (id: string, anchor?: string) => void;
+}
+
+let { onclose, onselect }: Props = $props();
+
+let query = $state("");
+let results = $state<SearchResult[]>([]);
+let selectedIndex = $state(0);
+let inputEl: HTMLInputElement | undefined = $state();
+
+$effect(() => {
+	inputEl?.focus();
+});
+
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+function handleInput() {
+	clearTimeout(searchTimer);
+	if (!query.trim()) {
+		results = [];
+		return;
 	}
-
-	let { onclose, onselect }: Props = $props();
-
-	let query = $state('');
-	let results = $state<SearchResult[]>([]);
-	let selectedIndex = $state(0);
-	let inputEl: HTMLInputElement | undefined = $state();
-
-	$effect(() => {
-		inputEl?.focus();
-	});
-
-	let searchTimer: ReturnType<typeof setTimeout> | undefined;
-
-	function handleInput() {
-		clearTimeout(searchTimer);
-		if (!query.trim()) {
-			results = [];
-			return;
-		}
-		searchTimer = setTimeout(async () => {
-			try {
-				const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-				if (res.ok) {
-					results = await res.json();
-					selectedIndex = 0;
-				}
-			} catch {
-				// Ignore search errors
+	searchTimer = setTimeout(async () => {
+		try {
+			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+			if (res.ok) {
+				results = await res.json();
+				selectedIndex = 0;
 			}
-		}, 150);
-	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			selectedIndex = Math.min(selectedIndex + 1, results.length - 1);
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			selectedIndex = Math.max(selectedIndex - 1, 0);
-		} else if (e.key === 'Enter' && results[selectedIndex]) {
-			e.preventDefault();
-			onselect(results[selectedIndex].id);
-		} else if (e.key === 'Escape') {
-			onclose();
+		} catch {
+			// Ignore search errors
 		}
-	}
+	}, 150);
+}
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) onclose();
+function handleKeydown(e: KeyboardEvent) {
+	if (e.key === "ArrowDown") {
+		e.preventDefault();
+		selectedIndex = Math.min(selectedIndex + 1, results.length - 1);
+	} else if (e.key === "ArrowUp") {
+		e.preventDefault();
+		selectedIndex = Math.max(selectedIndex - 1, 0);
+	} else if (e.key === "Enter" && results[selectedIndex]) {
+		e.preventDefault();
+		onselect(results[selectedIndex].id);
+	} else if (e.key === "Escape") {
+		onclose();
 	}
+}
+
+function handleBackdropClick(e: MouseEvent) {
+	if (e.target === e.currentTarget) onclose();
+}
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->

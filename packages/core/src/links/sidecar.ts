@@ -1,6 +1,6 @@
-import { parse } from 'yaml';
-import { relative } from 'node:path';
-import type { WeftEdge, LinkRef } from '../types.js';
+import { relative } from "node:path";
+import { parse } from "yaml";
+import type { LinkRef, WeftEdge } from "../types.js";
 
 interface SidecarLink {
 	anchor?: string;
@@ -26,11 +26,11 @@ export function extractSidecarLinks(
 	if (!data?.links?.length) return [];
 
 	// Sidecar file name: strip .weft to get the source file
-	const sourceFile = sidecarPath.replace(/\.weft$/, '');
+	const sourceFile = sidecarPath.replace(/\.weft$/, "");
 	const fromNode = relative(docsDir, sourceFile);
 
 	return data.links.map((link) => {
-		const [targetPath, targetAnchor] = link.target.split('#');
+		const [targetPath, targetAnchor] = link.target.split("#");
 
 		const from: LinkRef = { node: fromNode };
 		if (link.anchor) from.anchor = link.anchor;
@@ -41,8 +41,8 @@ export function extractSidecarLinks(
 		return {
 			from,
 			to,
-			type: link.type ?? 'references',
-			label: link.label
+			type: link.type ?? "references",
+			label: link.label,
 		};
 	});
 }

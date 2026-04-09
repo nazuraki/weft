@@ -1,52 +1,52 @@
 <script lang="ts">
-	import { unified } from 'unified';
-	import remarkParse from 'remark-parse';
-	import remarkGfm from 'remark-gfm';
-	import remarkRehype from 'remark-rehype';
-	import rehypeStringify from 'rehype-stringify';
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
 
-	interface Props {
-		content: string;
-		onnavigate: (nodeId: string, anchor?: string) => void;
-	}
+interface Props {
+	content: string;
+	onnavigate: (nodeId: string, anchor?: string) => void;
+}
 
-	let { content, onnavigate }: Props = $props();
-	let htmlContent = $state('');
-	let container: HTMLDivElement | undefined = $state();
+let { content, onnavigate }: Props = $props();
+let htmlContent = $state("");
+let container: HTMLDivElement | undefined = $state();
 
-	$effect(() => {
-		renderMarkdown(content);
-	});
+$effect(() => {
+	renderMarkdown(content);
+});
 
-	async function renderMarkdown(md: string) {
-		const result = await unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(remarkRehype, { allowDangerousHtml: true })
-			.use(rehypeStringify, { allowDangerousHtml: true })
-			.process(md);
-		htmlContent = String(result);
-	}
+async function renderMarkdown(md: string) {
+	const result = await unified()
+		.use(remarkParse)
+		.use(remarkGfm)
+		.use(remarkRehype, { allowDangerousHtml: true })
+		.use(rehypeStringify, { allowDangerousHtml: true })
+		.process(md);
+	htmlContent = String(result);
+}
 
-	// Intercept link clicks for in-app navigation
-	function handleClick(e: MouseEvent) {
-		const target = (e.target as HTMLElement).closest('a');
-		if (!target) return;
+// Intercept link clicks for in-app navigation
+function handleClick(e: MouseEvent) {
+	const target = (e.target as HTMLElement).closest("a");
+	if (!target) return;
 
-		const href = target.getAttribute('href');
-		if (!href) return;
+	const href = target.getAttribute("href");
+	if (!href) return;
 
-		// Skip external links
-		if (href.startsWith('http://') || href.startsWith('https://')) return;
+	// Skip external links
+	if (href.startsWith("http://") || href.startsWith("https://")) return;
 
-		// Skip anchor-only links (let browser handle)
-		if (href.startsWith('#')) return;
+	// Skip anchor-only links (let browser handle)
+	if (href.startsWith("#")) return;
 
-		e.preventDefault();
+	e.preventDefault();
 
-		const [path, anchor] = href.split('#');
-		onnavigate(path, anchor ? `#${anchor}` : undefined);
-	}
+	const [path, anchor] = href.split("#");
+	onnavigate(path, anchor ? `#${anchor}` : undefined);
+}
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->

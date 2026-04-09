@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { extractOpenApiAnchors, extractOpenApiTitle } from '../openapi.js';
+import { describe, expect, it } from "vitest";
+import { extractOpenApiAnchors, extractOpenApiTitle } from "../openapi.js";
 
-describe('extractOpenApiAnchors', () => {
-	it('extracts operation IDs', () => {
+describe("extractOpenApiAnchors", () => {
+	it("extracts operation IDs", () => {
 		const spec = `
 openapi: "3.0.0"
 info:
@@ -14,13 +14,10 @@ paths:
     post:
       operationId: createUser
 `;
-		expect(extractOpenApiAnchors(spec)).toEqual([
-			'#listUsers',
-			'#createUser'
-		]);
+		expect(extractOpenApiAnchors(spec)).toEqual(["#listUsers", "#createUser"]);
 	});
 
-	it('extracts schema names from components', () => {
+	it("extracts schema names from components", () => {
 		const spec = `
 openapi: "3.0.0"
 info:
@@ -33,12 +30,12 @@ components:
       type: object
 `;
 		expect(extractOpenApiAnchors(spec)).toEqual([
-			'#/components/schemas/User',
-			'#/components/schemas/Order'
+			"#/components/schemas/User",
+			"#/components/schemas/Order",
 		]);
 	});
 
-	it('falls back to path encoding when no operationId', () => {
+	it("falls back to path encoding when no operationId", () => {
 		const spec = `
 openapi: "3.0.0"
 info:
@@ -53,13 +50,13 @@ paths:
 	});
 });
 
-describe('extractOpenApiTitle', () => {
-	it('extracts spec title', () => {
+describe("extractOpenApiTitle", () => {
+	it("extracts spec title", () => {
 		const spec = `
 openapi: "3.0.0"
 info:
   title: My Cool API
 `;
-		expect(extractOpenApiTitle(spec)).toBe('My Cool API');
+		expect(extractOpenApiTitle(spec)).toBe("My Cool API");
 	});
 });

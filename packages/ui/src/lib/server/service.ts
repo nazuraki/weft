@@ -1,4 +1,4 @@
-import { loadConfig, WeftService } from '@weft/core';
+import { WeftService, loadConfig } from "@weft/core";
 
 let service: WeftService | null = null;
 

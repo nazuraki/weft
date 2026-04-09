@@ -1,166 +1,175 @@
 <script lang="ts">
-	interface Props {
-		nodeId: string;
-		anchor?: string;
+interface Props {
+	nodeId: string;
+	anchor?: string;
+}
+
+let { nodeId, anchor }: Props = $props();
+
+// Minimal OpenAPI 3.x types
+type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options" | "trace";
+interface Parameter {
+	name: string;
+	in: string;
+	required?: boolean;
+	description?: string;
+	schema?: Record<string, unknown>;
+}
+interface MediaType {
+	schema?: Record<string, unknown>;
+	example?: unknown;
+}
+interface Response {
+	description?: string;
+	content?: Record<string, MediaType>;
+}
+interface Operation {
+	operationId?: string;
+	summary?: string;
+	description?: string;
+	tags?: string[];
+	parameters?: Parameter[];
+	requestBody?: { description?: string; required?: boolean; content?: Record<string, MediaType> };
+	responses?: Record<string, Response>;
+}
+interface Schema {
+	type?: string;
+	description?: string;
+	properties?: Record<string, Record<string, unknown>>;
+	required?: string[];
+	enum?: unknown[];
+	items?: Record<string, unknown>;
+	allOf?: Record<string, unknown>[];
+	oneOf?: Record<string, unknown>[];
+	anyOf?: Record<string, unknown>[];
+	$ref?: string;
+}
+interface OpenApiSpec {
+	openapi?: string;
+	swagger?: string;
+	info?: { title?: string; version?: string; description?: string };
+	servers?: { url: string; description?: string }[];
+	paths?: Record<string, Record<string, unknown>>;
+	components?: { schemas?: Record<string, Schema> };
+	tags?: { name: string; description?: string }[];
+}
+
+const HTTP_METHODS: HttpMethod[] = [
+	"get",
+	"post",
+	"put",
+	"patch",
+	"delete",
+	"head",
+	"options",
+	"trace",
+];
+
+let spec = $state<OpenApiSpec | null>(null);
+let loading = $state(true);
+let loadError = $state("");
+
+// Track collapsed state: operationKey → boolean
+let collapsed = $state<Record<string, boolean>>({});
+
+$effect(() => {
+	loadSpec(nodeId);
+});
+
+async function loadSpec(id: string) {
+	loading = true;
+	loadError = "";
+	spec = null;
+	try {
+		const res = await fetch(`/api/openapi/${id}`);
+		if (!res.ok) throw new Error(res.statusText);
+		const data = await res.json();
+		spec = data.spec as OpenApiSpec;
+	} catch (e) {
+		loadError = e instanceof Error ? e.message : "Failed to load spec";
+	} finally {
+		loading = false;
 	}
+}
 
-	let { nodeId, anchor }: Props = $props();
-
-	// Minimal OpenAPI 3.x types
-	type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options' | 'trace';
-	interface Parameter {
-		name: string;
-		in: string;
-		required?: boolean;
-		description?: string;
-		schema?: Record<string, unknown>;
+$effect(() => {
+	if (!loading && anchor && spec) {
+		const el = document.getElementById(anchor.replace("#", ""));
+		if (el) el.scrollIntoView({ behavior: "smooth" });
 	}
-	interface MediaType {
-		schema?: Record<string, unknown>;
-		example?: unknown;
-	}
-	interface Response {
-		description?: string;
-		content?: Record<string, MediaType>;
-	}
-	interface Operation {
-		operationId?: string;
-		summary?: string;
-		description?: string;
-		tags?: string[];
-		parameters?: Parameter[];
-		requestBody?: { description?: string; required?: boolean; content?: Record<string, MediaType> };
-		responses?: Record<string, Response>;
-	}
-	interface Schema {
-		type?: string;
-		description?: string;
-		properties?: Record<string, Record<string, unknown>>;
-		required?: string[];
-		enum?: unknown[];
-		items?: Record<string, unknown>;
-		allOf?: Record<string, unknown>[];
-		oneOf?: Record<string, unknown>[];
-		anyOf?: Record<string, unknown>[];
-		$ref?: string;
-	}
-	interface OpenApiSpec {
-		openapi?: string;
-		swagger?: string;
-		info?: { title?: string; version?: string; description?: string };
-		servers?: { url: string; description?: string }[];
-		paths?: Record<string, Record<string, unknown>>;
-		components?: { schemas?: Record<string, Schema> };
-		tags?: { name: string; description?: string }[];
-	}
+});
 
-	const HTTP_METHODS: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'];
+function anchorId(path: string, method: string, operation: Operation): string {
+	if (operation.operationId) return operation.operationId;
+	return `/paths${path.replace(/\//g, "~1")}/${method}`;
+}
 
-	let spec = $state<OpenApiSpec | null>(null);
-	let loading = $state(true);
-	let loadError = $state('');
+function schemaAnchorId(name: string): string {
+	return `/components/schemas/${name}`;
+}
 
-	// Track collapsed state: operationKey → boolean
-	let collapsed = $state<Record<string, boolean>>({});
+function toggle(key: string) {
+	collapsed[key] = !collapsed[key];
+}
 
-	$effect(() => {
-		loadSpec(nodeId);
-	});
+function isCollapsed(key: string): boolean {
+	return collapsed[key] ?? false;
+}
 
-	async function loadSpec(id: string) {
-		loading = true;
-		loadError = '';
-		spec = null;
-		try {
-			const res = await fetch(`/api/openapi/${id}`);
-			if (!res.ok) throw new Error(res.statusText);
-			const data = await res.json();
-			spec = data.spec as OpenApiSpec;
-		} catch (e) {
-			loadError = e instanceof Error ? e.message : 'Failed to load spec';
-		} finally {
-			loading = false;
-		}
-	}
+interface TagGroup {
+	tag: string;
+	description?: string;
+	operations: { path: string; method: HttpMethod; operation: Operation }[];
+}
 
-	$effect(() => {
-		if (!loading && anchor && spec) {
-			const el = document.getElementById(anchor.replace('#', ''));
-			if (el) el.scrollIntoView({ behavior: 'smooth' });
-		}
-	});
+function groupByTag(paths: Record<string, Record<string, unknown>>): TagGroup[] {
+	const groups: Record<string, TagGroup> = {};
+	const order: string[] = [];
 
-	function anchorId(path: string, method: string, operation: Operation): string {
-		if (operation.operationId) return operation.operationId;
-		return `/paths${path.replace(/\//g, '~1')}/${method}`;
-	}
-
-	function schemaAnchorId(name: string): string {
-		return `/components/schemas/${name}`;
-	}
-
-	function toggle(key: string) {
-		collapsed[key] = !collapsed[key];
-	}
-
-	function isCollapsed(key: string): boolean {
-		return collapsed[key] ?? false;
-	}
-
-	interface TagGroup {
-		tag: string;
-		description?: string;
-		operations: { path: string; method: HttpMethod; operation: Operation }[];
-	}
-
-	function groupByTag(paths: Record<string, Record<string, unknown>>): TagGroup[] {
-		const groups: Record<string, TagGroup> = {};
-		const order: string[] = [];
-
-		for (const [path, methods] of Object.entries(paths)) {
-			for (const method of HTTP_METHODS) {
-				const op = methods[method] as Operation | undefined;
-				if (!op) continue;
-				const tags = op.tags?.length ? op.tags : ['Other'];
-				const tag = tags[0];
-				if (!groups[tag]) {
-					groups[tag] = { tag, operations: [] };
-					order.push(tag);
-				}
-				groups[tag].operations.push({ path, method, operation: op });
+	for (const [path, methods] of Object.entries(paths)) {
+		for (const method of HTTP_METHODS) {
+			const op = methods[method] as Operation | undefined;
+			if (!op) continue;
+			const tags = op.tags?.length ? op.tags : ["Other"];
+			const tag = tags[0];
+			if (!groups[tag]) {
+				groups[tag] = { tag, operations: [] };
+				order.push(tag);
 			}
+			groups[tag].operations.push({ path, method, operation: op });
 		}
-
-		// Merge tag descriptions from spec.tags
-		if (spec?.tags) {
-			for (const t of spec.tags) {
-				if (groups[t.name]) groups[t.name].description = t.description;
-			}
-		}
-
-		return order.map((t) => groups[t]);
 	}
 
-	function schemaTypeLabel(schema: Schema | undefined): string {
-		if (!schema) return '';
-		if (schema.$ref) return schema.$ref.split('/').pop() ?? schema.$ref;
-		if (schema.type === 'array' && schema.items) {
-			const itemRef = (schema.items as Record<string, unknown>).$ref as string | undefined;
-			if (itemRef) return `${itemRef.split('/').pop()}[]`;
-			return `${(schema.items as Record<string, unknown>).type ?? 'any'}[]`;
+	// Merge tag descriptions from spec.tags
+	if (spec?.tags) {
+		for (const t of spec.tags) {
+			if (groups[t.name]) groups[t.name].description = t.description;
 		}
-		if (schema.enum) return schema.enum.map((v) => JSON.stringify(v)).join(' | ');
-		return schema.type ?? '';
 	}
 
-	function responseColor(code: string): string {
-		const n = parseInt(code);
-		if (n >= 200 && n < 300) return 'status-2xx';
-		if (n >= 300 && n < 400) return 'status-3xx';
-		if (n >= 400 && n < 500) return 'status-4xx';
-		if (n >= 500) return 'status-5xx';
-		return '';
+	return order.map((t) => groups[t]);
+}
+
+function schemaTypeLabel(schema: Schema | undefined): string {
+	if (!schema) return "";
+	if (schema.$ref) return schema.$ref.split("/").pop() ?? schema.$ref;
+	if (schema.type === "array" && schema.items) {
+		const itemRef = (schema.items as Record<string, unknown>).$ref as string | undefined;
+		if (itemRef) return `${itemRef.split("/").pop()}[]`;
+		return `${(schema.items as Record<string, unknown>).type ?? "any"}[]`;
 	}
+	if (schema.enum) return schema.enum.map((v) => JSON.stringify(v)).join(" | ");
+	return schema.type ?? "";
+}
+
+function responseColor(code: string): string {
+	const n = parseInt(code);
+	if (n >= 200 && n < 300) return "status-2xx";
+	if (n >= 300 && n < 400) return "status-3xx";
+	if (n >= 400 && n < 500) return "status-4xx";
+	if (n >= 500) return "status-5xx";
+	return "";
+}
 </script>
 
 <div class="openapi">

@@ -7,7 +7,7 @@ export interface WeftConfig {
 
 export interface WeftNode {
 	id: string;
-	type: 'markdown' | 'openapi';
+	type: "markdown" | "openapi";
 	title: string;
 	anchors: string[];
 }

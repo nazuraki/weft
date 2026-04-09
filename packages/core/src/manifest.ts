@@ -1,27 +1,27 @@
-import { readFileSync } from 'node:fs';
-import { resolve, relative, join } from 'node:path';
-import { glob } from 'glob';
-import { getDocType, extractAnchors, extractTitle } from './anchors/index.js';
-import { extractMarkdownLinks } from './links/markdown.js';
-import { extractSidecarLinks } from './links/sidecar.js';
-import type { WeftConfig, Manifest, WeftNode, WeftEdge } from './types.js';
+import { readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
+import { glob } from "glob";
+import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
+import { extractMarkdownLinks } from "./links/markdown.js";
+import { extractSidecarLinks } from "./links/sidecar.js";
+import type { Manifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
 
 /** Scan the docs directory and build the graph manifest. */
 export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 	const docsDir = resolve(config.rootDir, config.docsDir);
 
 	// Find all doc files
-	const files = await glob('**/*.{md,markdown,yaml,yml}', {
+	const files = await glob("**/*.{md,markdown,yaml,yml}", {
 		cwd: docsDir,
 		ignore: config.ignore,
-		nodir: true
+		nodir: true,
 	});
 
 	// Find all sidecar files
-	const sidecarFiles = await glob('**/*.weft', {
+	const sidecarFiles = await glob("**/*.weft", {
 		cwd: docsDir,
 		ignore: config.ignore,
-		nodir: true
+		nodir: true,
 	});
 
 	const nodes: WeftNode[] = [];
@@ -32,7 +32,7 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		const docType = getDocType(file);
 		if (!docType) continue;
 
-		const content = readFileSync(absPath, 'utf-8');
+		const content = readFileSync(absPath, "utf-8");
 		const anchors = extractAnchors(content, docType);
 		const title = extractTitle(content, docType) ?? file;
 
@@ -40,11 +40,11 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 			id: file,
 			type: docType,
 			title,
-			anchors
+			anchors,
 		});
 
 		// Extract links from markdown files
-		if (docType === 'markdown') {
+		if (docType === "markdown") {
 			const fileEdges = extractMarkdownLinks(content, absPath, docsDir);
 			edges.push(...fileEdges);
 		}
@@ -53,7 +53,7 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 	// Extract links from sidecar files
 	for (const sidecarFile of sidecarFiles) {
 		const absPath = resolve(docsDir, sidecarFile);
-		const content = readFileSync(absPath, 'utf-8');
+		const content = readFileSync(absPath, "utf-8");
 		const sidecarEdges = extractSidecarLinks(content, absPath, docsDir);
 		edges.push(...sidecarEdges);
 	}

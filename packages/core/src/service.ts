@@ -1,9 +1,9 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import chokidar from 'chokidar';
-import type { WeftConfig, Manifest, WeftEdge, SearchResult } from './types.js';
-import { buildManifest } from './manifest.js';
-import { SearchIndex } from './search.js';
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import chokidar from "chokidar";
+import { buildManifest } from "./manifest.js";
+import { SearchIndex } from "./search.js";
+import type { Manifest, SearchResult, WeftConfig, WeftEdge } from "./types.js";
 
 export class WeftService {
 	private config: WeftConfig;
@@ -22,7 +22,7 @@ export class WeftService {
 
 	/** Get the manifest output path. */
 	get manifestPath(): string {
-		return resolve(this.docsDir, '.weft', 'manifest.json');
+		return resolve(this.docsDir, ".weft", "manifest.json");
 	}
 
 	/** Build or rebuild the manifest from the filesystem. */
@@ -35,9 +35,9 @@ export class WeftService {
 	/** Get the current manifest, building it if necessary. */
 	async getManifest(): Promise<Manifest> {
 		if (!this.manifest) {
-			await this.rebuild();
+			this.manifest = await this.rebuild();
 		}
-		return this.manifest!;
+		return this.manifest;
 	}
 
 	/** Write the manifest to disk. */
@@ -52,7 +52,7 @@ export class WeftService {
 	/** Read a document's content. */
 	read(nodeId: string): string {
 		const filePath = resolve(this.docsDir, nodeId);
-		return readFileSync(filePath, 'utf-8');
+		return readFileSync(filePath, "utf-8");
 	}
 
 	/** Search the index. */
@@ -64,14 +64,14 @@ export class WeftService {
 	/** Traverse the graph: find edges connected to a node. */
 	async traverse(
 		nodeId: string,
-		direction: 'outgoing' | 'incoming' | 'both' = 'both'
+		direction: "outgoing" | "incoming" | "both" = "both"
 	): Promise<WeftEdge[]> {
 		const manifest = await this.getManifest();
 		return manifest.edges.filter((edge) => {
-			if (direction === 'outgoing' || direction === 'both') {
+			if (direction === "outgoing" || direction === "both") {
 				if (edge.from.node === nodeId) return true;
 			}
-			if (direction === 'incoming' || direction === 'both') {
+			if (direction === "incoming" || direction === "both") {
 				if (edge.to.node === nodeId) return true;
 			}
 			return false;
@@ -82,12 +82,12 @@ export class WeftService {
 	watch(callback?: (manifest: Manifest) => void): () => void {
 		const watcher = chokidar.watch(this.docsDir, {
 			ignored: [
-				/(^|[/\\])\../,       // dotfiles
-				'**/.weft/**',         // manifest output
-				...this.config.ignore
+				/(^|[/\\])\../, // dotfiles
+				"**/.weft/**", // manifest output
+				...this.config.ignore,
 			],
 			persistent: true,
-			ignoreInitial: true
+			ignoreInitial: true,
 		});
 
 		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -100,9 +100,9 @@ export class WeftService {
 			}, 200);
 		};
 
-		watcher.on('add', onChangeDebounced);
-		watcher.on('change', onChangeDebounced);
-		watcher.on('unlink', onChangeDebounced);
+		watcher.on("add", onChangeDebounced);
+		watcher.on("change", onChangeDebounced);
+		watcher.on("unlink", onChangeDebounced);
 
 		return () => {
 			watcher.close();

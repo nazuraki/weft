@@ -1,17 +1,19 @@
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { existsSync } from 'node:fs';
-import type { WeftConfig } from './types.js';
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { WeftConfig } from "./types.js";
 
-const CONFIG_FILES = ['weft.config.ts', 'weft.config.js', 'weft.config.mjs'];
+const CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
 
-const DEFAULTS: Omit<WeftConfig, 'rootDir'> = {
-	docsDir: 'docs',
-	entryPoint: 'docs/README.md',
-	ignore: ['**/node_modules/**', '**/dist/**']
+const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
+	docsDir: "docs",
+	entryPoint: "docs/README.md",
+	ignore: ["**/node_modules/**", "**/dist/**"],
 };
 
-export function defineConfig(config: Partial<Omit<WeftConfig, 'rootDir'>>): Partial<Omit<WeftConfig, 'rootDir'>> {
+export function defineConfig(
+	config: Partial<Omit<WeftConfig, "rootDir">>
+): Partial<Omit<WeftConfig, "rootDir">> {
 	return config;
 }
 
@@ -34,7 +36,7 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 			return {
 				...DEFAULTS,
 				...userConfig,
-				rootDir: absRoot
+				rootDir: absRoot,
 			};
 		}
 	}

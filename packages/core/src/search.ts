@@ -1,7 +1,7 @@
-import MiniSearch from 'minisearch';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import type { Manifest, SearchResult } from './types.js';
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import MiniSearch from "minisearch";
+import type { Manifest, SearchResult } from "./types.js";
 
 interface SearchDoc {
 	id: string;
@@ -15,13 +15,13 @@ export class SearchIndex {
 
 	constructor() {
 		this.index = new MiniSearch<SearchDoc>({
-			fields: ['title', 'content', 'anchors'],
-			storeFields: ['title'],
+			fields: ["title", "content", "anchors"],
+			storeFields: ["title"],
 			searchOptions: {
 				boost: { title: 3, anchors: 2, content: 1 },
 				fuzzy: 0.2,
-				prefix: true
-			}
+				prefix: true,
+			},
 		});
 	}
 
@@ -30,9 +30,9 @@ export class SearchIndex {
 		this.index.removeAll();
 
 		const docs: SearchDoc[] = manifest.nodes.map((node) => {
-			let content = '';
+			let content = "";
 			try {
-				content = readFileSync(resolve(docsDir, node.id), 'utf-8');
+				content = readFileSync(resolve(docsDir, node.id), "utf-8");
 			} catch {
 				// File may not exist or be unreadable
 			}
@@ -41,7 +41,7 @@ export class SearchIndex {
 				id: node.id,
 				title: node.title,
 				content,
-				anchors: node.anchors.join(' ')
+				anchors: node.anchors.join(" "),
 			};
 		});
 
@@ -55,7 +55,7 @@ export class SearchIndex {
 			id: r.id,
 			title: (r as unknown as { title: string }).title,
 			score: r.score,
-			match: r.match
+			match: r.match,
 		}));
 	}
 }

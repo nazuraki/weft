@@ -1,32 +1,28 @@
 <script lang="ts">
-	import type { Manifest, WeftEdge } from '@weft/core';
+import type { Manifest, WeftEdge } from "@weft/core";
 
-	interface Props {
-		nodeId: string;
-		manifest: Manifest;
-		onnavigate: (nodeId: string, anchor?: string) => void;
+interface Props {
+	nodeId: string;
+	manifest: Manifest;
+	onnavigate: (nodeId: string, anchor?: string) => void;
+}
+
+let { nodeId, manifest, onnavigate }: Props = $props();
+
+let outgoing = $derived(manifest.edges.filter((e) => e.from.node === nodeId));
+let incoming = $derived(manifest.edges.filter((e) => e.to.node === nodeId));
+
+function nodeTitle(id: string): string {
+	return manifest.nodes.find((n) => n.id === id)?.title ?? id;
+}
+
+function handleClick(edge: WeftEdge, direction: "outgoing" | "incoming") {
+	if (direction === "outgoing") {
+		onnavigate(edge.to.node, edge.to.anchor);
+	} else {
+		onnavigate(edge.from.node, edge.from.anchor);
 	}
-
-	let { nodeId, manifest, onnavigate }: Props = $props();
-
-	let outgoing = $derived(
-		manifest.edges.filter((e) => e.from.node === nodeId)
-	);
-	let incoming = $derived(
-		manifest.edges.filter((e) => e.to.node === nodeId)
-	);
-
-	function nodeTitle(id: string): string {
-		return manifest.nodes.find((n) => n.id === id)?.title ?? id;
-	}
-
-	function handleClick(edge: WeftEdge, direction: 'outgoing' | 'incoming') {
-		if (direction === 'outgoing') {
-			onnavigate(edge.to.node, edge.to.anchor);
-		} else {
-			onnavigate(edge.from.node, edge.from.anchor);
-		}
-	}
+}
 </script>
 
 <div class="linked-items">

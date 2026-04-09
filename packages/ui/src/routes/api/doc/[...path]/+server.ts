@@ -1,6 +1,6 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types.js';
-import { getService } from '$lib/server/service.js';
+import { getService } from "$lib/server/service.js";
+import { error, json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types.js";
 
 export const GET: RequestHandler = async ({ params }) => {
 	const service = await getService();

@@ -1,2 +1,2 @@
-export { extractMarkdownLinks } from './markdown.js';
-export { extractSidecarLinks } from './sidecar.js';
+export { extractMarkdownLinks } from "./markdown.js";
+export { extractSidecarLinks } from "./sidecar.js";

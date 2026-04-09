@@ -1,46 +1,46 @@
 <script lang="ts">
-	import type { WeftNode } from '@weft/core';
+import type { WeftNode } from "@weft/core";
 
-	interface Props {
-		nodes: WeftNode[];
-		currentNodeId?: string;
-		onnavigate: (nodeId: string) => void;
-	}
+interface Props {
+	nodes: WeftNode[];
+	currentNodeId?: string;
+	onnavigate: (nodeId: string) => void;
+}
 
-	let { nodes, currentNodeId, onnavigate }: Props = $props();
+let { nodes, currentNodeId, onnavigate }: Props = $props();
 
-	// Build a simple tree from flat node IDs by splitting on '/'
-	interface TreeNode {
-		name: string;
-		nodeId?: string;
-		children: TreeNode[];
-	}
+// Build a simple tree from flat node IDs by splitting on '/'
+interface TreeNode {
+	name: string;
+	nodeId?: string;
+	children: TreeNode[];
+}
 
-	function buildTree(nodes: WeftNode[]): TreeNode[] {
-		const root: TreeNode[] = [];
+function buildTree(nodes: WeftNode[]): TreeNode[] {
+	const root: TreeNode[] = [];
 
-		for (const node of [...nodes].sort((a, b) => a.id.localeCompare(b.id))) {
-			const parts = node.id.split('/');
-			let current = root;
+	for (const node of [...nodes].sort((a, b) => a.id.localeCompare(b.id))) {
+		const parts = node.id.split("/");
+		let current = root;
 
-			for (let i = 0; i < parts.length; i++) {
-				const part = parts[i];
-				const isLeaf = i === parts.length - 1;
+		for (let i = 0; i < parts.length; i++) {
+			const part = parts[i];
+			const isLeaf = i === parts.length - 1;
 
-				let existing = current.find((n) => n.name === part);
-				if (!existing) {
-					existing = { name: part, children: [] };
-					if (isLeaf) existing.nodeId = node.id;
-					current.push(existing);
-				}
-				current = existing.children;
+			let existing = current.find((n) => n.name === part);
+			if (!existing) {
+				existing = { name: part, children: [] };
+				if (isLeaf) existing.nodeId = node.id;
+				current.push(existing);
 			}
+			current = existing.children;
 		}
-
-		return root;
 	}
 
-	let tree = $derived(buildTree(nodes));
+	return root;
+}
+
+let tree = $derived(buildTree(nodes));
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}

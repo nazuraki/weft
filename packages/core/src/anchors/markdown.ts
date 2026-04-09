@@ -3,7 +3,7 @@ export function extractMarkdownAnchors(content: string): string[] {
 	const anchors: string[] = [];
 	const slugCounts = new Map<string, number>();
 
-	for (const line of content.split('\n')) {
+	for (const line of content.split("\n")) {
 		const match = line.match(/^(#{1,6})\s+(.+)$/);
 		if (!match) continue;
 
@@ -19,7 +19,7 @@ export function extractMarkdownAnchors(content: string): string[] {
 
 /** Extract the title (first H1) from Markdown content. */
 export function extractMarkdownTitle(content: string): string | undefined {
-	for (const line of content.split('\n')) {
+	for (const line of content.split("\n")) {
 		const match = line.match(/^#\s+(.+)$/);
 		if (match) return match[1].trim();
 	}
@@ -30,8 +30,8 @@ export function extractMarkdownTitle(content: string): string | undefined {
 function githubSlug(text: string): string {
 	return text
 		.toLowerCase()
-		.replace(/[^\w\s-]/g, '')
-		.replace(/\s+/g, '-')
-		.replace(/-+/g, '-')
-		.replace(/^-|-$/g, '');
+		.replace(/[^\w\s-]/g, "")
+		.replace(/\s+/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
 }

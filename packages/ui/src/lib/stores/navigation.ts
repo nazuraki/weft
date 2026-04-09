@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { derived, writable } from "svelte/store";
 
 export interface NavEntry {
 	nodeId: string;
@@ -28,7 +28,7 @@ export const navigationStack = {
 
 	reset(entry: NavEntry) {
 		stack.set([entry]);
-	}
+	},
 };
 
 export const currentNode = derived(stack, ($stack) =>

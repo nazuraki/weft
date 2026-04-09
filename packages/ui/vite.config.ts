@@ -1,14 +1,14 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import type { Plugin } from 'vite';
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 
-const CONFIG_FILES = ['weft.config.ts', 'weft.config.js', 'weft.config.mjs'];
+const CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
 const DEFAULTS = {
-	docsDir: 'docs',
-	entryPoint: 'docs/README.md',
-	ignore: ['**/node_modules/**', '**/dist/**']
+	docsDir: "docs",
+	entryPoint: "docs/README.md",
+	ignore: ["**/node_modules/**", "**/dist/**"],
 };
 
 /**
@@ -20,7 +20,7 @@ const DEFAULTS = {
  */
 function weftConfigLoader(): Plugin {
 	return {
-		name: 'weft-config-loader',
+		name: "weft-config-loader",
 		async configureServer(server) {
 			if (process.env.WEFT_CONFIG) return; // already set by CLI
 
@@ -41,7 +41,7 @@ function weftConfigLoader(): Plugin {
 			}
 
 			process.env.WEFT_CONFIG = JSON.stringify(resolvedConfig);
-		}
+		},
 	};
 }
 
@@ -49,11 +49,11 @@ export default defineConfig({
 	plugins: [sveltekit(), weftConfigLoader()],
 	resolve: {
 		alias: {
-			'@weft/core': resolve(__dirname, '../../packages/core/src/index.ts')
-		}
+			"@weft/core": resolve(__dirname, "../../packages/core/src/index.ts"),
+		},
 	},
 	ssr: {
 		// Bundle @weft/core into SSR since it's a workspace package with TypeScript sources
-		noExternal: ['@weft/core']
-	}
+		noExternal: ["@weft/core"],
+	},
 });

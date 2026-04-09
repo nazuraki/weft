@@ -1,41 +1,41 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import DocTree from '$lib/components/DocTree.svelte';
-	import DocView from '$lib/components/DocView.svelte';
-	import LinkedItems from '$lib/components/LinkedItems.svelte';
-	import SearchPalette from '$lib/components/SearchPalette.svelte';
-	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-	import { navigationStack, currentNode, canGoBack } from '$lib/stores/navigation.js';
+import Breadcrumbs from "$lib/components/Breadcrumbs.svelte";
+import DocTree from "$lib/components/DocTree.svelte";
+import DocView from "$lib/components/DocView.svelte";
+import LinkedItems from "$lib/components/LinkedItems.svelte";
+import SearchPalette from "$lib/components/SearchPalette.svelte";
+import { canGoBack, currentNode, navigationStack } from "$lib/stores/navigation.js";
+import type { PageData } from "./$types.js";
 
-	let { data }: { data: PageData } = $props();
-	let showSearch = $state(false);
+let { data }: { data: PageData } = $props();
+let showSearch = $state(false);
 
-	// Initialize navigation to entry point
-	$effect(() => {
-		if (data.manifest.nodes.length > 0) {
-			const entry = data.manifest.nodes.find((n) => n.id === 'README.md') ?? data.manifest.nodes[0];
-			navigationStack.reset({ nodeId: entry.id, title: entry.title });
-		}
-	});
-
-	function handleNavigate(nodeId: string, anchor?: string) {
-		const node = data.manifest.nodes.find((n) => n.id === nodeId);
-		navigationStack.push({ nodeId, anchor, title: node?.title ?? nodeId });
+// Initialize navigation to entry point
+$effect(() => {
+	if (data.manifest.nodes.length > 0) {
+		const entry = data.manifest.nodes.find((n) => n.id === "README.md") ?? data.manifest.nodes[0];
+		navigationStack.reset({ nodeId: entry.id, title: entry.title });
 	}
+});
 
-	function handleBack() {
-		navigationStack.pop();
-	}
+function handleNavigate(nodeId: string, anchor?: string) {
+	const node = data.manifest.nodes.find((n) => n.id === nodeId);
+	navigationStack.push({ nodeId, anchor, title: node?.title ?? nodeId });
+}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-			e.preventDefault();
-			showSearch = !showSearch;
-		}
-		if (e.key === 'Escape' && showSearch) {
-			showSearch = false;
-		}
+function handleBack() {
+	navigationStack.pop();
+}
+
+function handleKeydown(e: KeyboardEvent) {
+	if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+		e.preventDefault();
+		showSearch = !showSearch;
 	}
+	if (e.key === "Escape" && showSearch) {
+		showSearch = false;
+	}
+}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
