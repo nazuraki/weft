@@ -1,5 +1,8 @@
 <script lang="ts">
+import type { WeftClient } from "$lib/client.js";
+import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import type { SearchResult } from "@weft/core";
+import { getContext } from "svelte";
 
 interface Props {
 	onclose: () => void;
@@ -7,6 +10,8 @@ interface Props {
 }
 
 let { onclose, onselect }: Props = $props();
+
+const client = getContext<WeftClient>(WEFT_CLIENT_KEY);
 
 let query = $state("");
 let results = $state<SearchResult[]>([]);
@@ -27,11 +32,8 @@ function handleInput() {
 	}
 	searchTimer = setTimeout(async () => {
 		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-			if (res.ok) {
-				results = await res.json();
-				selectedIndex = 0;
-			}
+			results = await client.search(query);
+			selectedIndex = 0;
 		} catch {
 			// Ignore search errors
 		}

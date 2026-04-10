@@ -1,4 +1,7 @@
 <script lang="ts">
+import type { WeftClient } from "$lib/client.js";
+import { WEFT_CLIENT_KEY } from "$lib/client.js";
+import { getContext } from "svelte";
 import MarkdownRenderer from "./MarkdownRenderer.svelte";
 import OpenApiRenderer from "./OpenApiRenderer.svelte";
 
@@ -10,6 +13,8 @@ interface Props {
 }
 
 let { nodeId, anchor, nodeType, onnavigate }: Props = $props();
+
+const client = getContext<WeftClient>(WEFT_CLIENT_KEY);
 
 let content = $state("");
 let loading = $state(true);
@@ -23,10 +28,7 @@ async function loadDoc(id: string) {
 	loading = true;
 	error = "";
 	try {
-		const res = await fetch(`/api/doc/${id}`);
-		if (!res.ok) throw new Error(`Failed to load: ${res.statusText}`);
-		const data = await res.json();
-		content = data.content;
+		content = await client.fetchDoc(id);
 	} catch (e) {
 		error = e instanceof Error ? e.message : "Failed to load document";
 	} finally {

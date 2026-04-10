@@ -74,6 +74,52 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@22.19.15)(yaml@2.8.3)
 
+  packages/embed:
+    dependencies:
+      '@weft/core':
+        specifier: workspace:*
+        version: link:../core
+      '@weft/ui':
+        specifier: workspace:*
+        version: link:../ui
+      minisearch:
+        specifier: ^7.0.0
+        version: 7.2.0
+      rehype-stringify:
+        specifier: ^10.0.0
+        version: 10.0.1
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-rehype:
+        specifier: ^11.0.0
+        version: 11.1.2
+      unified:
+        specifier: ^11.0.0
+        version: 11.0.5
+      yaml:
+        specifier: ^2.6.0
+        version: 2.8.3
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.0
+        version: 5.1.1(svelte@5.54.1)(vite@6.4.1(@types/node@22.19.15)(yaml@2.8.3))
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
+      svelte:
+        specifier: ^5.0.0
+        version: 5.54.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.1(@types/node@22.19.15)(yaml@2.8.3)
+
   packages/ui:
     dependencies:
       '@weft/core':

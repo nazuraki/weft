@@ -1,20 +1,15 @@
 <script lang="ts">
 import "../app.css";
+import { WEFT_CLIENT_KEY } from "$lib/client.js";
+import { ApiClient } from "$lib/clients/api.js";
+import { setContext } from "svelte";
 import type { Snippet } from "svelte";
+
+setContext(WEFT_CLIENT_KEY, new ApiClient());
 
 let { children }: { children: Snippet } = $props();
 </script>
 
-<div class="shell">
+<div style="height: 100vh;">
 	{@render children()}
 </div>
-
-<style>
-	.shell {
-		display: grid;
-		grid-template-columns: var(--lhn-width) 1fr var(--rhs-width);
-		grid-template-rows: var(--header-height) 1fr;
-		height: 100vh;
-		overflow: hidden;
-	}
-</style>

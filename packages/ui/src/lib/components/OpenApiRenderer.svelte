@@ -1,10 +1,17 @@
 <script lang="ts">
+import type { WeftClient } from "$lib/client.js";
+import { WEFT_CLIENT_KEY } from "$lib/client.js";
+import { parseOpenApiSpec } from "@weft/core/browser";
+import { getContext } from "svelte";
+
 interface Props {
 	nodeId: string;
 	anchor?: string;
 }
 
 let { nodeId, anchor }: Props = $props();
+
+const client = getContext<WeftClient>(WEFT_CLIENT_KEY);
 
 // Minimal OpenAPI 3.x types
 type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options" | "trace";
@@ -81,10 +88,10 @@ async function loadSpec(id: string) {
 	loadError = "";
 	spec = null;
 	try {
-		const res = await fetch(`/api/openapi/${id}`);
-		if (!res.ok) throw new Error(res.statusText);
-		const data = await res.json();
-		spec = data.spec as OpenApiSpec;
+		const content = await client.fetchDoc(id);
+		const parsed = parseOpenApiSpec(content);
+		if (!parsed) throw new Error("Not a valid OpenAPI spec");
+		spec = parsed as OpenApiSpec;
 	} catch (e) {
 		loadError = e instanceof Error ? e.message : "Failed to load spec";
 	} finally {
