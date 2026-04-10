@@ -1,9 +1,24 @@
-default: check
+# weft — documentation graph browser
+
+default:
+    @just --list
+
+# Install dependencies
+install:
+    pnpm install
+
+# Start dev server
+dev:
+    pnpm dev
+
+# Build all packages
+build:
+    pnpm -r run build
 
 # Run all checks (lint + typecheck + test)
 check: lint typecheck test
 
-# Lint and check formatting with Biome
+# Lint and check formatting
 lint:
     pnpm biome check .
 
@@ -19,10 +34,9 @@ typecheck:
 test:
     pnpm -r run test
 
-# Build all packages
-build:
-    pnpm -r run build
+# Remove build artifacts and node_modules
+clean:
+    rm -rf node_modules dist .svelte-kit
 
-# Start dev server
-dev:
-    pnpm dev
+# Reinstall from scratch
+fresh: clean install
