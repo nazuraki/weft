@@ -1,0 +1,71 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @weft/core
+        run: pnpm --filter @weft/core build
+
+      - name: Build @weft/embed
+        run: pnpm --filter @weft/embed build
+
+      - name: Generate manifest
+        run: node scripts/gen-manifest.mjs
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/docs
+          # Static HTML pages
+          cp site/index.html _site/index.html
+          cp site/docs/index.html _site/docs/index.html
+          # Embed bundle (referenced via ../ from docs/index.html)
+          cp packages/embed/dist/weft.iife.js _site/weft.iife.js
+          cp packages/embed/dist/weft.css _site/weft.css
+          # Manifest lives at docs/.weft/ so baseUrl path docs/.weft/manifest.json resolves
+          cp -r docs/.weft _site/docs/.weft
+          # Markdown files: node IDs are relative to docsDir, so rawUrl('use-cases.md')
+          # resolves to https://nazuraki.github.io/weft/use-cases.md — place at site root
+          cp docs/*.md _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

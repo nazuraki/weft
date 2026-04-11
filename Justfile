@@ -34,9 +34,22 @@ typecheck:
 test:
     pnpm -r run test
 
+# Build the GitHub Pages site into _site/
+build-pages:
+    pnpm --filter @weft/core build
+    pnpm --filter @weft/embed build
+    node scripts/gen-manifest.mjs
+    mkdir -p _site/docs
+    cp site/index.html _site/index.html
+    cp site/docs/index.html _site/docs/index.html
+    cp packages/embed/dist/weft.iife.js _site/weft.iife.js
+    cp packages/embed/dist/weft.css _site/weft.css
+    cp -r docs/.weft _site/docs/.weft
+    cp docs/*.md _site/
+
 # Remove build artifacts and node_modules
 clean:
-    rm -rf node_modules dist .svelte-kit
+    rm -rf node_modules dist .svelte-kit _site
 
 # Reinstall from scratch
 fresh: clean install

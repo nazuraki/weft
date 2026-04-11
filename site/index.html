@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A documentation graph browser. Navigate design docs, specs, diagrams, and code artifacts as a unified graph." />
+    <title>Weft</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --primary:                   #cebdff;
+        --primary-container:         #4c3e76;
+        --on-primary-container:      #bdaced;
+        --surface-container-lowest:  #0e0e10;
+        --surface-container-low:     #1b1b1d;
+        --surface-container:         #201f21;
+        --surface-container-high:    #2a2a2c;
+        --surface-container-highest: #353437;
+        --surface:                   #131315;
+        --surface-variant:           #353437;
+        --on-surface:                #e5e1e4;
+        --on-surface-variant:        #cbc3d5;
+        --outline:                   #948e9f;
+        --outline-variant:           #494553;
+        --tertiary:                  #ffb68c;
+
+        --font-headline: "Space Grotesk", sans-serif;
+        --font-body:     "Inter", sans-serif;
+      }
+
+      html { color-scheme: dark; }
+
+      body {
+        background: var(--surface-container-lowest);
+        color: var(--on-surface);
+        font-family: var(--font-body);
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+      }
+
+      .material-symbols-outlined {
+        font-family: "Material Symbols Outlined";
+        font-style: normal;
+        font-size: 16px;
+        line-height: 1;
+        display: inline-block;
+        white-space: nowrap;
+        user-select: none;
+        font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 20;
+        vertical-align: middle;
+      }
+
+      /* Layout */
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 32px;
+        border-bottom: 1px solid var(--outline-variant);
+      }
+
+      .nav-wordmark {
+        font-family: var(--font-headline);
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--primary);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .nav-links a {
+        color: var(--on-surface-variant);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.15s;
+      }
+      .nav-links a:hover { color: var(--on-surface); }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 80px 32px 120px;
+      }
+
+      /* Hero */
+      .label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: var(--primary-container);
+        border-radius: 4px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--on-primary-container);
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        font-family: var(--font-headline);
+        font-size: clamp(2.5rem, 6vw, 4.5rem);
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        color: var(--on-surface);
+        margin-bottom: 24px;
+      }
+
+      h1 em {
+        color: var(--primary);
+        font-style: italic;
+      }
+
+      .hero-desc {
+        font-size: 1.125rem;
+        line-height: 1.7;
+        color: var(--on-surface-variant);
+        max-width: 560px;
+        margin-bottom: 48px;
+      }
+
+      /* CTA */
+      .cta-group {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 96px;
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--primary);
+        color: #1f1048;
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: opacity 0.15s;
+      }
+      .btn-primary:hover { opacity: 0.88; }
+
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: transparent;
+        color: var(--on-surface);
+        font-family: var(--font-body);
+        font-weight: 500;
+        font-size: 0.9375rem;
+        border: 1px solid var(--outline-variant);
+        border-radius: 8px;
+        text-decoration: none;
+        transition: border-color 0.15s, color 0.15s;
+      }
+      .btn-secondary:hover {
+        border-color: var(--outline);
+        color: var(--on-surface);
+      }
+
+      /* Features grid */
+      .section-label {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--primary);
+        margin-bottom: 32px;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1px;
+        background: var(--outline-variant);
+        border: 1px solid var(--outline-variant);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 96px;
+      }
+
+      .feature {
+        background: var(--surface-container-low);
+        padding: 28px 32px;
+      }
+
+      .feature-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--primary-container);
+        border-radius: 8px;
+        margin-bottom: 16px;
+        color: var(--primary);
+        font-size: 18px;
+      }
+
+      .feature h3 {
+        font-family: var(--font-headline);
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--on-surface);
+        margin-bottom: 8px;
+      }
+
+      .feature p {
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--on-surface-variant);
+      }
+
+      /* Embed preview callout */
+      .embed-callout {
+        background: var(--surface-container);
+        border: 1px solid var(--outline-variant);
+        border-radius: 12px;
+        padding: 40px 48px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 32px;
+        flex-wrap: wrap;
+      }
+
+      .embed-callout h2 {
+        font-family: var(--font-headline);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .embed-callout p {
+        font-size: 0.9375rem;
+        line-height: 1.6;
+        color: var(--on-surface-variant);
+        max-width: 440px;
+      }
+
+      .code-snippet {
+        background: var(--surface-container-high);
+        border: 1px solid var(--outline-variant);
+        border-radius: 8px;
+        padding: 16px 20px;
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 0.8125rem;
+        color: var(--on-surface-variant);
+        white-space: pre;
+        line-height: 1.7;
+        flex-shrink: 0;
+      }
+
+      .code-snippet .kw  { color: var(--primary); }
+      .code-snippet .str { color: var(--tertiary); }
+
+      footer {
+        text-align: center;
+        padding: 32px;
+        border-top: 1px solid var(--outline-variant);
+        font-size: 0.8125rem;
+        color: var(--outline);
+      }
+
+      footer a { color: var(--outline); text-decoration: none; }
+      footer a:hover { color: var(--on-surface-variant); }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a class="nav-wordmark" href="/">Weft</a>
+      <div class="nav-links">
+        <a href="docs/">
+          <span class="material-symbols-outlined">description</span>
+          Docs
+        </a>
+        <a href="https://github.com/nazuraki/weft" target="_blank" rel="noopener">
+          <span class="material-symbols-outlined">code</span>
+          GitHub
+        </a>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Hero -->
+      <header>
+        <div class="label">
+          <span class="material-symbols-outlined" style="font-size:12px">account_tree</span>
+          Documentation tooling
+        </div>
+        <h1>Navigate your docs as a <em>graph</em></h1>
+        <p class="hero-desc">
+          Weft turns design docs, specs, API definitions, and diagrams into a
+          unified, navigable graph that lives alongside your code. Every
+          cross-reference becomes a typed edge. Every artifact a first-class node.
+        </p>
+        <div class="cta-group">
+          <a class="btn-primary" href="docs/">
+            <span class="material-symbols-outlined" style="font-size:18px">open_in_new</span>
+            Browse the docs
+          </a>
+          <a class="btn-secondary" href="https://github.com/nazuraki/weft" target="_blank" rel="noopener">
+            <span class="material-symbols-outlined" style="font-size:18px">code</span>
+            View on GitHub
+          </a>
+        </div>
+      </header>
+
+      <!-- Features -->
+      <p class="section-label">What it does</p>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">
+            <span class="material-symbols-outlined" style="font-size:18px">account_tree</span>
+          </div>
+          <h3>Graph-native navigation</h3>
+          <p>Documents are nodes. Cross-references are typed edges. Navigate by following links at anchor resolution, not just file level.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <span class="material-symbols-outlined" style="font-size:18px">hub</span>
+          </div>
+          <h3>Heterogeneous artifacts</h3>
+          <p>Markdown, OpenAPI specs, YAML, and diagrams all coexist as first-class nodes. One tool for your entire documentation surface.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <span class="material-symbols-outlined" style="font-size:18px">search</span>
+          </div>
+          <h3>Full-text search</h3>
+          <p>Instant fuzzy search across all nodes and anchors. Find the right context in milliseconds without leaving the browser.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <span class="material-symbols-outlined" style="font-size:18px">integration_instructions</span>
+          </div>
+          <h3>Embeddable</h3>
+          <p>Drop the Weft browser into any page with a single script tag. Point it at a GitHub repo or any base URL — no server required.</p>
+        </div>
+      </div>
+
+      <!-- Embed section -->
+      <div class="embed-callout">
+        <div>
+          <h2>Embed anywhere</h2>
+          <p>
+            The Weft browser is a self-contained IIFE bundle. Load it from your
+            CDN, point it at a repo, and your documentation is live.
+          </p>
+        </div>
+        <div class="code-snippet"><span class="kw">import</span> { mountWeft } <span class="kw">from</span> <span class="str">'@weft/embed'</span>;
+
+mountWeft(<span class="str">'#docs'</span>, {
+  repo: <span class="str">'acme/my-project'</span>,
+});</div>
+      </div>
+    </main>
+
+    <footer>
+      Built with Weft &mdash; <a href="https://github.com/nazuraki/weft">github.com/nazuraki/weft</a>
+    </footer>
+  </body>
+</html>

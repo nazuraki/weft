@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Weft documentation browser" />
+    <title>Docs — Weft</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../weft.css" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --primary:                   #cebdff;
+        --primary-container:         #4c3e76;
+        --on-primary-container:      #bdaced;
+        --surface-container-lowest:  #0e0e10;
+        --surface-container-low:     #1b1b1d;
+        --outline-variant:           #494553;
+        --on-surface:                #e5e1e4;
+        --on-surface-variant:        #cbc3d5;
+        --outline:                   #948e9f;
+
+        --font-headline: "Space Grotesk", sans-serif;
+        --font-body:     "Inter", sans-serif;
+      }
+
+      html, body {
+        height: 100%;
+        color-scheme: dark;
+        background: var(--surface-container-lowest);
+        color: var(--on-surface);
+        font-family: var(--font-body);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--outline-variant);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface-container-lowest);
+      }
+
+      .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .nav-back {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--on-surface-variant);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: color 0.15s;
+      }
+      .nav-back:hover { color: var(--on-surface); }
+
+      .nav-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--outline-variant);
+      }
+
+      .nav-wordmark {
+        font-family: var(--font-headline);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        color: var(--primary);
+        letter-spacing: 0.04em;
+        text-decoration: none;
+      }
+
+      .nav-label {
+        font-size: 0.75rem;
+        color: var(--outline);
+        letter-spacing: 0.05em;
+      }
+
+      #weft-root {
+        height: calc(100vh - 53px);
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="nav-left">
+        <a class="nav-back" href="../">&#8592; Back</a>
+        <div class="nav-divider"></div>
+        <a class="nav-wordmark" href="../">Weft</a>
+      </div>
+      <span class="nav-label">Documentation</span>
+    </nav>
+
+    <div id="weft-root"></div>
+
+    <script src="../weft.iife.js"></script>
+    <script>
+      Weft.mountWeft('#weft-root', {
+        baseUrl: 'https://nazuraki.github.io/weft',
+      });
+    </script>
+  </body>
+</html>
