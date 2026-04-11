@@ -37,6 +37,7 @@ test:
 # Build the GitHub Pages site into _site/
 build-pages:
     pnpm --filter @weft/core build
+    pnpm --filter @weft/ui exec svelte-kit sync
     pnpm --filter @weft/embed build
     node scripts/gen-manifest.mjs
     mkdir -p _site/docs
