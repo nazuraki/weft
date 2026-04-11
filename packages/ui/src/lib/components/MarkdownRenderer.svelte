@@ -60,21 +60,30 @@ function handleClick(e: MouseEvent) {
 		line-height: 1.6;
 		word-wrap: break-word;
 	}
+	.markdown-body :global(h1),
+	.markdown-body :global(h2),
+	.markdown-body :global(h3),
+	.markdown-body :global(h4) {
+		font-family: var(--font-heading, var(--font-sans));
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--color-text);
+	}
 	.markdown-body :global(h1) {
-		font-size: 2em;
-		margin: 0.67em 0;
+		font-size: 1.875em;
+		margin: 0 0 0.5em;
 		padding-bottom: 0.3em;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
 	}
 	.markdown-body :global(h2) {
-		font-size: 1.5em;
-		margin: 1em 0 0.5em;
-		padding-bottom: 0.3em;
-		border-bottom: 1px solid var(--color-border);
+		font-size: 1.375em;
+		margin: 1.5em 0 0.5em;
+		padding-bottom: 0.25em;
+		border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
 	}
 	.markdown-body :global(h3) {
-		font-size: 1.25em;
-		margin: 1em 0 0.5em;
+		font-size: 1.125em;
+		margin: 1.25em 0 0.4em;
 	}
 	.markdown-body :global(a) {
 		color: var(--color-link);

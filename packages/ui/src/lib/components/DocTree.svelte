@@ -85,29 +85,32 @@ let tree = $derived(buildTree(nodes));
 		text-align: left;
 		background: none;
 		border: none;
-		padding: 4px 12px;
+		padding: 5px 14px;
 		cursor: pointer;
-		color: var(--color-text);
+		color: var(--color-text-secondary);
 		border-radius: 0;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		font-size: 13px;
+		transition: color 0.1s;
 	}
 	.tree-item:hover {
 		background: var(--color-accent-subtle);
+		color: var(--color-text);
 	}
 	.tree-item.active {
 		background: var(--color-accent-subtle);
 		color: var(--color-accent);
-		font-weight: 600;
+		font-weight: 500;
 	}
 	.tree-folder {
-		padding: 4px 12px;
+		padding: 4px 14px;
 		font-weight: 600;
 		color: var(--color-text-secondary);
-		font-size: 12px;
+		font-size: 11px;
 		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		margin-top: 8px;
+		letter-spacing: 0.08em;
+		margin-top: 12px;
 	}
 </style>

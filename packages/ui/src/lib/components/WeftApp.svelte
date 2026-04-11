@@ -48,7 +48,7 @@ function handleKeydown(e: KeyboardEvent) {
 	<!-- Header bar -->
 	<header class="header">
 		<div class="header-left">
-			<strong>Weft</strong>
+			<span class="wordmark">Weft</span>
 		</div>
 		<div class="header-center">
 			<Breadcrumbs onnavigate={handleNavigate} />
@@ -120,12 +120,20 @@ function handleKeydown(e: KeyboardEvent) {
 		align-items: center;
 		padding: 0 16px;
 		border-bottom: 1px solid var(--color-border);
-		background: var(--color-bg);
+		background: var(--color-bg-secondary, var(--color-bg));
 		gap: 16px;
 	}
 	.header-left {
-		width: calc(var(--lhn-width, 260px) - 32px);
+		width: calc(var(--lhn-width, 240px) - 32px);
 		flex-shrink: 0;
+	}
+	.wordmark {
+		font-family: var(--font-heading, var(--font-sans));
+		font-weight: 600;
+		font-size: 0.9375rem;
+		letter-spacing: 0.04em;
+		color: var(--color-accent);
+		text-transform: uppercase;
 	}
 	.header-center {
 		flex: 1;
@@ -162,8 +170,8 @@ function handleKeydown(e: KeyboardEvent) {
 		grid-row: 2;
 		border-right: 1px solid var(--color-border);
 		overflow-y: auto;
-		padding: 8px 0;
-		background: var(--color-bg-secondary);
+		padding: 12px 0;
+		background: var(--color-bg-secondary, var(--color-bg));
 	}
 
 	.main {
@@ -176,8 +184,8 @@ function handleKeydown(e: KeyboardEvent) {
 		grid-row: 2;
 		border-left: 1px solid var(--color-border);
 		overflow-y: auto;
-		padding: 12px;
-		background: var(--color-bg-secondary);
+		padding: 16px;
+		background: var(--color-bg-secondary, var(--color-bg));
 	}
 
 	.back-btn {
