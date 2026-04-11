@@ -77,6 +77,8 @@ let tree = $derived(buildTree(nodes));
 
 <style>
 	.doc-tree {
+		display: flex;
+		flex-direction: column;
 		font-size: 13px;
 	}
 	.tree-item {

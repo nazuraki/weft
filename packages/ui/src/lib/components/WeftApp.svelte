@@ -167,25 +167,31 @@ function handleKeydown(e: KeyboardEvent) {
 	}
 
 	.lhn {
+		grid-column: 1;
 		grid-row: 2;
 		border-right: 1px solid var(--color-border);
 		overflow-y: auto;
 		padding: 12px 0;
 		background: var(--color-bg-secondary, var(--color-bg));
+		min-width: 0;
 	}
 
 	.main {
+		grid-column: 2;
 		grid-row: 2;
 		overflow-y: auto;
 		padding: 24px 32px;
+		min-width: 0;
 	}
 
 	.rhs {
+		grid-column: 3;
 		grid-row: 2;
 		border-left: 1px solid var(--color-border);
 		overflow-y: auto;
 		padding: 16px;
 		background: var(--color-bg-secondary, var(--color-bg));
+		min-width: 0;
 	}
 
 	.back-btn {
