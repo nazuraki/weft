@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!node) error(404, "No documents found.");
 
 	const canonical = nodeIdToPath(node.id);
-	const requested = "/" + (params.path ?? "");
+	const requested = `/${params.path ?? ""}`;
 	if (canonical !== requested) redirect(302, canonical);
 
 	return {

@@ -49,7 +49,10 @@ export default defineConfig({
 	plugins: [sveltekit(), weftConfigLoader()],
 	resolve: {
 		alias: [
-			{ find: "@weft/core/browser", replacement: resolve(__dirname, "../../packages/core/src/browser.ts") },
+			{
+				find: "@weft/core/browser",
+				replacement: resolve(__dirname, "../../packages/core/src/browser.ts"),
+			},
 			{ find: "@weft/core", replacement: resolve(__dirname, "../../packages/core/src/index.ts") },
 		],
 	},

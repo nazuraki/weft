@@ -1,7 +1,7 @@
 <script lang="ts">
-import WeftApp from "$lib/components/WeftApp.svelte";
 import { goto } from "$app/navigation";
 import { page } from "$app/stores";
+import WeftApp from "$lib/components/WeftApp.svelte";
 import type { PageData } from "./$types.js";
 
 let { data }: { data: PageData } = $props();

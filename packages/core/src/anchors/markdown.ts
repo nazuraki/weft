@@ -21,7 +21,14 @@ export function extractMarkdownAnchors(content: string): string[] {
 export function extractMarkdownDescription(content: string): string | undefined {
 	for (const line of content.split("\n")) {
 		const trimmed = line.trim();
-		if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith(">") || trimmed.startsWith("-") || trimmed.startsWith("|")) continue;
+		if (
+			!trimmed ||
+			trimmed.startsWith("#") ||
+			trimmed.startsWith(">") ||
+			trimmed.startsWith("-") ||
+			trimmed.startsWith("|")
+		)
+			continue;
 		const plain = trimmed.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_`]/g, "");
 		if (plain.length > 20) return plain.slice(0, 200);
 	}

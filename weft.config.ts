@@ -10,7 +10,7 @@ export default defineConfig({
 		"design-decisions.md",
 		"use-cases.md",
 		"implementation.md",
-		"research.md"
+		"research.md",
 	],
 	docOrderStrict: true,
 });

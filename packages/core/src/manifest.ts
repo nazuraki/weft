@@ -35,14 +35,14 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		if (!docType) continue;
 
 		const raw = readFileSync(absPath, "utf-8");
-		const { data: frontmatter, body } = docType === "markdown"
-			? parseFrontmatter(raw)
-			: { data: {}, body: raw };
+		const { data: frontmatter, body } =
+			docType === "markdown" ? parseFrontmatter(raw) : { data: {}, body: raw };
 
 		const anchors = extractAnchors(body, docType);
 		const title = frontmatter.title ?? extractTitle(body, docType) ?? file;
 
-		const description = frontmatter.description ??
+		const description =
+			frontmatter.description ??
 			(docType === "markdown" ? extractMarkdownDescription(body) : undefined);
 
 		nodes.push({

@@ -6,7 +6,9 @@ function createThemeStore() {
 
 	function resolveBase(): Theme {
 		const saved = localStorage.getItem("weft-theme") as Theme | null;
-		const configDefault = document.querySelector('meta[name="weft-default-theme"]')?.getAttribute("content") as Theme | null;
+		const configDefault = document
+			.querySelector('meta[name="weft-default-theme"]')
+			?.getAttribute("content") as Theme | null;
 		const sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 		return saved ?? configDefault ?? sys;
 	}
@@ -19,7 +21,10 @@ function createThemeStore() {
 		base = resolveBase();
 
 		window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
-			if (!localStorage.getItem("weft-theme") && !document.querySelector('meta[name="weft-default-theme"]')) {
+			if (
+				!localStorage.getItem("weft-theme") &&
+				!document.querySelector('meta[name="weft-default-theme"]')
+			) {
 				base = resolveBase();
 				if (!docOverride) apply(base);
 			}
