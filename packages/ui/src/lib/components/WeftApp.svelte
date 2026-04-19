@@ -1,5 +1,6 @@
 <script lang="ts">
 import { canGoBack, currentNode, navigationStack } from "$lib/stores/navigation.js";
+import { theme } from "$lib/stores/theme.svelte.js";
 import type { Manifest } from "@weft/core";
 import Breadcrumbs from "./Breadcrumbs.svelte";
 import DocTree from "./DocTree.svelte";
@@ -14,6 +15,10 @@ interface Props {
 let { manifest }: Props = $props();
 
 let showSearch = $state(false);
+
+$effect(() => {
+	theme.init();
+});
 
 $effect(() => {
 	if (manifest.nodes.length > 0) {
@@ -54,11 +59,14 @@ function handleKeydown(e: KeyboardEvent) {
 			<Breadcrumbs onnavigate={handleNavigate} />
 		</div>
 		<div class="header-right">
-			<button class="search-trigger" onclick={() => (showSearch = true)}>
-				Search
-				<kbd>⌘K</kbd>
-			</button>
-		</div>
+				<button class="theme-toggle" onclick={() => theme.toggle()} title="Toggle theme" aria-label="Toggle light/dark mode">
+					{theme.current === "dark" ? "☀️" : "🌙"}
+				</button>
+				<button class="search-trigger" onclick={() => (showSearch = true)}>
+					Search
+					<kbd>⌘K</kbd>
+				</button>
+			</div>
 	</header>
 
 	<!-- Left-hand nav -->
@@ -141,6 +149,25 @@ function handleKeydown(e: KeyboardEvent) {
 	}
 	.header-right {
 		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.theme-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-bg-secondary);
+		cursor: pointer;
+		font-size: 14px;
+		line-height: 1;
+	}
+	.theme-toggle:hover {
+		border-color: var(--color-text-secondary);
 	}
 	.search-trigger {
 		display: flex;

@@ -48,9 +48,10 @@ function weftConfigLoader(): Plugin {
 export default defineConfig({
 	plugins: [sveltekit(), weftConfigLoader()],
 	resolve: {
-		alias: {
-			"@weft/core": resolve(__dirname, "../../packages/core/src/index.ts"),
-		},
+		alias: [
+			{ find: "@weft/core/browser", replacement: resolve(__dirname, "../../packages/core/src/browser.ts") },
+			{ find: "@weft/core", replacement: resolve(__dirname, "../../packages/core/src/index.ts") },
+		],
 	},
 	ssr: {
 		// Bundle @weft/core into SSR since it's a workspace package with TypeScript sources

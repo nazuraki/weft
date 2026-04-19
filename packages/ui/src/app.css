@@ -5,7 +5,12 @@
 	--rhs-width: 260px;
 	--header-height: 48px;
 
-	/* nazuraki MD3 dark palette */
+	--font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-heading: "Space Grotesk", "Inter", sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+[data-theme="dark"] {
 	--color-bg: #131315;
 	--color-bg-secondary: #1b1b1d;
 	--color-bg-elevated: #201f21;
@@ -17,10 +22,22 @@
 	--color-link-hover: #e8ddff;
 	--color-accent: #cebdff;
 	--color-accent-subtle: #2d2543;
+	color-scheme: dark;
+}
 
-	--font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--font-heading: "Space Grotesk", "Inter", sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+[data-theme="light"] {
+	--color-bg: #fef7ff;
+	--color-bg-secondary: #f4eff4;
+	--color-bg-elevated: #ece6f0;
+	--color-border: #cac4d0;
+	--color-border-subtle: #e6e0e9;
+	--color-text: #1c1b1f;
+	--color-text-secondary: #49454f;
+	--color-link: #6750a4;
+	--color-link-hover: #4f378a;
+	--color-accent: #6750a4;
+	--color-accent-subtle: #eaddff;
+	color-scheme: light;
 }
 
 *,
@@ -39,5 +56,4 @@ body {
 	line-height: 1.5;
 	color: var(--color-text);
 	background: var(--color-bg);
-	color-scheme: dark;
 }

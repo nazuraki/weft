@@ -10,7 +10,7 @@
 			"types": "./src/index.ts"
 		},
 		"./browser": {
-			"import": "./src/browser.ts",
+			"import": "./dist/browser.js",
 			"types": "./src/browser.ts"
 		}
 	},
