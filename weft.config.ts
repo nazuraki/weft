@@ -2,6 +2,15 @@ import { defineConfig } from "@weft/core";
 
 export default defineConfig({
 	docsDir: "docs",
-	entryPoint: "docs/README.md",
+	// entryPoint: "docs/features.md",
 	ignore: ["**/node_modules/**", "**/dist/**"],
+	layout: "reader",
+	docOrder: [
+		"features.md",
+		"design-decisions.md",
+		"use-cases.md",
+		"implementation.md",
+		"research.md"
+	],
+	docOrderStrict: true,
 });

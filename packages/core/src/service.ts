@@ -15,6 +15,10 @@ export class WeftService {
 		this.searchIndex = new SearchIndex();
 	}
 
+	get weftConfig(): WeftConfig {
+		return this.config;
+	}
+
 	/** Get the docs directory absolute path. */
 	get docsDir(): string {
 		return resolve(this.config.rootDir, this.config.docsDir);

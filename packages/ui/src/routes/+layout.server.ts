@@ -4,5 +4,6 @@ import type { LayoutServerLoad } from "./$types.js";
 export const load: LayoutServerLoad = async () => {
 	const service = await getService();
 	const manifest = await service.getManifest();
-	return { manifest };
+	const { defaultTheme, layout } = service.weftConfig;
+	return { manifest, defaultTheme: defaultTheme ?? null, layout: layout ?? "default" };
 };

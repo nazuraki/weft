@@ -1,4 +1,6 @@
 export { defineConfig, loadConfig } from "./config.js";
+export { parseFrontmatter } from "./frontmatter.js";
+export type { Frontmatter } from "./frontmatter.js";
 export { WeftService } from "./service.js";
 export { buildManifest } from "./manifest.js";
 export { SearchIndex } from "./search.js";

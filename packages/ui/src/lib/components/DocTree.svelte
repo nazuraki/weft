@@ -19,7 +19,7 @@ interface TreeNode {
 function buildTree(nodes: WeftNode[]): TreeNode[] {
 	const root: TreeNode[] = [];
 
-	for (const node of [...nodes].sort((a, b) => a.id.localeCompare(b.id))) {
+	for (const node of nodes) {
 		const parts = node.id.split("/");
 		let current = root;
 

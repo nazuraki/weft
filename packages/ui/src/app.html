@@ -8,8 +8,9 @@
 	</head>
 	<script>
 		const saved = localStorage.getItem("weft-theme");
-		const preferred = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-		document.documentElement.setAttribute("data-theme", saved ?? preferred);
+		const sysPreferred = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+		const configDefault = document.querySelector('meta[name="weft-default-theme"]')?.content;
+		document.documentElement.setAttribute("data-theme", saved ?? configDefault ?? sysPreferred);
 	</script>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>

@@ -5,4 +5,4 @@ import type { PageData } from "./$types.js";
 let { data }: { data: PageData } = $props();
 </script>
 
-<WeftApp manifest={data.manifest} />
+<WeftApp manifest={data.manifest} layout={data.layout} />

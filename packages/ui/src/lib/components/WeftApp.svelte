@@ -10,14 +10,23 @@ import SearchPalette from "./SearchPalette.svelte";
 
 interface Props {
 	manifest: Manifest;
+	layout?: "reader" | "default";
 }
 
-let { manifest }: Props = $props();
+let { manifest, layout = "default" }: Props = $props();
 
 let showSearch = $state(false);
 
+let readerMode = $derived(layout === "reader");
+
 $effect(() => {
 	theme.init();
+});
+
+$effect(() => {
+	const nodeId = $currentNode?.nodeId;
+	const node = nodeId ? manifest.nodes.find((n) => n.id === nodeId) : undefined;
+	theme.setDocOverride(node?.theme ?? null);
 });
 
 $effect(() => {
@@ -49,7 +58,7 @@ function handleKeydown(e: KeyboardEvent) {
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="shell">
+<div class="shell" class:reader={readerMode}>
 	<!-- Header bar -->
 	<header class="header">
 		<div class="header-left">
@@ -59,9 +68,19 @@ function handleKeydown(e: KeyboardEvent) {
 			<Breadcrumbs onnavigate={handleNavigate} />
 		</div>
 		<div class="header-right">
-				<button class="theme-toggle" onclick={() => theme.toggle()} title="Toggle theme" aria-label="Toggle light/dark mode">
+				<span class="theme-toggle-wrap">
+				<button
+					class="theme-toggle"
+					onclick={(e) => e.shiftKey || e.ctrlKey ? theme.toggleDocOverride() : theme.toggle()}
+					aria-label="Toggle light/dark mode"
+				>
 					{theme.current === "dark" ? "☀️" : "🌙"}
 				</button>
+				<span class="theme-tooltip">
+					Click to toggle &amp; save preference<br />
+					Shift/Ctrl+click to override this document
+				</span>
+			</span>
 				<button class="search-trigger" onclick={() => (showSearch = true)}>
 					Search
 					<kbd>⌘K</kbd>
@@ -79,7 +98,7 @@ function handleKeydown(e: KeyboardEvent) {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main">
+	<main class="main" data-theme={theme.docOverride ?? undefined}>
 		{#if $currentNode}
 			{#if $canGoBack}
 				<button class="back-btn" onclick={handleBack}>← Back</button>
@@ -95,12 +114,14 @@ function handleKeydown(e: KeyboardEvent) {
 		{/if}
 	</main>
 
-	<!-- Right-hand sidebar -->
-	<aside class="rhs">
-		{#if $currentNode}
-			<LinkedItems nodeId={$currentNode.nodeId} {manifest} onnavigate={handleNavigate} />
-		{/if}
-	</aside>
+	<!-- Right-hand sidebar (hidden in reader mode) -->
+	{#if !readerMode}
+		<aside class="rhs">
+			{#if $currentNode}
+				<LinkedItems nodeId={$currentNode.nodeId} {manifest} onnavigate={handleNavigate} />
+			{/if}
+		</aside>
+	{/if}
 </div>
 
 {#if showSearch}
@@ -121,14 +142,15 @@ function handleKeydown(e: KeyboardEvent) {
 		height: 100%;
 		overflow: hidden;
 	}
+	.shell.reader {
+		grid-template-columns: var(--lhn-width, 260px) 1fr;
+	}
 
 	.header {
 		grid-column: 1 / -1;
 		display: flex;
 		align-items: center;
 		padding: 0 16px;
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-bg-secondary, var(--color-bg));
 		gap: 16px;
 	}
 	.header-left {
@@ -153,6 +175,11 @@ function handleKeydown(e: KeyboardEvent) {
 		align-items: center;
 		gap: 8px;
 	}
+	.theme-toggle-wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
 	.theme-toggle {
 		display: flex;
 		align-items: center;
@@ -168,6 +195,25 @@ function handleKeydown(e: KeyboardEvent) {
 	}
 	.theme-toggle:hover {
 		border-color: var(--color-text-secondary);
+	}
+	.theme-tooltip {
+		display: none;
+		position: absolute;
+		top: calc(100% + 8px);
+		right: 0;
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		padding: 8px 10px;
+		font-size: 11px;
+		line-height: 1.6;
+		color: var(--color-text-secondary);
+		white-space: nowrap;
+		pointer-events: none;
+		z-index: 100;
+	}
+	.theme-toggle-wrap:hover .theme-tooltip {
+		display: block;
 	}
 	.search-trigger {
 		display: flex;
@@ -196,10 +242,8 @@ function handleKeydown(e: KeyboardEvent) {
 	.lhn {
 		grid-column: 1;
 		grid-row: 2;
-		border-right: 1px solid var(--color-border);
 		overflow-y: auto;
 		padding: 12px 0;
-		background: var(--color-bg-secondary, var(--color-bg));
 		min-width: 0;
 	}
 
@@ -209,6 +253,8 @@ function handleKeydown(e: KeyboardEvent) {
 		overflow-y: auto;
 		padding: 24px 32px;
 		min-width: 0;
+		background: var(--color-bg);
+		color: var(--color-text);
 	}
 
 	.rhs {
