@@ -21,6 +21,7 @@ setContext(WEFT_CLIENT_KEY, client);
 
 let manifest = $state<Manifest | null>(null);
 let loadError = $state("");
+let currentNodeId = $state("");
 
 async function load() {
 	const manifestPath = config.manifestPath ?? "docs/.weft/manifest.json";
@@ -32,6 +33,7 @@ async function load() {
 		const data: Manifest = await res.json();
 		client.buildIndex(data);
 		manifest = data;
+		currentNodeId = data.nodes.find((n) => n.id === "README.md")?.id ?? data.nodes[0]?.id ?? "";
 	} catch (e) {
 		loadError = e instanceof Error ? e.message : "Failed to load manifest";
 	}
@@ -43,7 +45,14 @@ load();
 {#if loadError}
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
-	<WeftApp {manifest} />
+	<WeftApp {manifest} {currentNodeId} navigate={(path) => {
+		const nodeId = manifest!.nodes.find(n => {
+			const withoutExt = n.id.replace(/\.(md|markdown|yaml|yml|json)$/, "");
+			const normalized = path.replace(/^\//, "") || "README";
+			return withoutExt === normalized;
+		})?.id;
+		if (nodeId) currentNodeId = nodeId;
+	}} />
 {:else}
 	<p class="weft-loading">Loading…</p>
 {/if}

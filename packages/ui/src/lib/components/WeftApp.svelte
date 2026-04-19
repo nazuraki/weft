@@ -1,8 +1,7 @@
 <script lang="ts">
-import { canGoBack, currentNode, navigationStack } from "$lib/stores/navigation.js";
 import { theme } from "$lib/stores/theme.svelte.js";
+import { nodeIdToPath } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core";
-import Breadcrumbs from "./Breadcrumbs.svelte";
 import DocTree from "./DocTree.svelte";
 import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";
@@ -11,38 +10,29 @@ import SearchPalette from "./SearchPalette.svelte";
 interface Props {
 	manifest: Manifest;
 	layout?: "reader" | "default";
+	currentNodeId: string;
+	anchor?: string;
+	navigate: (path: string) => void;
 }
 
-let { manifest, layout = "default" }: Props = $props();
+let { manifest, layout = "default", currentNodeId, anchor, navigate }: Props = $props();
 
 let showSearch = $state(false);
 
 let readerMode = $derived(layout === "reader");
+
+let currentNode = $derived(manifest.nodes.find((n) => n.id === currentNodeId) ?? null);
 
 $effect(() => {
 	theme.init();
 });
 
 $effect(() => {
-	const nodeId = $currentNode?.nodeId;
-	const node = nodeId ? manifest.nodes.find((n) => n.id === nodeId) : undefined;
-	theme.setDocOverride(node?.theme ?? null);
-});
-
-$effect(() => {
-	if (manifest.nodes.length > 0) {
-		const entry = manifest.nodes.find((n) => n.id === "README.md") ?? manifest.nodes[0];
-		navigationStack.reset({ nodeId: entry.id, title: entry.title });
-	}
+	theme.setDocOverride(currentNode?.theme ?? null);
 });
 
 function handleNavigate(nodeId: string, anchor?: string) {
-	const node = manifest.nodes.find((n) => n.id === nodeId);
-	navigationStack.push({ nodeId, anchor, title: node?.title ?? nodeId });
-}
-
-function handleBack() {
-	navigationStack.pop();
+	navigate(nodeIdToPath(nodeId) + (anchor ?? ""));
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -65,7 +55,9 @@ function handleKeydown(e: KeyboardEvent) {
 			<span class="wordmark">Weft</span>
 		</div>
 		<div class="header-center">
-			<Breadcrumbs onnavigate={handleNavigate} />
+			{#if currentNode}
+				<span class="doc-title">{currentNode.title}</span>
+			{/if}
 		</div>
 		<div class="header-right">
 				<span class="theme-toggle-wrap">
@@ -93,20 +85,17 @@ function handleKeydown(e: KeyboardEvent) {
 		<DocTree
 			nodes={manifest.nodes}
 			onnavigate={handleNavigate}
-			currentNodeId={$currentNode?.nodeId}
+			{currentNodeId}
 		/>
 	</aside>
 
 	<!-- Main content -->
 	<main class="main" data-theme={theme.docOverride ?? undefined}>
-		{#if $currentNode}
-			{#if $canGoBack}
-				<button class="back-btn" onclick={handleBack}>← Back</button>
-			{/if}
+		{#if currentNode}
 			<DocView
-				nodeId={$currentNode.nodeId}
-				anchor={$currentNode.anchor}
-				nodeType={manifest.nodes.find((n) => n.id === $currentNode.nodeId)?.type}
+				nodeId={currentNode.id}
+				nodeType={currentNode.type}
+				{anchor}
 				onnavigate={handleNavigate}
 			/>
 		{:else}
@@ -117,8 +106,8 @@ function handleKeydown(e: KeyboardEvent) {
 	<!-- Right-hand sidebar (hidden in reader mode) -->
 	{#if !readerMode}
 		<aside class="rhs">
-			{#if $currentNode}
-				<LinkedItems nodeId={$currentNode.nodeId} {manifest} onnavigate={handleNavigate} />
+			{#if currentNode}
+				<LinkedItems nodeId={currentNode.id} {manifest} onnavigate={handleNavigate} />
 			{/if}
 		</aside>
 	{/if}
@@ -168,6 +157,13 @@ function handleKeydown(e: KeyboardEvent) {
 	.header-center {
 		flex: 1;
 		min-width: 0;
+	}
+	.doc-title {
+		font-size: 13px;
+		color: var(--color-text-secondary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.header-right {
 		flex-shrink: 0;
@@ -267,18 +263,6 @@ function handleKeydown(e: KeyboardEvent) {
 		min-width: 0;
 	}
 
-	.back-btn {
-		background: none;
-		border: none;
-		color: var(--color-link);
-		cursor: pointer;
-		padding: 4px 0;
-		margin-bottom: 8px;
-		font-size: 13px;
-	}
-	.back-btn:hover {
-		text-decoration: underline;
-	}
 
 	.empty {
 		color: var(--color-text-secondary);

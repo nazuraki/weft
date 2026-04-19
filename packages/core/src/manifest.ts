@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { glob } from "glob";
 import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
+import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
@@ -41,12 +42,17 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		const anchors = extractAnchors(body, docType);
 		const title = frontmatter.title ?? extractTitle(body, docType) ?? file;
 
+		const description = frontmatter.description ??
+			(docType === "markdown" ? extractMarkdownDescription(body) : undefined);
+
 		nodes.push({
 			id: file,
 			type: docType,
 			title,
 			anchors,
 			...(frontmatter.theme ? { theme: frontmatter.theme } : {}),
+			...(description ? { description } : {}),
+			...(frontmatter.ogImage ? { ogImage: frontmatter.ogImage } : {}),
 		});
 
 		// Extract links from markdown files

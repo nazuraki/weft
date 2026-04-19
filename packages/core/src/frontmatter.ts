@@ -3,6 +3,8 @@ import { parse } from "yaml";
 export interface Frontmatter {
 	title?: string;
 	theme?: "light" | "dark";
+	description?: string;
+	ogImage?: string;
 	[key: string]: unknown;
 }
 
