@@ -3,7 +3,7 @@ export function extractMarkdownAnchors(content: string): string[] {
 	const anchors: string[] = [];
 	const slugCounts = new Map<string, number>();
 
-	for (const line of content.split("\n")) {
+	for (const line of content.split(/\r?\n/)) {
 		const match = line.match(/^(#{1,6})\s+(.+)$/);
 		if (!match) continue;
 
@@ -19,7 +19,7 @@ export function extractMarkdownAnchors(content: string): string[] {
 
 /** Extract the first prose paragraph as a plain-text description. */
 export function extractMarkdownDescription(content: string): string | undefined {
-	for (const line of content.split("\n")) {
+	for (const line of content.split(/\r?\n/)) {
 		const trimmed = line.trim();
 		if (
 			!trimmed ||
@@ -37,7 +37,7 @@ export function extractMarkdownDescription(content: string): string | undefined 
 
 /** Extract the title (first H1) from Markdown content. */
 export function extractMarkdownTitle(content: string): string | undefined {
-	for (const line of content.split("\n")) {
+	for (const line of content.split(/\r?\n/)) {
 		const match = line.match(/^#\s+(.+)$/);
 		if (match) return match[1].trim();
 	}

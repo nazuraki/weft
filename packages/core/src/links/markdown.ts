@@ -3,6 +3,7 @@ import type { Link } from "mdast";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { toPosixPath } from "../paths.js";
 import type { LinkRef, WeftEdge } from "../types.js";
 
 interface MdLink {
@@ -46,12 +47,12 @@ export function extractMarkdownLinks(
 		if (!pathPart) continue;
 
 		const absTarget = resolve(fileDir, pathPart);
-		const relTarget = relative(docsDir, absTarget);
+		const relTarget = toPosixPath(relative(docsDir, absTarget));
 
 		// Only treat as graph edge if target is inside docsDir
 		if (relTarget.startsWith("..")) continue;
 
-		const fromNode = relative(docsDir, filePath);
+		const fromNode = toPosixPath(relative(docsDir, filePath));
 
 		const from: LinkRef = { node: fromNode };
 		const to: LinkRef = { node: relTarget };

@@ -24,6 +24,11 @@ describe("extractMarkdownAnchors", () => {
 	it("returns empty array for no headings", () => {
 		expect(extractMarkdownAnchors("Just a paragraph.\n")).toEqual([]);
 	});
+
+	it("handles CRLF line endings", () => {
+		const content = "# Title\r\n\r\n## Getting Started\r\n";
+		expect(extractMarkdownAnchors(content)).toEqual(["#title", "#getting-started"]);
+	});
 });
 
 describe("extractMarkdownTitle", () => {
@@ -33,5 +38,9 @@ describe("extractMarkdownTitle", () => {
 
 	it("returns undefined when no H1", () => {
 		expect(extractMarkdownTitle("## Not a title\n")).toBeUndefined();
+	});
+
+	it("handles CRLF line endings", () => {
+		expect(extractMarkdownTitle("# My Doc\r\n\r\n## Section\r\n")).toBe("My Doc");
 	});
 });

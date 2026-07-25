@@ -6,6 +6,7 @@ import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
+import { toPosixPath } from "./paths.js";
 import type { Manifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
 
 /** Scan the docs directory and build the graph manifest. */
@@ -31,7 +32,9 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 
 	for (const file of files) {
 		const absPath = resolve(docsDir, file);
-		const docType = getDocType(file);
+		// glob yields native separators on Windows; ids are POSIX everywhere.
+		const id = toPosixPath(file);
+		const docType = getDocType(id);
 		if (!docType) continue;
 
 		const raw = readFileSync(absPath, "utf-8");
@@ -39,14 +42,14 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 			docType === "markdown" ? parseFrontmatter(raw) : { data: {}, body: raw };
 
 		const anchors = extractAnchors(body, docType);
-		const title = frontmatter.title ?? extractTitle(body, docType) ?? file;
+		const title = frontmatter.title ?? extractTitle(body, docType) ?? id;
 
 		const description =
 			frontmatter.description ??
 			(docType === "markdown" ? extractMarkdownDescription(body) : undefined);
 
 		nodes.push({
-			id: file,
+			id,
 			type: docType,
 			title,
 			anchors,

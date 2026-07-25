@@ -1,5 +1,6 @@
 import { relative } from "node:path";
 import { parse } from "yaml";
+import { toPosixPath } from "../paths.js";
 import type { LinkRef, WeftEdge } from "../types.js";
 
 interface SidecarLink {
@@ -27,7 +28,7 @@ export function extractSidecarLinks(
 
 	// Sidecar file name: strip .weft to get the source file
 	const sourceFile = sidecarPath.replace(/\.weft$/, "");
-	const fromNode = relative(docsDir, sourceFile);
+	const fromNode = toPosixPath(relative(docsDir, sourceFile));
 
 	return data.links.map((link) => {
 		const [targetPath, targetAnchor] = link.target.split("#");

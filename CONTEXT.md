@@ -11,7 +11,7 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - **Manifest builder** (`src/manifest.ts`) — scans docs dir, builds `{ nodes, edges }` graph
 - **Search index** (`src/search.ts`) — MiniSearch wrapper with full-text search over doc content and anchors
 - **WeftService** (`src/service.ts`) — facade: `getManifest()`, `read()`, `search()`, `traverse()`, `watch()`, `rebuild()`, `writeManifest()`
-- **30 tests passing** across 6 test files
+- **32 tests passing** across 6 test files
 
 ### `@weft/cli` (packages/cli)
 - `weft index` — rebuilds manifest, writes to `docs/.weft/manifest.json`
