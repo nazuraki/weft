@@ -1,12 +1,11 @@
-import { getService } from "$lib/server/service.js";
+import { readManifest } from "$lib/server/manifest.js";
 import { nodeIdToPath, pathToNode } from "$lib/utils/paths.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types.js";
 
 export const load: PageServerLoad = async ({ params }) => {
-	const service = await getService();
-	const manifest = await service.getManifest();
-	const { siteTitle, siteUrl, ogImage } = service.weftConfig;
+	const manifest = readManifest();
+	const { siteTitle, siteUrl, ogImage } = manifest.site ?? {};
 
 	// In multi-project mode there is no bare README.md — fall back to the first
 	// project's README before giving up on the first node in the manifest.

@@ -7,10 +7,11 @@
 		"typecheck": "pnpm -r run typecheck",
 		"lint": "biome check .",
 		"fix": "biome check . --write",
-		"dev": "node scripts/dev-server.mjs"
+		"dev": "pnpm --filter @weft/core --filter @weft/cli build && weft serve ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@weft/cli": "workspace:*",
 		"@weft/core": "workspace:*"
 	},
 	"engines": {
