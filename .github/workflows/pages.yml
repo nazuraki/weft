@@ -56,7 +56,10 @@ jobs:
           # Manifest lives at docs/.weft/ so baseUrl path docs/.weft/manifest.json resolves
           cp -r docs/.weft _site/docs/.weft
           # Markdown files: node IDs are relative to docsDir, so rawUrl('use-cases.md')
-          # resolves to https://nazuraki.github.io/weft/use-cases.md — place at site root
+          # resolves to https://nazuraki.github.io/weft/use-cases.md — place at site root.
+          # This flattening assumes bare node IDs, i.e. a single-docsDir config. A repo
+          # using `projects` gets slug-namespaced IDs (alpha/use-cases.md) and would need
+          # its docs copied under those prefixes instead.
           cp docs/*.md _site/
 
       - uses: actions/upload-pages-artifact@v3
