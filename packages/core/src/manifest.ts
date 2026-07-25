@@ -1,16 +1,30 @@
 import { readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { glob } from "glob";
 import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
+import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
-import type { Manifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
+import type { Manifest, ProjectManifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
 
-/** Scan the docs directory and build the graph manifest. */
-export async function buildManifest(config: WeftConfig): Promise<Manifest> {
-	const docsDir = resolve(config.rootDir, config.docsDir);
+/** The nodes and edges discovered in a single docs root. */
+export interface RootGraph {
+	nodes: WeftNode[];
+	edges: WeftEdge[];
+}
+
+/**
+ * Scan one docs root. `roots` is the full set, so links leaving this root into
+ * another project still resolve to a node id.
+ */
+export async function buildRootGraph(
+	config: WeftConfig,
+	root: DocsRoot,
+	roots: DocsRoot[]
+): Promise<RootGraph> {
+	const docsDir = root.absDir;
 
 	// Find all doc files
 	const files = await glob("**/*.{md,markdown,yaml,yml}", {
@@ -26,7 +40,7 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		nodir: true,
 	});
 
-	let nodes: WeftNode[] = [];
+	const nodes: WeftNode[] = [];
 	const edges: WeftEdge[] = [];
 
 	for (const file of files) {
@@ -46,10 +60,11 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 			(docType === "markdown" ? extractMarkdownDescription(body) : undefined);
 
 		nodes.push({
-			id: file,
+			id: nodeIdFor(root, relative(docsDir, absPath)),
 			type: docType,
 			title,
 			anchors,
+			...(root.slug ? { project: root.slug } : {}),
 			...(frontmatter.theme ? { theme: frontmatter.theme } : {}),
 			...(description ? { description } : {}),
 			...(frontmatter.ogImage ? { ogImage: frontmatter.ogImage } : {}),
@@ -57,8 +72,7 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 
 		// Extract links from markdown files
 		if (docType === "markdown") {
-			const fileEdges = extractMarkdownLinks(body, absPath, docsDir);
-			edges.push(...fileEdges);
+			edges.push(...extractMarkdownLinks(body, absPath, roots));
 		}
 	}
 
@@ -66,22 +80,49 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 	for (const sidecarFile of sidecarFiles) {
 		const absPath = resolve(docsDir, sidecarFile);
 		const content = readFileSync(absPath, "utf-8");
-		const sidecarEdges = extractSidecarLinks(content, absPath, docsDir);
-		edges.push(...sidecarEdges);
+		edges.push(...extractSidecarLinks(content, absPath, roots));
+	}
+
+	return { nodes, edges };
+}
+
+/**
+ * Map a `docOrder` entry to a node id. Accepts a path relative to the project
+ * root (`products/alpha/docs/features.md`), an already-qualified node id
+ * (`alpha/features.md`), or a plain filename in single-project mode.
+ */
+function normalizeDocOrderEntry(entry: string, roots: DocsRoot[]): string {
+	const path = entry.replace(/\\/g, "/").replace(/^\.\//, "");
+	const byDir = [...roots]
+		.sort((a, b) => b.dir.length - a.dir.length)
+		.find((root) => root.dir && path.startsWith(`${root.dir}/`));
+	return byDir ? nodeIdFor(byDir, path.slice(byDir.dir.length + 1)) : path;
+}
+
+/** Combine per-root graphs into the merged manifest, applying ordering config. */
+export function mergeGraphs(
+	config: WeftConfig,
+	roots: DocsRoot[],
+	graphs: Map<string, RootGraph>
+): Manifest {
+	let nodes: WeftNode[] = [];
+	const edges: WeftEdge[] = [];
+
+	for (const root of roots) {
+		const graph = graphs.get(root.slug);
+		if (!graph) continue;
+		nodes.push(...graph.nodes);
+		edges.push(...graph.edges);
 	}
 
 	nodes.sort((a, b) => a.id.localeCompare(b.id));
 
 	if (config.docOrder?.length) {
-		const docsDirPrefix = config.docsDir.replace(/\/?$/, "/");
-		const order = config.docOrder.map((id) =>
-			id.startsWith(docsDirPrefix) ? id.slice(docsDirPrefix.length) : id
-		);
+		const order = config.docOrder.map((entry) => normalizeDocOrderEntry(entry, roots));
 		if (config.docOrderStrict) {
-			const ordered = order
+			nodes = order
 				.map((id) => nodes.find((n) => n.id === id))
 				.filter((n): n is WeftNode => n !== undefined);
-			nodes = ordered;
 		} else {
 			nodes.sort((a, b) => {
 				const ai = order.indexOf(a.id);
@@ -94,5 +135,46 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		}
 	}
 
-	return { version: 1, nodes, edges };
+	const projects = projectRefs(roots);
+
+	return {
+		version: 1,
+		nodes,
+		edges,
+		...(projects.length ? { projects } : {}),
+	};
+}
+
+/**
+ * Partition a merged manifest into one manifest per project. An edge belongs to
+ * the project of its source node, so the split and the merge are exact inverses.
+ * Returns an empty array in single-project mode.
+ */
+export function splitManifest(manifest: Manifest, roots: DocsRoot[]): ProjectManifest[] {
+	if (!isNamespaced(roots)) return [];
+
+	const slugs = new Set(roots.map((root) => root.slug));
+	const slugOf = (nodeId: string): string => {
+		const first = nodeId.split("/")[0];
+		return slugs.has(first) ? first : "";
+	};
+
+	return projectRefs(roots).map((project) => ({
+		version: manifest.version,
+		project,
+		nodes: manifest.nodes.filter((node) => node.project === project.slug),
+		edges: manifest.edges.filter((edge) => slugOf(edge.from.node) === project.slug),
+	}));
+}
+
+/** Scan every configured docs root and build the merged graph manifest. */
+export async function buildManifest(config: WeftConfig): Promise<Manifest> {
+	const roots = resolveDocsRoots(config);
+	const graphs = new Map<string, RootGraph>();
+
+	for (const root of roots) {
+		graphs.set(root.slug, await buildRootGraph(config, root, roots));
+	}
+
+	return mergeGraphs(config, roots, graphs);
 }

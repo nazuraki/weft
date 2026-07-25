@@ -1,0 +1,8 @@
+links:
+  - anchor: "#sync"
+    target: beta/api.yaml#/components/schemas/User
+    type: implements
+    label: Shared user shape
+
+  - target: README.md
+    type: see-also

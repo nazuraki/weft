@@ -3,4 +3,16 @@
  * Use this entry point in browser/embed builds.
  */
 export { parseOpenApiSpec } from "./anchors/openapi.js";
-export type { Manifest, WeftNode, WeftEdge, LinkRef, SearchResult, WeftConfig } from "./types.js";
+export { nodeIdToDocPath } from "./node-path.js";
+export type {
+	Manifest,
+	ProjectManifest,
+	ProjectsIndex,
+	WeftNode,
+	WeftEdge,
+	WeftProject,
+	WeftProjectRef,
+	LinkRef,
+	SearchResult,
+	WeftConfig,
+} from "./types.js";

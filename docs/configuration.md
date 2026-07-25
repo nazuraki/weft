@@ -24,7 +24,8 @@ export default defineConfig({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `docsDir` | `string` | `"docs"` | Directory to scan for documents, relative to project root |
+| `docsDir` | `string` | `"docs"` | Directory to scan for documents, relative to project root. Ignored when `projects` is set |
+| `projects` | `WeftProject[]` | — | Multiple docs roots, one per product — see [Multiple Projects](#multiple-projects) |
 | `entryPoint` | `string` | `"docs/README.md"` | Default document opened when no path is specified |
 | `siteTitle` | `string` | — | Site name used in `og:site_name` and page title (`Doc — Site`) |
 | `siteUrl` | `string` | — | Canonical base URL (e.g. `https://docs.example.com`). Required for absolute `og:image` URLs |
@@ -34,6 +35,66 @@ export default defineConfig({
 | `docOrder` | `string[]` | — | Explicit order for docs in the left-hand navigation. Filenames relative to `docsDir` |
 | `docOrderStrict` | `boolean` | `false` | When `true`, only docs listed in `docOrder` appear in the LHN. Unlisted docs are hidden |
 | `ignore` | `string[]` | `["**/node_modules/**", "**/dist/**"]` | Glob patterns to exclude from indexing |
+
+---
+
+## Multiple Projects
+
+A monorepo holding several products usually gives each product its own `docs/` tree. Set `projects` instead of `docsDir` to index them all into one graph:
+
+```ts
+import { defineConfig } from "@weft/core";
+
+export default defineConfig({
+  projects: [
+    { name: "Alpha", docsDir: "products/alpha/docs" },
+    { name: "Beta", docsDir: "products/beta/docs", slug: "b" },
+  ],
+});
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Display name, shown as a group header in the left-hand nav |
+| `docsDir` | yes | Directory to scan for this project's documents, relative to project root |
+| `slug` | no | Id/URL namespace. Defaults to a kebab-cased `name` (`"Design System"` → `design-system`) |
+
+### Node IDs
+
+With `projects` set, node IDs are namespaced by slug — `products/alpha/docs/api.md` becomes `alpha/api.md`, and its URL is `/alpha/api`. Each project's `README.md` is addressed by the project path alone (`/alpha`). This keeps IDs unique when two products both have an `api.md`.
+
+Configs using plain `docsDir` are unaffected: IDs stay relative to `docsDir` with no prefix.
+
+### Cross-Project Edges
+
+A relative Markdown link that leaves its own project and lands inside another one resolves to that project's node rather than being dropped:
+
+```markdown
+<!-- in products/alpha/docs/features.md -->
+Alpha syncs through the [Beta API](../../beta/docs/api.yaml#listUsers).
+```
+
+Sidecar targets take a slug prefix to cross products, or stay bare to resolve within their own project:
+
+```yaml
+# products/alpha/docs/features.md.weft
+links:
+  - target: beta/api.yaml#/components/schemas/User   # another product
+    type: implements
+
+  - target: README.md                                # this product
+    type: see-also
+```
+
+### docOrder
+
+In multi-project mode, `docOrder` entries may be written either as a path relative to the project root or as a namespaced ID — both resolve to the same node:
+
+```ts
+docOrder: ["products/beta/docs/api.yaml", "alpha/features.md"]
+```
+
+Ordering is global, so `docOrder` can interleave documents from different products.
 
 ---
 
@@ -108,6 +169,18 @@ Any string is valid as an edge type. Conventional types:
 
 ## The Manifest
 
-Running `weft index` (or `weft serve`) writes `docs/.weft/manifest.json`. This file is **auto-generated** — never hand-edit it. Add `docs/.weft/manifest.json` to `.gitignore` or commit it as a build artifact, depending on your workflow.
+Running `weft index` (or `weft serve`) writes `docs/.weft/manifest.json`. This file is **auto-generated** — never hand-edit it. Add `.weft/` to `.gitignore` or commit it as a build artifact, depending on your workflow.
 
 The manifest contains all discovered nodes (documents) and edges (typed relationships), and is what the UI reads at runtime.
+
+### Multi-Project Output
+
+With `projects` configured, indexing writes three kinds of artifact:
+
+| Path | Contents |
+|------|----------|
+| `<project docsDir>/.weft/manifest.json` | One per project: that project's nodes, and the edges originating in it |
+| `.weft/projects.json` | Index of every project manifest, plus the path of the merged manifest |
+| `.weft/manifest.json` | The merged graph — every node and edge, with a `projects` array |
+
+An edge belongs to the project of its source node, so a cross-project edge is stored with the product that declares it. Each project manifest can be published or versioned independently; consumers that want the whole graph in one request (such as `@weft/embed`) read the merged manifest instead.

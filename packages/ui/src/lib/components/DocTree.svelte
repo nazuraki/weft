@@ -1,13 +1,14 @@
 <script lang="ts">
-import type { WeftNode } from "@weft/core";
+import type { WeftNode, WeftProjectRef } from "@weft/core";
 
 interface Props {
 	nodes: WeftNode[];
+	projects?: WeftProjectRef[];
 	currentNodeId?: string;
 	onnavigate: (nodeId: string) => void;
 }
 
-let { nodes, currentNodeId, onnavigate }: Props = $props();
+let { nodes, projects, currentNodeId, onnavigate }: Props = $props();
 
 // Build a simple tree from flat node IDs by splitting on '/'
 interface TreeNode {
@@ -16,11 +17,23 @@ interface TreeNode {
 	children: TreeNode[];
 }
 
-function buildTree(nodes: WeftNode[]): TreeNode[] {
+interface ProjectGroup {
+	name: string;
+	slug: string;
+	tree: TreeNode[];
+}
+
+/**
+ * Build a tree from node IDs. `prefix` (a project slug) is dropped from the
+ * displayed path so the slug isn't repeated as a folder under its own heading.
+ */
+function buildTree(nodes: WeftNode[], prefix = ""): TreeNode[] {
 	const root: TreeNode[] = [];
 
 	for (const node of nodes) {
-		const parts = node.id.split("/");
+		const path =
+			prefix && node.id.startsWith(`${prefix}/`) ? node.id.slice(prefix.length + 1) : node.id;
+		const parts = path.split("/");
 		let current = root;
 
 		for (let i = 0; i < parts.length; i++) {
@@ -40,7 +53,22 @@ function buildTree(nodes: WeftNode[]): TreeNode[] {
 	return root;
 }
 
+function buildGroups(nodes: WeftNode[], projects: WeftProjectRef[]): ProjectGroup[] {
+	return projects
+		.map((project) => ({
+			name: project.name,
+			slug: project.slug,
+			tree: buildTree(
+				nodes.filter((node) => node.project === project.slug),
+				project.slug
+			),
+		}))
+		.filter((group) => group.tree.length > 0);
+}
+
+let grouped = $derived((projects?.length ?? 0) > 1);
 let tree = $derived(buildTree(nodes));
+let groups = $derived(grouped ? buildGroups(nodes, projects ?? []) : []);
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}
@@ -70,9 +98,18 @@ let tree = $derived(buildTree(nodes));
 {/snippet}
 
 <nav class="doc-tree">
-	{#each tree as node}
-		{@render treeNode(node, 0)}
-	{/each}
+	{#if grouped}
+		{#each groups as group}
+			<div class="project-header">{group.name}</div>
+			{#each group.tree as node}
+				{@render treeNode(node, 0)}
+			{/each}
+		{/each}
+	{:else}
+		{#each tree as node}
+			{@render treeNode(node, 0)}
+		{/each}
+	{/if}
 </nav>
 
 <style>
@@ -105,6 +142,20 @@ let tree = $derived(buildTree(nodes));
 		background: var(--color-accent-subtle);
 		color: var(--color-accent);
 		font-weight: 500;
+	}
+	.project-header {
+		padding: 4px 14px;
+		font-weight: 600;
+		color: var(--color-text);
+		font-size: 12px;
+		letter-spacing: 0.02em;
+		margin-top: 16px;
+		border-bottom: 1px solid var(--color-border);
+		padding-bottom: 6px;
+		margin-bottom: 4px;
+	}
+	.project-header:first-child {
+		margin-top: 0;
 	}
 	.tree-folder {
 		padding: 4px 14px;

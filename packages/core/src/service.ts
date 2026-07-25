@@ -1,17 +1,21 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import chokidar from "chokidar";
-import { buildManifest } from "./manifest.js";
+import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
+import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
-import type { Manifest, SearchResult, WeftConfig, WeftEdge } from "./types.js";
+import type { Manifest, ProjectsIndex, SearchResult, WeftConfig, WeftEdge } from "./types.js";
 
 export class WeftService {
 	private config: WeftConfig;
+	private roots: DocsRoot[];
+	private graphs = new Map<string, RootGraph>();
 	private manifest: Manifest | null = null;
 	private searchIndex: SearchIndex;
 
 	constructor(config: WeftConfig) {
 		this.config = config;
+		this.roots = resolveDocsRoots(config);
 		this.searchIndex = new SearchIndex();
 	}
 
@@ -19,20 +23,65 @@ export class WeftService {
 		return this.config;
 	}
 
-	/** Get the docs directory absolute path. */
+	/** All configured docs roots — one per project, or a single implicit root. */
+	get docsRoots(): DocsRoot[] {
+		return this.roots;
+	}
+
+	/** True when node ids are namespaced by project slug. */
+	get namespaced(): boolean {
+		return isNamespaced(this.roots);
+	}
+
+	/** Get the docs directory absolute path. In multi-project mode, the first project's. */
 	get docsDir(): string {
-		return resolve(this.config.rootDir, this.config.docsDir);
+		return this.roots[0].absDir;
 	}
 
-	/** Get the manifest output path. */
+	/** Path of the merged manifest. */
 	get manifestPath(): string {
-		return resolve(this.docsDir, ".weft", "manifest.json");
+		return this.namespaced
+			? resolve(this.config.rootDir, ".weft", "manifest.json")
+			: resolve(this.docsDir, ".weft", "manifest.json");
 	}
 
-	/** Build or rebuild the manifest from the filesystem. */
-	async rebuild(): Promise<Manifest> {
-		this.manifest = await buildManifest(this.config);
-		this.searchIndex.build(this.manifest, this.docsDir);
+	/** Path of a single project's manifest. */
+	projectManifestPath(slug: string): string {
+		const root = this.roots.find((r) => r.slug === slug);
+		if (!root) throw new Error(`Unknown project: ${slug}`);
+		return resolve(root.absDir, ".weft", "manifest.json");
+	}
+
+	/** Path of the index listing every project manifest. */
+	get projectsIndexPath(): string {
+		return resolve(this.config.rootDir, ".weft", "projects.json");
+	}
+
+	/** Resolve a node id to an absolute file path, or undefined if it escapes its root. */
+	resolveNodePath(nodeId: string): string | undefined {
+		const match = rootForNodeId(this.roots, nodeId);
+		if (!match) return undefined;
+
+		const filePath = resolve(match.root.absDir, match.relPath);
+		const rel = relative(match.root.absDir, filePath);
+		if (rel.startsWith("..") || isAbsolute(rel)) return undefined;
+		return filePath;
+	}
+
+	/**
+	 * Build or rebuild the manifest from the filesystem. Pass a project slug to
+	 * rescan only that project — the rest of the graph is reused.
+	 */
+	async rebuild(slug?: string): Promise<Manifest> {
+		const targets =
+			slug === undefined ? this.roots : this.roots.filter((root) => root.slug === slug);
+
+		for (const root of targets) {
+			this.graphs.set(root.slug, await buildRootGraph(this.config, root, this.roots));
+		}
+
+		this.manifest = mergeGraphs(this.config, this.roots, this.graphs);
+		this.searchIndex.build(this.manifest, (nodeId) => this.resolveNodePath(nodeId));
 		return this.manifest;
 	}
 
@@ -44,18 +93,47 @@ export class WeftService {
 		return this.manifest;
 	}
 
-	/** Write the manifest to disk. */
-	async writeManifest(): Promise<string> {
+	/**
+	 * Write the manifest to disk. In multi-project mode this writes one manifest
+	 * per project, an index of them, and the merged manifest at the project root.
+	 * Returns every path written.
+	 */
+	async writeManifest(): Promise<string[]> {
 		const manifest = await this.getManifest();
-		const outPath = this.manifestPath;
-		mkdirSync(dirname(outPath), { recursive: true });
-		writeFileSync(outPath, JSON.stringify(manifest, null, 2));
-		return outPath;
+		const written: string[] = [];
+
+		const write = (path: string, data: unknown) => {
+			mkdirSync(dirname(path), { recursive: true });
+			writeFileSync(path, JSON.stringify(data, null, 2));
+			written.push(path);
+		};
+
+		if (this.namespaced) {
+			for (const projectManifest of splitManifest(manifest, this.roots)) {
+				write(this.projectManifestPath(projectManifest.project.slug), projectManifest);
+			}
+
+			const index: ProjectsIndex = {
+				version: 1,
+				projects: this.roots.map((root) => ({
+					name: root.name ?? root.slug,
+					slug: root.slug,
+					docsDir: root.dir,
+					manifest: `${root.dir}/.weft/manifest.json`,
+				})),
+				manifest: ".weft/manifest.json",
+			};
+			write(this.projectsIndexPath, index);
+		}
+
+		write(this.manifestPath, manifest);
+		return written;
 	}
 
 	/** Read a document's content. */
 	read(nodeId: string): string {
-		const filePath = resolve(this.docsDir, nodeId);
+		const filePath = this.resolveNodePath(nodeId);
+		if (!filePath) throw new Error(`Document not found: ${nodeId}`);
 		return readFileSync(filePath, "utf-8");
 	}
 
@@ -82,35 +160,41 @@ export class WeftService {
 		});
 	}
 
-	/** Watch the docs directory for changes and rebuild on change. */
+	/** Watch every docs root for changes, rebuilding the changed project on change. */
 	watch(callback?: (manifest: Manifest) => void): () => void {
-		const watcher = chokidar.watch(this.docsDir, {
-			ignored: [
-				/(^|[/\\])\../, // dotfiles
-				"**/.weft/**", // manifest output
-				...this.config.ignore,
-			],
-			persistent: true,
-			ignoreInitial: true,
+		const watchers = this.roots.map((root) => {
+			const watcher = chokidar.watch(root.absDir, {
+				ignored: [
+					/(^|[/\\])\../, // dotfiles
+					"**/.weft/**", // manifest output
+					...this.config.ignore,
+				],
+				persistent: true,
+				ignoreInitial: true,
+			});
+
+			let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+			const onChangeDebounced = () => {
+				if (debounceTimer) clearTimeout(debounceTimer);
+				debounceTimer = setTimeout(async () => {
+					const manifest = await this.rebuild(root.slug);
+					callback?.(manifest);
+				}, 200);
+			};
+
+			watcher.on("add", onChangeDebounced);
+			watcher.on("change", onChangeDebounced);
+			watcher.on("unlink", onChangeDebounced);
+
+			return () => {
+				watcher.close();
+				if (debounceTimer) clearTimeout(debounceTimer);
+			};
 		});
 
-		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-		const onChangeDebounced = () => {
-			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(async () => {
-				const manifest = await this.rebuild();
-				callback?.(manifest);
-			}, 200);
-		};
-
-		watcher.on("add", onChangeDebounced);
-		watcher.on("change", onChangeDebounced);
-		watcher.on("unlink", onChangeDebounced);
-
 		return () => {
-			watcher.close();
-			if (debounceTimer) clearTimeout(debounceTimer);
+			for (const stop of watchers) stop();
 		};
 	}
 }

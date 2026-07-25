@@ -3,6 +3,7 @@ import type { Link } from "mdast";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { type DocsRoot, nodeIdFor, rootForPath } from "../config.js";
 import type { LinkRef, WeftEdge } from "../types.js";
 
 interface MdLink {
@@ -21,12 +22,14 @@ function toPosix(path: string): string {
 
 /**
  * Extract graph edges from Markdown content.
- * A link is a graph edge if it targets a file within the docs directory.
+ * A link is a graph edge if it targets a file within any configured docs root —
+ * a link that leaves its own root but lands in another project's root becomes a
+ * cross-project edge rather than being dropped.
  */
 export function extractMarkdownLinks(
 	content: string,
 	filePath: string,
-	docsDir: string
+	roots: DocsRoot[]
 ): WeftEdge[] {
 	const tree = unified().use(remarkParse).parse(content);
 	const links: MdLink[] = [];
@@ -50,20 +53,22 @@ export function extractMarkdownLinks(
 	const fileDir = dirname(filePath);
 	const edges: WeftEdge[] = [];
 
+	const sourceRoot = rootForPath(roots, filePath);
+	if (!sourceRoot) return edges;
+	const fromNode = nodeIdFor(sourceRoot, relative(sourceRoot.absDir, filePath));
+
 	for (const link of links) {
 		const [pathPart, anchor] = link.url.split("#");
 		if (!pathPart) continue;
 
 		const absTarget = resolve(fileDir, pathPart);
-		const relTarget = relative(docsDir, absTarget);
+		const targetRoot = rootForPath(roots, absTarget);
 
-		// Only treat as graph edge if target is inside docsDir
-		if (relTarget.startsWith("..")) continue;
-
-		const fromNode = toPosix(relative(docsDir, filePath));
+		// Only treat as graph edge if the target lands inside a configured docs root
+		if (!targetRoot) continue;
 
 		const from: LinkRef = { node: fromNode };
-		const to: LinkRef = { node: toPosix(relTarget) };
+		const to: LinkRef = { node: nodeIdFor(targetRoot, relative(targetRoot.absDir, absTarget)) };
 		if (anchor) to.anchor = `#${anchor}`;
 
 		edges.push({

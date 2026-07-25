@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import MiniSearch from "minisearch";
 import type { Manifest, SearchResult } from "./types.js";
 
@@ -25,14 +24,19 @@ export class SearchIndex {
 		});
 	}
 
-	/** Build the search index from a manifest and the docs directory. */
-	build(manifest: Manifest, docsDir: string): void {
+	/**
+	 * Build the search index from a manifest. `resolvePath` maps a node id to an
+	 * absolute file path — a function rather than a directory, since node ids may
+	 * span several docs roots.
+	 */
+	build(manifest: Manifest, resolvePath: (nodeId: string) => string | undefined): void {
 		this.index.removeAll();
 
 		const docs: SearchDoc[] = manifest.nodes.map((node) => {
 			let content = "";
+			const path = resolvePath(node.id);
 			try {
-				content = readFileSync(resolve(docsDir, node.id), "utf-8");
+				if (path) content = readFileSync(path, "utf-8");
 			} catch {
 				// File may not exist or be unreadable
 			}
