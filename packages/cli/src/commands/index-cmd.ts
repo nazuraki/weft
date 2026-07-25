@@ -22,11 +22,13 @@ export const indexCommand = command(
 		const service = new WeftService(config);
 
 		const manifest = await service.rebuild();
-		const outPath = await service.writeManifest();
+		const outPaths = await service.writeManifest();
 
 		if (!argv.flags.quiet) {
 			console.log(`Indexed ${manifest.nodes.length} documents, ${manifest.edges.length} edges`);
-			console.log(`Manifest written to ${outPath}`);
+			for (const outPath of outPaths) {
+				console.log(`Manifest written to ${outPath}`);
+			}
 		}
 	}
 );

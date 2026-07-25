@@ -22,6 +22,8 @@ const { WeftService } = await import("../packages/core/dist/service.js");
 
 const config = JSON.parse(process.env.WEFT_CONFIG);
 const service = new WeftService(config);
-const manifest = await service.writeManifest();
+const outPaths = await service.writeManifest();
 
-console.log(`Manifest written to ${manifest}`);
+for (const outPath of outPaths) {
+	console.log(`Manifest written to ${outPath}`);
+}

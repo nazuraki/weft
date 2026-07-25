@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { DocsRoot } from "../../config.js";
 import { extractSidecarLinks } from "../sidecar.js";
 
-const DOCS_DIR = "/project/docs";
+const SINGLE: DocsRoot[] = [{ slug: "", dir: "docs", absDir: "/project/docs" }];
+
+const MULTI: DocsRoot[] = [
+	{ name: "Alpha", slug: "alpha", dir: "products/alpha/docs", absDir: "/project/products/alpha/docs" },
+	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs" },
+];
 
 describe("extractSidecarLinks", () => {
 	it("extracts links from sidecar YAML", () => {
@@ -12,7 +18,7 @@ links:
     type: references
     label: User API
 `;
-		const edges = extractSidecarLinks(content, "/project/docs/architecture.md.weft", DOCS_DIR);
+		const edges = extractSidecarLinks(content, "/project/docs/architecture.md.weft", SINGLE);
 
 		expect(edges).toHaveLength(1);
 		expect(edges[0]).toEqual({
@@ -24,7 +30,7 @@ links:
 	});
 
 	it("returns empty for no links", () => {
-		expect(extractSidecarLinks("", "/project/docs/a.md.weft", DOCS_DIR)).toEqual([]);
+		expect(extractSidecarLinks("", "/project/docs/a.md.weft", SINGLE)).toEqual([]);
 	});
 
 	it("defaults type to references", () => {
@@ -32,7 +38,50 @@ links:
 links:
   - target: other.md
 `;
-		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", DOCS_DIR);
+		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
 		expect(edges[0].type).toBe("references");
+	});
+
+	it("resolves a bare target within the source project", () => {
+		const content = `
+links:
+  - target: features.md
+`;
+		const edges = extractSidecarLinks(
+			content,
+			"/project/products/alpha/docs/README.md.weft",
+			MULTI
+		);
+
+		expect(edges[0].from.node).toBe("alpha/README.md");
+		expect(edges[0].to.node).toBe("alpha/features.md");
+	});
+
+	it("uses a slug-qualified target as-is", () => {
+		const content = `
+links:
+  - target: beta/api.yaml#listUsers
+    type: implements
+`;
+		const edges = extractSidecarLinks(
+			content,
+			"/project/products/alpha/docs/features.md.weft",
+			MULTI
+		);
+
+		expect(edges[0]).toEqual({
+			from: { node: "alpha/features.md" },
+			to: { node: "beta/api.yaml", anchor: "#listUsers" },
+			type: "implements",
+			label: undefined,
+		});
+	});
+
+	it("returns empty for a sidecar outside every configured root", () => {
+		const content = `
+links:
+  - target: other.md
+`;
+		expect(extractSidecarLinks(content, "/elsewhere/a.md.weft", MULTI)).toEqual([]);
 	});
 });
