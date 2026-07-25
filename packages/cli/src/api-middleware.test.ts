@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WeftService } from "@weft/core";
+import type { WeftEdge } from "@weft/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { handleApiRequest } from "./api-middleware.js";
 
@@ -21,6 +22,7 @@ beforeAll(async () => {
 });
 
 /** Run one request through the handler and capture the JSON response. */
+// biome-ignore lint/suspicious/noExplicitAny: test helper — each assertion narrows the shape it uses
 async function request(url: string): Promise<{ status: number; body: any }> {
 	let status = 0;
 	let payload = "";
@@ -81,10 +83,10 @@ describe("handleApiRequest", () => {
 	it("serves traverse edges in both directions", async () => {
 		const outgoing = await request("/traverse?node=README.md&direction=outgoing");
 		expect(outgoing.status).toBe(200);
-		expect(outgoing.body.some((e: any) => e.to.node === "architecture.md")).toBe(true);
+		expect(outgoing.body.some((e: WeftEdge) => e.to.node === "architecture.md")).toBe(true);
 
 		const incoming = await request("/traverse?node=architecture.md&direction=incoming");
-		expect(incoming.body.some((e: any) => e.from.node === "README.md")).toBe(true);
+		expect(incoming.body.some((e: WeftEdge) => e.from.node === "README.md")).toBe(true);
 	});
 
 	it("400s on a missing traverse node", async () => {

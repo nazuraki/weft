@@ -14,12 +14,13 @@ Phase 1 implementation is complete. The monorepo has three packages:
 
 ### `@weft/cli` (packages/cli)
 - `weft index` — rebuilds manifest, writes to `docs/.weft/manifest.json`
-- `weft serve` — sets `WEFT_ROOT_DIR` env, starts Vite dev server from `@weft/ui`, watches for doc changes
+- `weft serve` — owns the single `WeftService`: builds it, starts the Vite dev server from `@weft/ui` with an inline plugin (`src/api-middleware.ts`) serving `/api/manifest`, `/api/doc/*`, `/api/search?q=`, `/api/traverse?node=&direction=`, and watches for doc changes
+- `pnpm dev` at the repo root is just `weft serve .` — one launch path
 
 ### `@weft/ui` (packages/ui)
 - SvelteKit app with adapter-node
 - Three-panel layout: doc tree (LHN), main view, linked-items sidebar (RHS)
-- API routes: `/api/manifest`, `/api/doc/[...path]`, `/api/search?q=`, `/api/traverse?node=&direction=`, `/api/openapi/[...path]`
+- Pure consumer: client code fetches the CLI's `/api` JSON; SSR loads read the manifest file at `WEFT_MANIFEST_PATH` (set by `weft serve`). No server-side `@weft/core` runtime imports — types and `@weft/core/browser` only
 - Components: DocTree, DocView, MarkdownRenderer (with in-app link interception), OpenApiRenderer, LinkedItems, Breadcrumbs, SearchPalette (Cmd+K)
 - Navigation store with stack, breadcrumbs, back/forward
 
@@ -27,7 +28,8 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - `@weft/core` resolves to built output (`exports: dist/index.js`) for plain-Node consumers (the CLI), so core must be built before running `weft`. Vite dev still loads TypeScript source via the alias in `packages/ui/vite.config.ts`, and typecheck sees source via the `types` condition — no rebuild in the Vite dev loop. Editing core + running the CLI requires `pnpm --filter @weft/core build` (or `tsc --watch`)
 - Standard relative Markdown links (not `@doc:` prefix) — renders on GitHub, Weft identifies graph edges by resolving against docs dir
 - MiniSearch for full-text search (semantic search is future opt-in per DD-6)
-- OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core` (uses existing `yaml` dep); parsed spec served via `/api/openapi/[...path]`; `$ref` dereferencing deferred
+- OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core/browser`; the client fetches raw spec content via `/api/doc/*` and parses it browser-side; `$ref` dereferencing deferred
+- **Service ownership**: exactly one `WeftService` per `weft serve`, constructed and owned by the CLI. The UI never constructs one — it consumes manifest + API JSON. Presentation config (`defaultTheme`, `layout`, `siteTitle`, `siteUrl`, `ogImage`) travels in the manifest's `site` block, so the UI needs no config access. The only CLI→UI handoff is the `WEFT_MANIFEST_PATH` env var (SvelteKit SSR fetch cannot reach Vite middleware, so server loads read the file)
 - Multi-project (`projects` config) namespaces node ids by slug (`alpha/api.md`) and writes a manifest per project plus a merged one; single-`docsDir` configs keep bare ids and a single manifest, so the change is opt-in. `WeftService` merges the per-project graphs in memory, so every consumer still sees one `Manifest`
 
 ## What's Not Built Yet
