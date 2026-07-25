@@ -24,7 +24,7 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - Navigation store with stack, breadcrumbs, back/forward
 
 ## Key Decisions
-- `@weft/core` exports TypeScript source directly (`main: src/index.ts`) — Vite handles transpilation, no separate build step needed for dev
+- `@weft/core` resolves to built output (`exports: dist/index.js`) for plain-Node consumers (the CLI), so core must be built before running `weft`. Vite dev still loads TypeScript source via the alias in `packages/ui/vite.config.ts`, and typecheck sees source via the `types` condition — no rebuild in the Vite dev loop. Editing core + running the CLI requires `pnpm --filter @weft/core build` (or `tsc --watch`)
 - Standard relative Markdown links (not `@doc:` prefix) — renders on GitHub, Weft identifies graph edges by resolving against docs dir
 - MiniSearch for full-text search (semantic search is future opt-in per DD-6)
 - OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core` (uses existing `yaml` dep); parsed spec served via `/api/openapi/[...path]`; `$ref` dereferencing deferred
