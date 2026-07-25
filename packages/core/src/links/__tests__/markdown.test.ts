@@ -61,8 +61,8 @@ describe("extractMarkdownLinks", () => {
 		expect(edges).toHaveLength(1);
 		expect(edges[0].to.node).toBe("schemas/user.md");
 	});
-  
-  it("emits POSIX-separated ids for nested sources and targets", () => {
+
+	it("emits POSIX-separated ids for nested sources and targets", () => {
 		const content = "[Sibling](../schemas/order.md)\n";
 		const edges = extractMarkdownLinks(content, "/project/docs/guides/setup.md", SINGLE);
 

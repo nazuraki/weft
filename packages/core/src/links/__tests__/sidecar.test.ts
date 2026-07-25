@@ -46,8 +46,8 @@ links:
 		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
 		expect(edges[0].type).toBe("references");
 	});
-  
-  it("emits a POSIX-separated id for a nested source", () => {
+
+	it("emits a POSIX-separated id for a nested source", () => {
 		const content = `
 links:
   - target: other.md
