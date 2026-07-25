@@ -7,7 +7,14 @@ import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots }
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
-import type { Manifest, ProjectManifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
+import type {
+	Manifest,
+	ProjectManifest,
+	SiteConfig,
+	WeftConfig,
+	WeftEdge,
+	WeftNode,
+} from "./types.js";
 
 /** The nodes and edges discovered in a single docs root. */
 export interface RootGraph {
@@ -136,13 +143,26 @@ export function mergeGraphs(
 	}
 
 	const projects = projectRefs(roots);
+	const site = siteConfig(config);
 
 	return {
 		version: 1,
 		nodes,
 		edges,
 		...(projects.length ? { projects } : {}),
+		...(site ? { site } : {}),
 	};
+}
+
+/** Extract the presentation fields the UI consumes. Undefined when none are set. */
+function siteConfig(config: WeftConfig): SiteConfig | undefined {
+	const site: SiteConfig = {};
+	if (config.defaultTheme) site.defaultTheme = config.defaultTheme;
+	if (config.layout) site.layout = config.layout;
+	if (config.siteTitle) site.siteTitle = config.siteTitle;
+	if (config.siteUrl) site.siteUrl = config.siteUrl;
+	if (config.ogImage) site.ogImage = config.ogImage;
+	return Object.keys(site).length ? site : undefined;
 }
 
 /**

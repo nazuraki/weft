@@ -14,5 +14,6 @@ export type {
 	WeftProjectRef,
 	LinkRef,
 	SearchResult,
+	SiteConfig,
 	WeftConfig,
 } from "./types.js";

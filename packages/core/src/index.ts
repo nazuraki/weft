@@ -32,4 +32,5 @@ export type {
 	ProjectManifest,
 	ProjectsIndex,
 	SearchResult,
+	SiteConfig,
 } from "./types.js";

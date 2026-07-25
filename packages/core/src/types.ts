@@ -65,12 +65,23 @@ export interface WeftEdge {
 	label?: string;
 }
 
+/** Presentation config carried in the manifest so the UI needs no config access. */
+export interface SiteConfig {
+	defaultTheme?: "light" | "dark";
+	layout?: "reader" | "default";
+	siteTitle?: string;
+	siteUrl?: string;
+	ogImage?: string;
+}
+
 export interface Manifest {
 	version: number;
 	nodes: WeftNode[];
 	edges: WeftEdge[];
 	/** Configured projects. Present only in multi-project mode. */
 	projects?: WeftProjectRef[];
+	/** Presentation config for the UI. Absent when nothing is configured. */
+	site?: SiteConfig;
 }
 
 /** A manifest scoped to one project, written to `<project docsDir>/.weft/manifest.json`. */

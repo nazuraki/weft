@@ -82,6 +82,31 @@ describe("buildManifest", () => {
 		expect(manifest.version).toBe(1);
 	});
 
+	it("carries presentation config in the site block", async () => {
+		const manifest = await buildManifest(
+			fixtureConfig({
+				defaultTheme: "dark",
+				layout: "reader",
+				siteTitle: "Weft Docs",
+				siteUrl: "https://docs.example.com",
+				ogImage: "og.png",
+			})
+		);
+
+		expect(manifest.site).toEqual({
+			defaultTheme: "dark",
+			layout: "reader",
+			siteTitle: "Weft Docs",
+			siteUrl: "https://docs.example.com",
+			ogImage: "og.png",
+		});
+	});
+
+	it("omits the site block when nothing is configured", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		expect(manifest.site).toBeUndefined();
+	});
+
 	it("omits projects in single-project mode", async () => {
 		const manifest = await buildManifest(fixtureConfig());
 
