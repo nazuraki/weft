@@ -5,16 +5,14 @@
 Weft ships with `light` and `dark` themes. Theme resolution order:
 
 1. User's saved preference (persisted in `localStorage`)
-2. `defaultTheme` from `weft.config.ts`
+2. `defaultTheme` from `weft.config.yaml`
 3. OS/browser system preference
 
 To set the default theme site-wide:
 
-```ts
-// weft.config.ts
-export default defineConfig({
-  defaultTheme: "dark",
-});
+```yaml
+# weft.config.yaml
+defaultTheme: dark
 ```
 
 To force a theme on a specific document regardless of user preference, use frontmatter:

@@ -56,7 +56,7 @@ Full capability inventory mapped to use cases.
 
 - Scaffolding for common document types: ADR, design doc, API changelog, decision log entry
 - CLI: `weft new <template>` creates a new doc from template, pre-linked to relevant graph nodes
-- Templates are customizable per project via `weft.config.ts`
+- Templates are customizable per project via `weft.config.yaml`
 
 ## Staleness Detection
 *Supports: UC-9, UC-11*
@@ -114,7 +114,7 @@ Full capability inventory mapped to use cases.
 ## Configuration
 *Supports: all use cases*
 
-- `weft.config.ts` at repo root
+- `weft.config.yaml` at repo root
 - Configurable docs directory (default: `docs/`)
 - Configurable entry point document
 - Ignored paths

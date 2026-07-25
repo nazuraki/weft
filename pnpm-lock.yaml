@@ -14,9 +14,6 @@ importers:
       '@weft/cli':
         specifier: workspace:*
         version: link:packages/cli
-      '@weft/core':
-        specifier: workspace:*
-        version: link:packages/core
 
   packages/cli:
     dependencies:

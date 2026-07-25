@@ -71,7 +71,7 @@ weft/
 │   ├── cli/           # CLI commands (weft serve / check / analyze / build)
 │   └── vscode/        # VSCode extension (webview panel, gutter decorations)
 ├── doc/               # Weft's own documentation (eats its own dog food)
-├── weft.config.ts     # Example config
+├── weft.config.yaml   # Example config
 └── package.json
 ```
 
@@ -92,17 +92,13 @@ docs/
 
 ## Configuration
 
-`weft.config.ts` at repo root:
+`weft.config.yaml` at repo root:
 
-```typescript
-import { defineConfig } from 'weft';
-
-export default defineConfig({
-  docsDir: 'docs',           // default
-  entryPoint: 'docs/README.md',
-  ignore: ['docs/archive/**'],
-  templates: {},             // custom document templates
-});
+```yaml
+docsDir: docs                # default
+entryPoint: docs/README.md
+ignore:
+  - docs/archive/**
 ```
 
 ---

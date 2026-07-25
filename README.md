@@ -46,6 +46,6 @@ file watch.
 | [docs/features.md](docs/features.md) | Capability checklist (maps to use cases) |
 
 **Paths:** User projects index their narrative under `docs/` by default (`docsDir` in
-`weft.config.ts`). A monorepo with several products sets `projects` instead, giving each product
+`weft.config.yaml`). A monorepo with several products sets `projects` instead, giving each product
 its own docs root inside one graph — see
 [Multiple Projects](docs/configuration.md#multiple-projects).
