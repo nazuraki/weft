@@ -25,13 +25,26 @@ export const serveCommand = command(
 		const port = argv.flags.port;
 
 		const { createServer } = await import("vite");
-		const { resolve } = await import("node:path");
-		const uiRoot = resolve(new URL(import.meta.url).pathname, "../../../ui");
+		const { createRequire } = await import("node:module");
+		const { dirname, resolve } = await import("node:path");
+
+		// Resolve @weft/ui through node resolution rather than a path relative to
+		// this file: the relative depth differs between src/ and dist/, and
+		// `new URL(import.meta.url).pathname` keeps a leading slash before the
+		// drive letter on Windows (`/C:/...`), which resolve() then mangles.
+		const require = createRequire(import.meta.url);
+		const uiRoot = dirname(require.resolve("@weft/ui/package.json"));
 
 		// Set WEFT_ROOT_DIR before creating the Vite server so the weft-config-loader
 		// plugin (in vite.config.ts) can find the user's config and set WEFT_CONFIG.
+		// Resolve it before the chdir below, since it can default to the cwd.
 		const rootDir = resolve(argv._.rootDir ?? process.cwd());
 		process.env.WEFT_ROOT_DIR = rootDir;
+
+		// SvelteKit's Vite plugin overrides Vite's `root` option with process.cwd()
+		// and looks up svelte.config.js and src/app.html there, so passing `root`
+		// alone is not enough — the process has to run from the UI package.
+		process.chdir(uiRoot);
 
 		// Start the SvelteKit dev server — the weft-config-loader plugin runs in
 		// configureServer and populates WEFT_CONFIG from the user's weft.config.ts.
