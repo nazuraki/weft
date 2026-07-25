@@ -1,4 +1,4 @@
-import { dirname, relative, resolve } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import type { Link } from "mdast";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
@@ -8,6 +8,15 @@ import type { LinkRef, WeftEdge } from "../types.js";
 interface MdLink {
 	label: string;
 	url: string;
+}
+
+/**
+ * Node ids are always POSIX-separated. `relative()` returns native separators,
+ * so on Windows a nested path would otherwise become `schemas\user.md` and stop
+ * matching the id the manifest records for that document.
+ */
+function toPosix(path: string): string {
+	return path.split(sep).join("/");
 }
 
 /**
@@ -51,10 +60,10 @@ export function extractMarkdownLinks(
 		// Only treat as graph edge if target is inside docsDir
 		if (relTarget.startsWith("..")) continue;
 
-		const fromNode = relative(docsDir, filePath);
+		const fromNode = toPosix(relative(docsDir, filePath));
 
 		const from: LinkRef = { node: fromNode };
-		const to: LinkRef = { node: relTarget };
+		const to: LinkRef = { node: toPosix(relTarget) };
 		if (anchor) to.anchor = `#${anchor}`;
 
 		edges.push({
