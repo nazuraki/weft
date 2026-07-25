@@ -5,7 +5,12 @@ import { extractSidecarLinks } from "../sidecar.js";
 const SINGLE: DocsRoot[] = [{ slug: "", dir: "docs", absDir: "/project/docs" }];
 
 const MULTI: DocsRoot[] = [
-	{ name: "Alpha", slug: "alpha", dir: "products/alpha/docs", absDir: "/project/products/alpha/docs" },
+	{
+		name: "Alpha",
+		slug: "alpha",
+		dir: "products/alpha/docs",
+		absDir: "/project/products/alpha/docs",
+	},
 	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs" },
 ];
 

@@ -84,9 +84,9 @@ describe("resolveDocsRoots", () => {
 	});
 
 	it("throws on a project missing name", () => {
-		expect(() =>
-			resolveDocsRoots(config({ projects: [{ docsDir: "a/docs" } as never] }))
-		).toThrow(/missing "name"/);
+		expect(() => resolveDocsRoots(config({ projects: [{ docsDir: "a/docs" } as never] }))).toThrow(
+			/missing "name"/
+		);
 	});
 
 	it("throws on a project missing docsDir", () => {
@@ -109,9 +109,9 @@ describe("resolveDocsRoots", () => {
 	});
 
 	it("throws when a name yields an empty slug", () => {
-		expect(() => resolveDocsRoots(config({ projects: [{ name: "!!!", docsDir: "a/docs" }] }))).toThrow(
-			/empty slug/
-		);
+		expect(() =>
+			resolveDocsRoots(config({ projects: [{ name: "!!!", docsDir: "a/docs" }] }))
+		).toThrow(/empty slug/);
 	});
 });
 

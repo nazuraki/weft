@@ -3,23 +3,11 @@ import { relative, resolve } from "node:path";
 import { glob } from "glob";
 import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
-import {
-	type DocsRoot,
-	isNamespaced,
-	nodeIdFor,
-	projectRefs,
-	resolveDocsRoots,
-} from "./config.js";
+import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
-import type {
-	Manifest,
-	ProjectManifest,
-	WeftConfig,
-	WeftEdge,
-	WeftNode,
-} from "./types.js";
+import type { Manifest, ProjectManifest, WeftConfig, WeftEdge, WeftNode } from "./types.js";
 
 /** The nodes and edges discovered in a single docs root. */
 export interface RootGraph {

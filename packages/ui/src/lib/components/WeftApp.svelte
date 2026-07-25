@@ -84,6 +84,7 @@ function handleKeydown(e: KeyboardEvent) {
 	<aside class="lhn">
 		<DocTree
 			nodes={manifest.nodes}
+			projects={manifest.projects}
 			onnavigate={handleNavigate}
 			{currentNodeId}
 		/>

@@ -1,12 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import chokidar from "chokidar";
-import {
-	type DocsRoot,
-	isNamespaced,
-	resolveDocsRoots,
-	rootForNodeId,
-} from "./config.js";
+import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
 import type { Manifest, ProjectsIndex, SearchResult, WeftConfig, WeftEdge } from "./types.js";

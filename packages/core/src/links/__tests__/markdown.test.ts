@@ -5,7 +5,12 @@ import { extractMarkdownLinks } from "../markdown.js";
 const SINGLE: DocsRoot[] = [{ slug: "", dir: "docs", absDir: "/project/docs" }];
 
 const MULTI: DocsRoot[] = [
-	{ name: "Alpha", slug: "alpha", dir: "products/alpha/docs", absDir: "/project/products/alpha/docs" },
+	{
+		name: "Alpha",
+		slug: "alpha",
+		dir: "products/alpha/docs",
+		absDir: "/project/products/alpha/docs",
+	},
 	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs" },
 ];
 
@@ -59,11 +64,7 @@ describe("extractMarkdownLinks", () => {
 
 	it("namespaces ids by project slug", () => {
 		const content = "[Features](features.md)\n";
-		const edges = extractMarkdownLinks(
-			content,
-			"/project/products/alpha/docs/README.md",
-			MULTI
-		);
+		const edges = extractMarkdownLinks(content, "/project/products/alpha/docs/README.md", MULTI);
 
 		expect(edges).toHaveLength(1);
 		expect(edges[0].from.node).toBe("alpha/README.md");
@@ -72,11 +73,7 @@ describe("extractMarkdownLinks", () => {
 
 	it("resolves a link that crosses into another project", () => {
 		const content = "[Beta API](../../beta/docs/api.yaml#listUsers)\n";
-		const edges = extractMarkdownLinks(
-			content,
-			"/project/products/alpha/docs/features.md",
-			MULTI
-		);
+		const edges = extractMarkdownLinks(content, "/project/products/alpha/docs/features.md", MULTI);
 
 		expect(edges).toHaveLength(1);
 		expect(edges[0]).toEqual({
@@ -89,11 +86,7 @@ describe("extractMarkdownLinks", () => {
 
 	it("ignores links that land outside every project", () => {
 		const content = "[Src](../../../src/main.ts)\n";
-		const edges = extractMarkdownLinks(
-			content,
-			"/project/products/alpha/docs/README.md",
-			MULTI
-		);
+		const edges = extractMarkdownLinks(content, "/project/products/alpha/docs/README.md", MULTI);
 		expect(edges).toHaveLength(0);
 	});
 

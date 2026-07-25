@@ -1,6 +1,7 @@
 <script lang="ts">
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import WeftApp from "$lib/components/WeftApp.svelte";
+import { pathToNode } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core/browser";
 import { setContext } from "svelte";
 import { GitHubClient } from "./github.js";
@@ -33,7 +34,14 @@ async function load() {
 		const data: Manifest = await res.json();
 		client.buildIndex(data);
 		manifest = data;
-		currentNodeId = data.nodes.find((n) => n.id === "README.md")?.id ?? data.nodes[0]?.id ?? "";
+		const firstProject = data.projects?.[0]?.slug;
+		currentNodeId =
+			data.nodes.find((n) => n.id === "README.md")?.id ??
+			(firstProject
+				? data.nodes.find((n) => n.id === `${firstProject}/README.md`)?.id
+				: undefined) ??
+			data.nodes[0]?.id ??
+			"";
 	} catch (e) {
 		loadError = e instanceof Error ? e.message : "Failed to load manifest";
 	}
@@ -46,11 +54,7 @@ load();
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
 	<WeftApp {manifest} {currentNodeId} navigate={(path) => {
-		const nodeId = manifest!.nodes.find(n => {
-			const withoutExt = n.id.replace(/\.(md|markdown|yaml|yml|json)$/, "");
-			const normalized = path.replace(/^\//, "") || "README";
-			return withoutExt === normalized;
-		})?.id;
+		const nodeId = pathToNode(path.split("#")[0], manifest!.nodes)?.id;
 		if (nodeId) currentNodeId = nodeId;
 	}} />
 {:else}

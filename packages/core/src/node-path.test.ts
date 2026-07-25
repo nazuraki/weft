@@ -21,9 +21,7 @@ describe("nodeIdToDocPath", () => {
 	});
 
 	it("resolves a namespaced id through its project docsDir", () => {
-		expect(nodeIdToDocPath(MULTI, "alpha/features.md")).toBe(
-			"products/alpha/docs/features.md"
-		);
+		expect(nodeIdToDocPath(MULTI, "alpha/features.md")).toBe("products/alpha/docs/features.md");
 		expect(nodeIdToDocPath(MULTI, "beta/api.yaml")).toBe("products/beta/docs/api.yaml");
 	});
 

@@ -94,10 +94,7 @@ describe("buildManifest", () => {
 			fixtureConfig({ docOrder: ["docs/architecture.md", "README.md"] })
 		);
 
-		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual([
-			"architecture.md",
-			"README.md",
-		]);
+		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual(["architecture.md", "README.md"]);
 	});
 });
 

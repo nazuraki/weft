@@ -1,4 +1,5 @@
 import type { WeftClient } from "$lib/client.js";
+import { nodeIdToDocPath } from "@weft/core/browser";
 import type { Manifest, SearchResult } from "@weft/core/browser";
 import MiniSearch from "minisearch";
 import type { EmbedConfig } from "./index.js";
@@ -12,6 +13,7 @@ interface SearchDoc {
 export class GitHubClient implements WeftClient {
 	private config: EmbedConfig;
 	private index: MiniSearch<SearchDoc>;
+	private manifest: Manifest | null = null;
 
 	constructor(config: EmbedConfig) {
 		this.config = config;
@@ -27,6 +29,7 @@ export class GitHubClient implements WeftClient {
 	}
 
 	buildIndex(manifest: Manifest): void {
+		this.manifest = manifest;
 		const docs = manifest.nodes.map((node) => ({
 			id: node.id,
 			title: node.title,
@@ -52,7 +55,10 @@ export class GitHubClient implements WeftClient {
 	}
 
 	async fetchDoc(id: string): Promise<string> {
-		const res = await fetch(this.rawUrl(id), { headers: this.fetchHeaders() });
+		// Node ids are namespaced by project slug in multi-project mode, which is
+		// not where the file lives — resolve back through the project's docsDir.
+		const path = this.manifest ? nodeIdToDocPath(this.manifest, id) : id;
+		const res = await fetch(this.rawUrl(path), { headers: this.fetchHeaders() });
 		if (!res.ok) throw new Error(`Failed to load (${res.status}): ${id}`);
 		return res.text();
 	}
