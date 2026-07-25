@@ -1,0 +1,33 @@
+# Normalize line endings on commit, and check every text file out as LF on all
+# platforms. Biome formats to LF, so a CRLF working tree makes `just lint` fail
+# on every file for Windows contributors.
+* text=auto eol=lf
+
+# Scripts that genuinely require CRLF to run on Windows.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Generated — keep it out of diffs and out of language stats.
+pnpm-lock.yaml linguist-generated=true
+
+# Binary assets: never normalize, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.zip binary
+*.gz binary
+*.mp4 binary
+*.webm binary
+
+# SVG is text (it diffs usefully), but is often authored by a tool.
+*.svg text eol=lf

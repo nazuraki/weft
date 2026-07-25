@@ -1,4 +1,4 @@
-import { relative } from "node:path";
+import { relative, sep } from "node:path";
 import { parse } from "yaml";
 import type { LinkRef, WeftEdge } from "../types.js";
 
@@ -27,7 +27,8 @@ export function extractSidecarLinks(
 
 	// Sidecar file name: strip .weft to get the source file
 	const sourceFile = sidecarPath.replace(/\.weft$/, "");
-	const fromNode = relative(docsDir, sourceFile);
+	// Node ids are always POSIX-separated; relative() returns native separators.
+	const fromNode = relative(docsDir, sourceFile).split(sep).join("/");
 
 	return data.links.map((link) => {
 		const [targetPath, targetAnchor] = link.target.split("#");
