@@ -81,8 +81,6 @@ describe("extractMarkdownDescription", () => {
 
 	it("extracts the same paragraph from CRLF content", () => {
 		const content = "# Title\n\nThis is the opening paragraph of the document.\n";
-		expect(extractMarkdownDescription(crlf(content))).toBe(
-			extractMarkdownDescription(content)
-		);
+		expect(extractMarkdownDescription(crlf(content))).toBe(extractMarkdownDescription(content));
 	});
 });
