@@ -6,7 +6,7 @@
 # Install globally
 npm install -g @weft/cli
 
-# From your project root (where weft.config.ts lives)
+# From your project root (where weft.config.yaml lives)
 weft serve
 ```
 

@@ -5,7 +5,7 @@
 Phase 1 implementation is complete. The monorepo has three packages:
 
 ### `@weft/core` (packages/core)
-- **Config loader** (`src/config.ts`) — loads `weft.config.ts`, provides `defineConfig` helper, and resolves the configured docs roots (`resolveDocsRoots`) — one per `projects` entry, or a single implicit root over `docsDir`
+- **Config loader** (`src/config.ts`) — loads static `weft.config.yaml`/`.yml`/`.json` (plain data, validated at load time; legacy `weft.config.ts`/`.js` fails with a migration error), and resolves the configured docs roots (`resolveDocsRoots`) — one per `projects` entry, or a single implicit root over `docsDir`
 - **Anchor extractors** (`src/anchors/`) — Markdown heading slugs (GitHub algorithm), OpenAPI operation IDs + schema names
 - **Link parsers** (`src/links/`) — Markdown relative link extraction, sidecar `.weft` YAML parsing
 - **Manifest builder** (`src/manifest.ts`) — scans each docs root (`buildRootGraph`), combines them (`mergeGraphs`), and partitions the result back per project (`splitManifest`)
@@ -31,6 +31,7 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core/browser`; the client fetches raw spec content via `/api/doc/*` and parses it browser-side; `$ref` dereferencing deferred
 - **Service ownership**: exactly one `WeftService` per `weft serve`, constructed and owned by the CLI. The UI never constructs one — it consumes manifest + API JSON. Presentation config (`defaultTheme`, `layout`, `siteTitle`, `siteUrl`, `ogImage`) travels in the manifest's `site` block, so the UI needs no config access. The only CLI→UI handoff is the `WEFT_MANIFEST_PATH` env var (SvelteKit SSR fetch cannot reach Vite middleware, so server loads read the file)
 - Multi-project (`projects` config) namespaces node ids by slug (`alpha/api.md`) and writes a manifest per project plus a merged one; single-`docsDir` configs keep bare ids and a single manifest, so the change is opt-in. `WeftService` merges the per-project graphs in memory, so every consumer still sees one `Manifest`
+- **Static config**: `weft.config.yaml` is plain data — no runtime import of `@weft/core`, so user projects need no dependency on it and config loading works identically under plain Node and Vite (no type-stripping / dual-loading concerns). `defineConfig` is gone; typing comes from validation at load time. This also removed the root `@weft/core` devDependency workaround and gen-manifest's hardcoded `WEFT_CONFIG` bypass
 
 ## What's Not Built Yet
 - Link authoring UI (Phase 2)

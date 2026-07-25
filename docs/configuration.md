@@ -1,24 +1,29 @@
 # Configuration
 
-## weft.config.ts
+## weft.config.yaml
 
-Place a `weft.config.ts` (or `.js` / `.mjs`) in your project root. Use `defineConfig` for TypeScript inference:
+Place a `weft.config.yaml` (or `.yml` / `.json`) in your project root. The config is plain data — no imports, no code, no dependency on `@weft/core`:
 
-```ts
-import { defineConfig } from "@weft/core";
-
-export default defineConfig({
-  docsDir: "docs",
-  entryPoint: "docs/README.md",
-  siteTitle: "My Project",
-  siteUrl: "https://docs.example.com",
-  defaultTheme: "dark",
-  layout: "default",
-  docOrder: ["README.md", "architecture.md", "api.yaml"],
-  docOrderStrict: false,
-  ignore: ["**/node_modules/**", "**/dist/**"],
-});
+```yaml
+docsDir: docs
+entryPoint: docs/README.md
+siteTitle: My Project
+siteUrl: https://docs.example.com
+defaultTheme: dark
+layout: default
+docOrder:
+  - README.md
+  - architecture.md
+  - api.yaml
+docOrderStrict: false
+ignore:
+  - "**/node_modules/**"
+  - "**/dist/**"
 ```
+
+The file is validated at load time: wrong types and bad enum values fail with the offending field named, and unknown keys warn.
+
+> **Migrating from `weft.config.ts`?** JS/TS config files are no longer supported — they required a runtime dependency on `@weft/core` just to be loadable. The option names are identical; rewrite the exported object as YAML and delete the old file.
 
 ### All Options
 
@@ -42,15 +47,13 @@ export default defineConfig({
 
 A monorepo holding several products usually gives each product its own `docs/` tree. Set `projects` instead of `docsDir` to index them all into one graph:
 
-```ts
-import { defineConfig } from "@weft/core";
-
-export default defineConfig({
-  projects: [
-    { name: "Alpha", docsDir: "products/alpha/docs" },
-    { name: "Beta", docsDir: "products/beta/docs", slug: "b" },
-  ],
-});
+```yaml
+projects:
+  - name: Alpha
+    docsDir: products/alpha/docs
+  - name: Beta
+    docsDir: products/beta/docs
+    slug: b
 ```
 
 | Field | Required | Description |
@@ -90,8 +93,10 @@ links:
 
 In multi-project mode, `docOrder` entries may be written either as a path relative to the project root or as a namespaced ID — both resolve to the same node:
 
-```ts
-docOrder: ["products/beta/docs/api.yaml", "alpha/features.md"]
+```yaml
+docOrder:
+  - products/beta/docs/api.yaml
+  - alpha/features.md
 ```
 
 Ordering is global, so `docOrder` can interleave documents from different products.
