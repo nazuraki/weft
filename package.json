@@ -7,7 +7,7 @@
 		"typecheck": "pnpm -r run typecheck",
 		"lint": "biome check .",
 		"fix": "biome check . --write",
-		"dev": "WEFT_ROOT_DIR=$(pwd) pnpm --filter @weft/ui dev"
+		"dev": "node scripts/dev-server.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4"
