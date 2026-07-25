@@ -2,10 +2,10 @@
 	"version": "0.0.1",
 	"configurations": [
 		{
-			"name": "weft-ui",
-			"runtimeExecutable": "node",
-			"runtimeArgs": ["scripts/dev-server.mjs"],
-			"port": 5173
+			"name": "weft",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["dev"],
+			"port": 7777
 		}
 	]
 }
