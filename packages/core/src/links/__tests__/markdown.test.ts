@@ -61,6 +61,16 @@ describe("extractMarkdownLinks", () => {
 		expect(edges).toHaveLength(1);
 		expect(edges[0].to.node).toBe("schemas/user.md");
 	});
+  
+  it("emits POSIX-separated ids for nested sources and targets", () => {
+		const content = "[Sibling](../schemas/order.md)\n";
+		const edges = extractMarkdownLinks(content, "/project/docs/guides/setup.md", SINGLE);
+
+		expect(edges[0].from.node).toBe("guides/setup.md");
+		expect(edges[0].to.node).toBe("schemas/order.md");
+		expect(edges[0].from.node).not.toMatch(/\\/);
+		expect(edges[0].to.node).not.toMatch(/\\/);
+	});
 
 	it("namespaces ids by project slug", () => {
 		const content = "[Features](features.md)\n";

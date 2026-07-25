@@ -46,6 +46,17 @@ links:
 		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
 		expect(edges[0].type).toBe("references");
 	});
+  
+  it("emits a POSIX-separated id for a nested source", () => {
+		const content = `
+links:
+  - target: other.md
+`;
+		const edges = extractSidecarLinks(content, "/project/docs/guides/setup.md.weft", SINGLE);
+
+		expect(edges[0].from.node).toBe("guides/setup.md");
+		expect(edges[0].from.node).not.toMatch(/\\/);
+	});
 
 	it("resolves a bare target within the source project", () => {
 		const content = `

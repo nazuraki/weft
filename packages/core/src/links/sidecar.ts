@@ -1,4 +1,4 @@
-import { relative } from "node:path";
+import { relative, sep } from "node:path";
 import { parse } from "yaml";
 import { type DocsRoot, nodeIdFor, rootForPath } from "../config.js";
 import type { LinkRef, WeftEdge } from "../types.js";
