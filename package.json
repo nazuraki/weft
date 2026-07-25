@@ -13,9 +13,6 @@
 		"@biomejs/biome": "^1.9.4"
 	},
 	"engines": {
-		"node": ">=20"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": ["esbuild"]
+		"node": ">=24"
 	}
 }
