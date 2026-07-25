@@ -1,7 +1,10 @@
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	isNamespaced,
+	loadConfig,
 	nodeIdFor,
 	projectRefs,
 	resolveDocsRoots,
@@ -22,6 +25,132 @@ function config(overrides: Partial<WeftConfig> = {}): WeftConfig {
 		...overrides,
 	};
 }
+
+describe("loadConfig", () => {
+	const dirs: string[] = [];
+
+	function tempRoot(files: Record<string, string> = {}): string {
+		const dir = mkdtempSync(join(tmpdir(), "weft-config-"));
+		dirs.push(dir);
+		for (const [name, content] of Object.entries(files)) {
+			writeFileSync(join(dir, name), content);
+		}
+		return dir;
+	}
+
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+		vi.restoreAllMocks();
+	});
+
+	it("returns defaults when no config file exists", async () => {
+		const root = tempRoot();
+		const config = await loadConfig(root);
+
+		expect(config).toEqual({
+			rootDir: resolve(root),
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: ["**/node_modules/**", "**/dist/**"],
+		});
+	});
+
+	it("loads weft.config.yaml and merges defaults", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": [
+				"docsDir: documentation",
+				"layout: reader",
+				"docOrder:",
+				"  - features.md",
+				"docOrderStrict: true",
+			].join("\n"),
+		});
+
+		const config = await loadConfig(root);
+		expect(config.docsDir).toBe("documentation");
+		expect(config.layout).toBe("reader");
+		expect(config.docOrder).toEqual(["features.md"]);
+		expect(config.docOrderStrict).toBe(true);
+		expect(config.entryPoint).toBe("docs/README.md");
+	});
+
+	it("loads weft.config.yml", async () => {
+		const root = tempRoot({ "weft.config.yml": "docsDir: d" });
+		expect((await loadConfig(root)).docsDir).toBe("d");
+	});
+
+	it("loads weft.config.json", async () => {
+		const root = tempRoot({ "weft.config.json": '{ "docsDir": "j" }' });
+		expect((await loadConfig(root)).docsDir).toBe("j");
+	});
+
+	it("prefers .yaml over .yml and .json", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "docsDir: a",
+			"weft.config.yml": "docsDir: b",
+			"weft.config.json": '{ "docsDir": "c" }',
+		});
+		expect((await loadConfig(root)).docsDir).toBe("a");
+	});
+
+	it("treats an empty config file as all defaults", async () => {
+		const root = tempRoot({ "weft.config.yaml": "" });
+		expect((await loadConfig(root)).docsDir).toBe("docs");
+	});
+
+	it("rejects malformed yaml, naming the file", async () => {
+		const root = tempRoot({ "weft.config.yaml": "docsDir: [unclosed" });
+		await expect(loadConfig(root)).rejects.toThrow(/failed to parse weft\.config\.yaml/);
+	});
+
+	it("rejects a non-mapping top level", async () => {
+		const root = tempRoot({ "weft.config.yaml": "- just\n- a\n- list" });
+		await expect(loadConfig(root)).rejects.toThrow(/top-level mapping/);
+	});
+
+	it("rejects wrong field types, naming the field", async () => {
+		const root = tempRoot({ "weft.config.yaml": "docsDir: [not, a, string]" });
+		await expect(loadConfig(root)).rejects.toThrow(/"docsDir" must be a string/);
+	});
+
+	it("rejects non-string entries in string arrays", async () => {
+		const root = tempRoot({ "weft.config.yaml": "docOrder:\n  - ok.md\n  - 42" });
+		await expect(loadConfig(root)).rejects.toThrow(/"docOrder" must be an array of strings/);
+	});
+
+	it("rejects bad enum values", async () => {
+		const root = tempRoot({ "weft.config.yaml": "layout: fancy" });
+		await expect(loadConfig(root)).rejects.toThrow(/"layout" must be "reader" or "default"/);
+	});
+
+	it("rejects a non-boolean docOrderStrict", async () => {
+		const root = tempRoot({ "weft.config.yaml": "docOrderStrict: yep" });
+		await expect(loadConfig(root)).rejects.toThrow(/"docOrderStrict" must be a boolean/);
+	});
+
+	it("warns on unknown keys but still loads", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const root = tempRoot({ "weft.config.yaml": "docsDir: docs\ntypo: true" });
+
+		expect((await loadConfig(root)).docsDir).toBe("docs");
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('unknown option "typo"'));
+	});
+
+	it("rejects a legacy JS/TS config with a migration message", async () => {
+		const root = tempRoot({ "weft.config.ts": "export default {};" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/found weft\.config\.ts.*no longer supported[\s\S]*weft\.config\.yaml/
+		);
+	});
+
+	it("ignores a legacy config when a static config exists", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "docsDir: d",
+			"weft.config.ts": "export default {};",
+		});
+		expect((await loadConfig(root)).docsDir).toBe("d");
+	});
+});
 
 describe("resolveDocsRoots", () => {
 	it("returns a single unnamespaced root when no projects are configured", () => {

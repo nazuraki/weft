@@ -1,5 +1,4 @@
 export {
-	defineConfig,
 	isNamespaced,
 	loadConfig,
 	nodeIdFor,

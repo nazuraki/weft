@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { pathToFileURL } from "node:url";
+import { parse } from "yaml";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
-const CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
+const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
+const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
 
 const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
 	docsDir: "docs",
@@ -11,10 +13,60 @@ const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
 	ignore: ["**/node_modules/**", "**/dist/**"],
 };
 
-export function defineConfig(
-	config: Partial<Omit<WeftConfig, "rootDir">>
-): Partial<Omit<WeftConfig, "rootDir">> {
-	return config;
+type UserConfig = Partial<Omit<WeftConfig, "rootDir">>;
+
+const STRING_KEYS = ["docsDir", "entryPoint", "siteTitle", "siteUrl", "ogImage"] as const;
+const STRING_ARRAY_KEYS = ["ignore", "docOrder"] as const;
+const ENUM_KEYS = {
+	defaultTheme: ["light", "dark"],
+	layout: ["reader", "default"],
+} as const;
+const KNOWN_KEYS = new Set<string>([
+	...STRING_KEYS,
+	...STRING_ARRAY_KEYS,
+	...Object.keys(ENUM_KEYS),
+	"docOrderStrict",
+	"projects",
+]);
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+/** Validate the parsed config's top-level shape. `projects` entries are validated in resolveDocsRoots. */
+function validateUserConfig(raw: unknown, file: string): UserConfig {
+	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+		throw new Error(`weft config: ${file} must contain a top-level mapping of options`);
+	}
+	const config = raw as Record<string, unknown>;
+	const fail = (key: string, expected: string) =>
+		new Error(`weft config: "${key}" must be ${expected} (in ${file})`);
+
+	for (const key of STRING_KEYS) {
+		if (key in config && typeof config[key] !== "string") throw fail(key, "a string");
+	}
+	for (const key of STRING_ARRAY_KEYS) {
+		if (key in config && !isStringArray(config[key])) throw fail(key, "an array of strings");
+	}
+	for (const [key, values] of Object.entries(ENUM_KEYS)) {
+		if (key in config && !(values as readonly string[]).includes(config[key] as string)) {
+			throw fail(key, values.map((v) => `"${v}"`).join(" or "));
+		}
+	}
+	if ("docOrderStrict" in config && typeof config.docOrderStrict !== "boolean") {
+		throw fail("docOrderStrict", "a boolean");
+	}
+	if ("projects" in config && !Array.isArray(config.projects)) {
+		throw fail("projects", "an array");
+	}
+
+	for (const key of Object.keys(config)) {
+		if (!KNOWN_KEYS.has(key)) {
+			console.warn(`weft config: ignoring unknown option "${key}" (in ${file})`);
+		}
+	}
+
+	return config as UserConfig;
 }
 
 export async function loadConfig(rootDir: string): Promise<WeftConfig> {
@@ -22,16 +74,33 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 
 	for (const file of CONFIG_FILES) {
 		const configPath = resolve(absRoot, file);
-		if (existsSync(configPath)) {
-			const url = pathToFileURL(configPath).href;
-			const mod = await import(url);
-			const userConfig = mod.default ?? mod;
-			return {
-				...DEFAULTS,
-				...userConfig,
-				rootDir: absRoot,
-			};
+		if (!existsSync(configPath)) continue;
+
+		const source = await readFile(configPath, "utf8");
+		let raw: unknown;
+		try {
+			raw = parse(source);
+		} catch (err) {
+			throw new Error(`weft config: failed to parse ${file}: ${(err as Error).message}`);
 		}
+
+		return { ...DEFAULTS, ...validateUserConfig(raw ?? {}, file), rootDir: absRoot };
+	}
+
+	const legacy = LEGACY_CONFIG_FILES.find((file) => existsSync(resolve(absRoot, file)));
+	if (legacy) {
+		throw new Error(
+			[
+				`weft config: found ${legacy}, but JS/TS config files are no longer supported.`,
+				"Move your options to weft.config.yaml — same keys, written as YAML:",
+				"",
+				"  docsDir: docs",
+				"  docOrder:",
+				"    - features.md",
+				"",
+				`Then delete ${legacy}. See the configuration docs for the full option list.`,
+			].join("\n")
+		);
 	}
 
 	return { ...DEFAULTS, rootDir: absRoot };
