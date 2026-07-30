@@ -10,10 +10,13 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - **Link parsers** (`src/links/`) — Markdown relative link extraction, sidecar `.weft` YAML parsing
 - **Manifest builder** (`src/manifest.ts`) — scans each docs root (`buildRootGraph`), combines them (`mergeGraphs`), and partitions the result back per project (`splitManifest`)
 - **Search index** (`src/search.ts`) — MiniSearch wrapper with full-text search over doc content and anchors
-- **WeftService** (`src/service.ts`) — facade: `getManifest()`, `read()`, `search()`, `traverse()`, `watch()`, `rebuild(slug?)`, `writeManifest()`
+- **Validation stage** (`src/validate/`) — `ValidatorRegistry` holds registered checks; `validateManifest` runs them over a built manifest and returns `Diagnostic`s. No checks are registered yet — the stage exists so each one is built against one interface
+- **WeftService** (`src/service.ts`) — facade: `getManifest()`, `read()`, `search()`, `traverse()`, `validate()`, `watch()`, `rebuild(slug?)`, `writeManifest()`
 
 ### `@weft/cli` (packages/cli)
 - `weft index` — rebuilds manifest, writes to `docs/.weft/manifest.json`
+- `weft analyze` — runs the validation stage and reports; `--json`, `--list-rules`. Always exits 0
+- `weft check` — same validation, exits 1 on any error-severity diagnostic, for CI
 - `weft serve` — owns the single `WeftService`: builds it, starts the Vite dev server from `@weft/ui` with an inline plugin (`src/api-middleware.ts`) serving `/api/manifest`, `/api/doc/*`, `/api/search?q=`, `/api/traverse?node=&direction=`, and watches for doc changes
 - `pnpm dev` at the repo root is just `weft serve .` — one launch path
 
@@ -31,10 +34,12 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - OpenAPI renderer: custom Svelte components, no third-party portal renderer (DD-12). `parseOpenApiSpec` exported from `@weft/core/browser`; the client fetches raw spec content via `/api/doc/*` and parses it browser-side; `$ref` dereferencing deferred
 - **Service ownership**: exactly one `WeftService` per `weft serve`, constructed and owned by the CLI. The UI never constructs one — it consumes manifest + API JSON. Presentation config (`defaultTheme`, `layout`, `siteTitle`, `siteUrl`, `ogImage`) travels in the manifest's `site` block, so the UI needs no config access. The only CLI→UI handoff is the `WEFT_MANIFEST_PATH` env var (SvelteKit SSR fetch cannot reach Vite middleware, so server loads read the file)
 - Multi-project (`projects` config) namespaces node ids by slug (`alpha/api.md`) and writes a manifest per project plus a merged one; single-`docsDir` configs keep bare ids and a single manifest, so the change is opt-in. `WeftService` merges the per-project graphs in memory, so every consumer still sees one `Manifest`
+- **Severity is config's, not the validator's**: a check emits `Finding`s carrying no severity, and the runner stamps each one from `rules` config over the rule's declared default. A check needing two severities (a hard failure and a softer "known pending" variant) declares two rule ids, so each stays independently configurable. Validation reads the finished manifest and never mutates it, so a check can be added without touching the indexer; a validator that throws becomes one `validator-error` diagnostic rather than taking down the run
 - **Static config**: `weft.config.yaml` is plain data — no runtime import of `@weft/core`, so user projects need no dependency on it and config loading works identically under plain Node and Vite (no type-stripping / dual-loading concerns). `defineConfig` is gone; typing comes from validation at load time. This also removed the root `@weft/core` devDependency workaround and gen-manifest's hardcoded `WEFT_CONFIG` bypass
 
 ## What's Not Built Yet
 - Link authoring UI (Phase 2)
 - VSCode extension (Phase 3)
 - Annotation system / decision log (Phase 4)
-- `weft check`, `weft analyze`, `weft build` commands (Phase 5+)
+- Validation rules themselves — the stage and its two commands exist, but no check is registered yet
+- `weft build` command (Phase 5+)
