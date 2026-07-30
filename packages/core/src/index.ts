@@ -9,6 +9,7 @@ export {
 	slugify,
 } from "./config.js";
 export type { DocsRoot } from "./config.js";
+export { countLines, hashContent, normalizeContent } from "./content.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { WeftService } from "./service.js";

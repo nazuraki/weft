@@ -83,6 +83,19 @@ export interface WeftNode {
 	 * node: reachable by link, search and traversal, and a valid edge endpoint.
 	 */
 	hiddenFromNav?: boolean;
+	/**
+	 * Hash of the document's content, for telling two copies apart and for
+	 * noticing that a generated output no longer reflects its source.
+	 *
+	 * Optional because not every node is indexed from a file — a node declared
+	 * by an external tool may arrive without one.
+	 */
+	contentHash?: string;
+	/**
+	 * Lines of text in the document, so a claim made about its length can be
+	 * checked. Absent for nodes that have no lines, such as a binary artifact.
+	 */
+	lineCount?: number;
 }
 
 export interface LinkRef {

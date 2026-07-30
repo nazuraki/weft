@@ -4,6 +4,7 @@ import { glob } from "glob";
 import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
+import { countLines, hashContent } from "./content.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
@@ -94,6 +95,10 @@ export async function buildRootGraph(
 			type: docType,
 			title,
 			anchors,
+			// Computed here because the file is already in hand — no consumer of
+			// these has to re-read the docs tree to get them.
+			contentHash: hashContent(raw),
+			lineCount: countLines(raw),
 			...(root.slug ? { project: root.slug } : {}),
 			...(frontmatter.theme ? { theme: frontmatter.theme } : {}),
 			...(description ? { description } : {}),
