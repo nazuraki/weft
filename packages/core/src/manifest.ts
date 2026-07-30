@@ -5,6 +5,7 @@ import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
 import { countLines, hashContent } from "./content.js";
+import { type LoadedContribution, applyContributions, loadContributions } from "./contributions.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
@@ -138,17 +139,24 @@ function normalizeDocOrderEntry(entry: string, roots: DocsRoot[]): string {
 export function mergeGraphs(
 	config: WeftConfig,
 	roots: DocsRoot[],
-	graphs: Map<string, RootGraph>
+	graphs: Map<string, RootGraph>,
+	contributions: LoadedContribution[] = []
 ): Manifest {
-	let nodes: WeftNode[] = [];
-	const edges: WeftEdge[] = [];
+	const scanned: WeftNode[] = [];
+	const scannedEdges: WeftEdge[] = [];
 
 	for (const root of roots) {
 		const graph = graphs.get(root.slug);
 		if (!graph) continue;
-		nodes.push(...graph.nodes);
-		edges.push(...graph.edges);
+		scanned.push(...graph.nodes);
+		scannedEdges.push(...graph.edges);
 	}
+
+	// Contributions merge before ordering, so a contributed node sorts and
+	// honours docOrder exactly like an indexed one.
+	const merged = applyContributions({ nodes: scanned, edges: scannedEdges }, contributions);
+	let nodes: WeftNode[] = merged.nodes;
+	const edges: WeftEdge[] = merged.edges;
 
 	nodes.sort((a, b) => a.id.localeCompare(b.id));
 
@@ -228,5 +236,5 @@ export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 		graphs.set(root.slug, await buildRootGraph(config, root, roots));
 	}
 
-	return mergeGraphs(config, roots, graphs);
+	return mergeGraphs(config, roots, graphs, await loadContributions(config));
 }

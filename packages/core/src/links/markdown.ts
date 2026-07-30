@@ -12,6 +12,12 @@ interface MdLink {
 }
 
 /**
+ * Template placeholders left in a link path by a renderer's source form:
+ * Handlebars/Jinja/Liquid/Quarto `{{ }}` and `{% %}`, JS `${ }`, ERB/EJS `<% %>`.
+ */
+const TEMPLATE_SYNTAX = /\{\{|\{%|\$\{|<%/;
+
+/**
  * Node ids are always POSIX-separated. `relative()` returns native separators,
  * so on Windows a nested path would otherwise become `schemas\user.md` and stop
  * matching the id the manifest records for that document.
@@ -60,6 +66,12 @@ export function extractMarkdownLinks(
 	for (const link of links) {
 		const [pathPart, anchor] = link.url.split("#");
 		if (!pathPart) continue;
+
+		// A path still holding template syntax has not been resolved yet — the
+		// renderer decides what it points at. Recording an edge to the literal
+		// text would invent a node that never exists and report correct source
+		// as broken.
+		if (TEMPLATE_SYNTAX.test(pathPart)) continue;
 
 		const absTarget = resolve(fileDir, pathPart);
 		const targetRoot = rootForPath(roots, absTarget);

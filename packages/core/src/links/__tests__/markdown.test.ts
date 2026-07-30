@@ -14,6 +14,37 @@ const MULTI: DocsRoot[] = [
 	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs" },
 ];
 
+// A renderer's source form leaves placeholders in link paths. Recording an edge
+// to the literal text would invent a node that never exists, and the
+// edge-resolution check would then report correct source as broken.
+describe("extractMarkdownLinks (unresolved template syntax)", () => {
+	const cases: [string, string][] = [
+		["Handlebars/Liquid", "{{version}}/api.md"],
+		["Liquid tag", "{% raw %}/api.md"],
+		["JS template", "${version}/api.md"],
+		["ERB/EJS", "<%= version %>/api.md"],
+		["placeholder in the filename", "api-{{lang}}.md"],
+	];
+
+	for (const [name, url] of cases) {
+		it(`emits no edge for a ${name} path`, () => {
+			const edges = extractMarkdownLinks(`[Link](${url})`, "/project/docs/a.md", SINGLE);
+			expect(edges).toEqual([]);
+		});
+	}
+
+	it("still links a path with no template syntax", () => {
+		const edges = extractMarkdownLinks("[Link](api.md)", "/project/docs/a.md", SINGLE);
+		expect(edges).toHaveLength(1);
+	});
+
+	it("ignores template syntax in the anchor, which does not affect the target", () => {
+		const edges = extractMarkdownLinks("[Link](api.md#{{section}})", "/project/docs/a.md", SINGLE);
+		expect(edges).toHaveLength(1);
+		expect(edges[0].to.node).toBe("api.md");
+	});
+});
+
 describe("extractMarkdownLinks", () => {
 	it("extracts relative links within docs", () => {
 		const content = "See [Architecture](architecture.md#data-flow) for details.\n";

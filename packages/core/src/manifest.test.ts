@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
 import { countLines, hashContent } from "./content.js";
 import { MANIFEST_VERSION, buildManifest, splitManifest } from "./manifest.js";
@@ -169,6 +170,95 @@ describe("buildManifest", () => {
 		);
 
 		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual(["architecture.md", "README.md"]);
+	});
+});
+
+describe("buildManifest (contributions)", () => {
+	const dirs: string[] = [];
+
+	/** A copy of the docs fixture plus a contribution file, somewhere writable. */
+	function projectWith(contribution: object): string {
+		const dir = mkdtempSync(resolve(tmpdir(), "weft-contrib-build-"));
+		dirs.push(dir);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(dir, "docs"), { recursive: true });
+		writeFileSync(resolve(dir, "build.json"), JSON.stringify({ version: 1, ...contribution }));
+		return dir;
+	}
+
+	function contributedConfig(dir: string, overrides: Partial<WeftConfig> = {}): WeftConfig {
+		return {
+			rootDir: dir,
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: [],
+			contributions: ["build.json"],
+			...overrides,
+		};
+	}
+
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("merges a contributed node into the indexed graph", async () => {
+		const dir = projectWith({ nodes: [{ id: "generated.md", type: "markdown", title: "Gen" }] });
+		const manifest = await buildManifest(contributedConfig(dir));
+
+		expect(manifest.nodes.map((n) => n.id)).toContain("generated.md");
+		expect(manifest.nodes.map((n) => n.id)).toContain("architecture.md");
+	});
+
+	it("sorts a contributed node with the indexed ones rather than appending it", async () => {
+		const dir = projectWith({ nodes: [{ id: "AAA.md", type: "markdown" }] });
+		const manifest = await buildManifest(contributedConfig(dir));
+
+		expect(manifest.nodes[0].id).toBe("AAA.md");
+	});
+
+	it("honours docOrder for a contributed node", async () => {
+		const dir = projectWith({ nodes: [{ id: "generated.md", type: "markdown" }] });
+		const manifest = await buildManifest(
+			contributedConfig(dir, { docOrder: ["generated.md", "README.md"] })
+		);
+
+		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual(["generated.md", "README.md"]);
+	});
+
+	it("applies a metadata patch to a document that was indexed", async () => {
+		const dir = projectWith({ metadata: { "architecture.md": { title: "Architecture v2.41" } } });
+		const manifest = await buildManifest(contributedConfig(dir));
+
+		expect(manifest.nodes.find((n) => n.id === "architecture.md")?.title).toBe(
+			"Architecture v2.41"
+		);
+	});
+
+	it("keeps the indexed hash and anchors a patch did not touch", async () => {
+		const dir = projectWith({ metadata: { "architecture.md": { title: "Renamed" } } });
+		const arch = (await buildManifest(contributedConfig(dir))).nodes.find(
+			(n) => n.id === "architecture.md"
+		);
+
+		expect(arch?.contentHash).toMatch(/^[0-9a-f]{16}$/);
+		expect(arch?.anchors.length).toBeGreaterThan(0);
+	});
+
+	it("adds contributed edges to the graph", async () => {
+		const dir = projectWith({
+			edges: [
+				{ from: { node: "README.md" }, to: { node: "architecture.md" }, type: "derives-from" },
+			],
+		});
+		const manifest = await buildManifest(contributedConfig(dir));
+
+		expect(manifest.edges.some((e) => e.type === "derives-from")).toBe(true);
+	});
+
+	it("indexes source unchanged when no contributions are configured", async () => {
+		const dir = projectWith({ nodes: [{ id: "generated.md", type: "markdown" }] });
+		const manifest = await buildManifest(contributedConfig(dir, { contributions: undefined }));
+
+		expect(manifest.nodes.map((n) => n.id)).not.toContain("generated.md");
 	});
 });
 
