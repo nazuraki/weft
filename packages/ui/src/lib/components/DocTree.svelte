@@ -67,8 +67,11 @@ function buildGroups(nodes: WeftNode[], projects: WeftProjectRef[]): ProjectGrou
 }
 
 let grouped = $derived((projects?.length ?? 0) > 1);
-let tree = $derived(buildTree(nodes));
-let groups = $derived(grouped ? buildGroups(nodes, projects ?? []) : []);
+// docOrderStrict hides docs from the nav without removing them from the graph,
+// so the tree filters here rather than the manifest omitting them.
+let visible = $derived(nodes.filter((node) => !node.hiddenFromNav));
+let tree = $derived(buildTree(visible));
+let groups = $derived(grouped ? buildGroups(visible, projects ?? []) : []);
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}

@@ -123,6 +123,53 @@ describe("buildManifest", () => {
 	});
 });
 
+describe("buildManifest (docOrderStrict)", () => {
+	const strict = () =>
+		buildManifest(fixtureConfig({ docOrder: ["architecture.md"], docOrderStrict: true }));
+
+	it("keeps every document in the graph", async () => {
+		const manifest = await strict();
+
+		expect(manifest.nodes.map((n) => n.id).sort()).toEqual([
+			"README.md",
+			"api.yaml",
+			"architecture.md",
+		]);
+	});
+
+	it("marks the unlisted documents as hidden from the nav", async () => {
+		const manifest = await strict();
+		const hidden = manifest.nodes.filter((n) => n.hiddenFromNav).map((n) => n.id);
+
+		expect(hidden.sort()).toEqual(["README.md", "api.yaml"]);
+		expect(manifest.nodes.find((n) => n.id === "architecture.md")?.hiddenFromNav).toBeUndefined();
+	});
+
+	it("still orders the listed documents first", async () => {
+		const manifest = await strict();
+		expect(manifest.nodes[0].id).toBe("architecture.md");
+	});
+
+	it("leaves no edge pointing at a document outside the graph", async () => {
+		const manifest = await strict();
+		const ids = new Set(manifest.nodes.map((n) => n.id));
+
+		// The invariant strict mode used to break: an edge whose source or target
+		// was filtered out survived in the manifest with nothing to resolve to.
+		for (const edge of manifest.edges) {
+			expect(ids.has(edge.from.node)).toBe(true);
+			expect(ids.has(edge.to.node)).toBe(true);
+		}
+		expect(manifest.edges.length).toBeGreaterThan(0);
+	});
+
+	it("marks nothing when docOrderStrict is off", async () => {
+		const manifest = await buildManifest(fixtureConfig({ docOrder: ["architecture.md"] }));
+
+		expect(manifest.nodes.every((n) => n.hiddenFromNav === undefined)).toBe(true);
+	});
+});
+
 describe("buildManifest (multi-project)", () => {
 	it("namespaces node ids by project slug", async () => {
 		const manifest = await buildManifest(monorepoConfig());
@@ -193,7 +240,10 @@ describe("buildManifest (multi-project)", () => {
 			})
 		);
 
-		expect(manifest.nodes.map((n) => n.id)).toEqual(["beta/api.yaml", "alpha/features.md"]);
+		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual([
+			"beta/api.yaml",
+			"alpha/features.md",
+		]);
 	});
 });
 
