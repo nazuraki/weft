@@ -1,0 +1,17 @@
+name: push-notify
+
+# Post one Discord notification per push to main (as Github-Repo-Updates), via the
+# shared reusable workflow in roshne/addon-ci. One embed per push, so a feature-branch
+# push and its squash-merge don't double-post the way the native GitHub webhook did.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    # Personal infra (roshne's Discord). Guarded so it's a clean no-op on a fork --
+    # a fork has no webhook secret, so it must SKIP rather than fail every push.
+    # Only runs on the canonical repo.
+    if: github.repository == 'nazuraki/weft'
+    uses: roshne/addon-ci/.github/workflows/push-notify.yml@main
+    secrets: inherit
