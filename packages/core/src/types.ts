@@ -39,7 +39,15 @@ export interface WeftConfig {
 	docOrder?: string[];
 	/** When true, only docs listed in docOrder appear in the LHN. Default false. */
 	docOrderStrict?: boolean;
+	/** Per-rule severity for the validation stage. "off" disables the rule entirely. */
+	rules?: Record<string, RuleSeverity>;
 }
+
+/** How serious a diagnostic is. Only "error" fails `weft check`. */
+export type Severity = "error" | "warn" | "info";
+
+/** A rule's configured severity. "off" means the rule does not run. */
+export type RuleSeverity = Severity | "off";
 
 export interface WeftNode {
 	id: string;

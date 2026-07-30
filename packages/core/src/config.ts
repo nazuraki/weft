@@ -27,7 +27,10 @@ const KNOWN_KEYS = new Set<string>([
 	...Object.keys(ENUM_KEYS),
 	"docOrderStrict",
 	"projects",
+	"rules",
 ]);
+
+const RULE_SEVERITIES = ["error", "warn", "info", "off"];
 
 function isStringArray(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -58,6 +61,19 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 	}
 	if ("projects" in config && !Array.isArray(config.projects)) {
 		throw fail("projects", "an array");
+	}
+	if ("rules" in config) {
+		const rules = config.rules;
+		if (typeof rules !== "object" || rules === null || Array.isArray(rules)) {
+			throw fail("rules", "a mapping of rule id to severity");
+		}
+		// Unknown rule ids are left to the validation stage to report — a config
+		// may name a check that ships in a later version or in an external tool.
+		for (const [id, severity] of Object.entries(rules)) {
+			if (!RULE_SEVERITIES.includes(severity as string)) {
+				throw fail(`rules.${id}`, RULE_SEVERITIES.map((v) => `"${v}"`).join(", "));
+			}
+		}
 	}
 
 	for (const key of Object.keys(config)) {

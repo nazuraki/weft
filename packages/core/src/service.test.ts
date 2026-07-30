@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { WeftService } from "./service.js";
 import type { ProjectManifest, ProjectsIndex, WeftConfig } from "./types.js";
+import { ValidatorRegistry } from "./validate/index.js";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
 const FIXTURES_DIR = resolve(__dirname, "__fixtures__");
@@ -90,6 +91,38 @@ describe("WeftService", () => {
 
 		expect(edges.length).toBeGreaterThan(0);
 		expect(edges.every((e) => e.to.node === "architecture.md")).toBe(true);
+	});
+
+	it("validates the manifest, building it on demand", async () => {
+		const service = createService();
+		const rule = {
+			id: "node-count",
+			description: "Counts nodes",
+			defaultSeverity: "info",
+		} as const;
+		const registry = new ValidatorRegistry().register({
+			rules: [rule],
+			run: (context) => [
+				{
+					rule: rule.id,
+					message: `${context.nodes.size} nodes`,
+					target: { kind: "graph" },
+				},
+			],
+		});
+
+		const result = await service.validate(registry);
+
+		expect(result.diagnostics).toEqual([
+			{ rule: "node-count", severity: "info", message: "3 nodes", target: { kind: "graph" } },
+		]);
+	});
+
+	it("validates against the built-in checks by default", async () => {
+		const result = await createService().validate();
+
+		expect(result.diagnostics).toEqual([]);
+		expect(result.counts).toEqual({ error: 0, warn: 0, info: 0 });
 	});
 
 	it("writes a single manifest under docsDir", async () => {
