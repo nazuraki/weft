@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
-import { buildManifest, splitManifest } from "./manifest.js";
+import { MANIFEST_VERSION, buildManifest, splitManifest } from "./manifest.js";
 import type { WeftConfig } from "./types.js";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
@@ -44,18 +44,31 @@ describe("buildManifest", () => {
 	it("extracts markdown anchors", async () => {
 		const manifest = await buildManifest(fixtureConfig());
 		const arch = manifest.nodes.find((n) => n.id === "architecture.md");
+		const slugs = arch?.anchors.map((a) => a.slug);
 
-		expect(arch?.anchors).toContain("#overview");
-		expect(arch?.anchors).toContain("#data-flow");
-		expect(arch?.anchors).toContain("#database-schema");
+		expect(slugs).toContain("#overview");
+		expect(slugs).toContain("#data-flow");
+		expect(slugs).toContain("#database-schema");
+	});
+
+	it("carries line and level on markdown anchors", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		const overview = manifest.nodes
+			.find((n) => n.id === "architecture.md")
+			?.anchors.find((a) => a.slug === "#overview");
+
+		expect(overview?.text).toBe("Overview");
+		expect(overview?.level).toBe(2);
+		expect(overview?.line).toBeGreaterThan(0);
 	});
 
 	it("extracts openapi anchors", async () => {
 		const manifest = await buildManifest(fixtureConfig());
 		const api = manifest.nodes.find((n) => n.id === "api.yaml");
+		const slugs = api?.anchors.map((a) => a.slug);
 
-		expect(api?.anchors).toContain("#listUsers");
-		expect(api?.anchors).toContain("#/components/schemas/User");
+		expect(slugs).toContain("#listUsers");
+		expect(slugs).toContain("#/components/schemas/User");
 	});
 
 	it("extracts edges from markdown links", async () => {
@@ -77,9 +90,10 @@ describe("buildManifest", () => {
 		expect(manifest.nodes.find((n) => n.id === "api.yaml")?.type).toBe("openapi");
 	});
 
-	it("sets version to 1", async () => {
+	it("stamps the current manifest schema version", async () => {
 		const manifest = await buildManifest(fixtureConfig());
-		expect(manifest.version).toBe(1);
+		expect(manifest.version).toBe(MANIFEST_VERSION);
+		expect(MANIFEST_VERSION).toBe(2);
 	});
 
 	it("carries presentation config in the site block", async () => {

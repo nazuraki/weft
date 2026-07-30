@@ -14,7 +14,10 @@ paths:
     post:
       operationId: createUser
 `;
-		expect(extractOpenApiAnchors(spec)).toEqual(["#listUsers", "#createUser"]);
+		expect(extractOpenApiAnchors(spec)).toEqual([
+			{ slug: "#listUsers", text: "listUsers" },
+			{ slug: "#createUser", text: "createUser" },
+		]);
 	});
 
 	it("extracts schema names from components", () => {
@@ -30,9 +33,24 @@ components:
       type: object
 `;
 		expect(extractOpenApiAnchors(spec)).toEqual([
-			"#/components/schemas/User",
-			"#/components/schemas/Order",
+			{ slug: "#/components/schemas/User", text: "User" },
+			{ slug: "#/components/schemas/Order", text: "Order" },
 		]);
+	});
+
+	it("carries no line or level, having no source position", () => {
+		const spec = `
+openapi: "3.0.0"
+info:
+  title: Test API
+paths:
+  /users:
+    get:
+      operationId: listUsers
+`;
+		const [anchor] = extractOpenApiAnchors(spec);
+		expect(anchor.line).toBeUndefined();
+		expect(anchor.level).toBeUndefined();
 	});
 
 	it("falls back to path encoding when no operationId", () => {
@@ -46,7 +64,8 @@ paths:
       summary: Get user
 `;
 		const anchors = extractOpenApiAnchors(spec);
-		expect(anchors[0]).toMatch(/^#\/paths/);
+		expect(anchors[0].slug).toMatch(/^#\/paths/);
+		expect(anchors[0].text).toBe("GET /users/{id}");
 	});
 });
 

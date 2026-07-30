@@ -100,5 +100,5 @@ Turn a noisy rule down or off per project with the [`rules`](configuration.md#va
 
 | Type | Extension | Notes |
 |------|-----------|-------|
-| Markdown | `.md` | Headings become anchors |
+| Markdown | `.md` | Headings become anchors, slugged exactly as GitHub does. Headings inside fenced code blocks are ignored |
 | OpenAPI | `.yaml`, `.yml` | Operation IDs and schema names become anchors |

@@ -45,7 +45,9 @@ export class SearchIndex {
 				id: node.id,
 				title: node.title,
 				content,
-				anchors: node.anchors.join(" "),
+				// Index the heading text alongside the slug: a reader searches for
+				// "Data Flow", not "data-flow".
+				anchors: node.anchors.map((a) => `${a.slug} ${a.text}`).join(" "),
 			};
 		});
 

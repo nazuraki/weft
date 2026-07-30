@@ -119,19 +119,25 @@ watch during `serve`. Never hand-edited.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "nodes": [
     {
       "id": "docs/architecture.md",
       "type": "markdown",
       "title": "Architecture Overview",
-      "anchors": ["#overview", "#data-flow", "#db-schema"]
+      "anchors": [
+        { "slug": "#overview", "text": "Overview", "line": 3, "level": 2 },
+        { "slug": "#data-flow", "text": "Data Flow", "line": 41, "level": 2 }
+      ]
     },
     {
       "id": "docs/api.yaml",
       "type": "openapi",
       "title": "API Reference",
-      "anchors": ["#/paths/users/get", "#/components/schemas/User"]
+      "anchors": [
+        { "slug": "#/paths/users/get", "text": "GET /users" },
+        { "slug": "#/components/schemas/User", "text": "User" }
+      ]
     }
   ],
   "edges": [
@@ -192,9 +198,22 @@ annotations:
 
 Built by `packages/core/src/anchors/` during indexing. Per-format extractors:
 
-- **Markdown:** Extract `## Heading` → slug via same algorithm as GitHub (`#my-heading`)
+- **Markdown:** Extract `## Heading` → slug via `github-slugger`, the implementation GitHub itself uses (`#my-heading`). Headings inside fenced code blocks are skipped
 - **OpenAPI:** Extract operation IDs and schema names from parsed spec
 - **Code files:** Extract function/class names; line ranges for `@doc` references
+
+Each anchor is an object, not a bare slug:
+
+| Field | Present for | Description |
+|-------|-------------|-------------|
+| `slug` | all | URL fragment including `#`, the only field an edge matches on |
+| `text` | all | Source text the slug came from — the heading, or the operation id / schema name |
+| `line` | markdown | 1-based line in the source file |
+| `level` | markdown | Heading level, 1-6 |
+
+`text` is what makes a renamed heading distinguishable from a deleted one: a slug that vanished while its text survives elsewhere is a rename, and a validation rule can suggest the new target rather than only reporting breakage.
+
+Slugs come from `github-slugger` rather than a local approximation because links are authored to render on GitHub (DD-2), which makes GitHub's slugs the correct ones. Approximating it diverged on any heading with punctuation between words (`React + Vite` → `#react--vite`, not `#react-vite`) and dropped non-ASCII letters entirely, slugging a CJK heading to the empty string.
 
 ---
 

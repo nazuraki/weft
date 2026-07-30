@@ -33,7 +33,7 @@ export class GitHubClient implements WeftClient {
 		const docs = manifest.nodes.map((node) => ({
 			id: node.id,
 			title: node.title,
-			anchors: node.anchors.join(" "),
+			anchors: node.anchors.map((a) => `${a.slug} ${a.text}`).join(" "),
 		}));
 		this.index.addAll(docs);
 	}

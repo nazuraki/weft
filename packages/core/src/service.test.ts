@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { MANIFEST_VERSION } from "./manifest.js";
 import { WeftService } from "./service.js";
 import type { ProjectManifest, ProjectsIndex, WeftConfig } from "./types.js";
 import { ValidatorRegistry } from "./validate/index.js";
@@ -58,7 +59,7 @@ describe("WeftService", () => {
 		const service = createService();
 		const manifest = await service.getManifest();
 
-		expect(manifest.version).toBe(1);
+		expect(manifest.version).toBe(MANIFEST_VERSION);
 		expect(manifest.nodes.length).toBeGreaterThan(0);
 	});
 
