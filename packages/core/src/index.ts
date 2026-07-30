@@ -29,6 +29,7 @@ export {
 } from "./manifest.js";
 export type { RootGraph } from "./manifest.js";
 export { nodeIdToDocPath } from "./node-path.js";
+export { resolvePublishedLinks } from "./published-links.js";
 export { SearchIndex } from "./search.js";
 export { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 export { extractMarkdownLinks } from "./links/markdown.js";

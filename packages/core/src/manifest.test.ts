@@ -173,6 +173,62 @@ describe("buildManifest", () => {
 	});
 });
 
+describe("buildManifest (published-form links)", () => {
+	const publishedConfig = (): WeftConfig => ({
+		rootDir: resolve(FIXTURES_DIR, "published"),
+		docsDir: "docs",
+		entryPoint: "docs/index.md",
+		ignore: [],
+	});
+
+	const edgesFrom = async () =>
+		(await buildManifest(publishedConfig())).edges.filter((e) => e.from.node === "index.md");
+
+	it("resolves a link to a rendered sibling back to its source", async () => {
+		const edges = await edgesFrom();
+		const resolved = edges.filter((e) => e.resolvedFrom === "guide.html");
+
+		expect(resolved.map((e) => e.to.node)).toEqual(["guide.md", "guide.md"]);
+	});
+
+	it("keeps the anchor when rewriting a published link", async () => {
+		const edges = await edgesFrom();
+		const withAnchor = edges.find((e) => e.resolvedFrom === "guide.html" && e.to.anchor);
+
+		expect(withAnchor?.to).toEqual({ node: "guide.md", anchor: "#setup" });
+	});
+
+	it("resolves a rendered sibling of an openapi document", async () => {
+		const edges = await edgesFrom();
+
+		expect(edges.find((e) => e.resolvedFrom === "api.html")?.to.node).toBe("api.yaml");
+	});
+
+	it("leaves a published link with no source sibling unresolved", async () => {
+		const edges = await edgesFrom();
+		const orphan = edges.find((e) => e.to.node === "reports/q4.html");
+
+		expect(orphan).toBeDefined();
+		expect(orphan?.resolvedFrom).toBeUndefined();
+	});
+
+	it("does not mark a link that already named a node", async () => {
+		const edges = await edgesFrom();
+		const direct = edges.filter((e) => e.to.node === "guide.md" && !e.resolvedFrom);
+
+		expect(direct).toHaveLength(1);
+	});
+
+	it("makes those edges resolve, where before they pointed at nothing", async () => {
+		const manifest = await buildManifest(publishedConfig());
+		const ids = new Set(manifest.nodes.map((n) => n.id));
+		const dead = manifest.edges.filter((e) => !ids.has(e.to.node));
+
+		// Only the genuinely orphaned one is left.
+		expect(dead.map((e) => e.to.node)).toEqual(["reports/q4.html"]);
+	});
+});
+
 describe("buildManifest (contributions)", () => {
 	const dirs: string[] = [];
 

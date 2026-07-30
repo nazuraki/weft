@@ -113,6 +113,24 @@ If a renderer emits into `docsDir`, Weft indexes every generated file as a node 
 
 `_site/`, `_book/`, `.quarto/`, `dist/` and `node_modules/` are excluded by default. Deliberately **not** excluded: `site/`, `public/`, `build/` and `out/` — all commonly hold sources, and hiding real documents by default is worse than indexing output. If your build writes to one of those inside `docsDir`, add it to `ignore` yourself.
 
+### Links to a Published Form
+
+Authors link to what a reader will actually open, so a documentation set that publishes is full of links naming the rendered copy rather than the source:
+
+```markdown
+See [the guide](guide.html) for setup.
+```
+
+Nodes are the source documents, so `guide.html` is not one and that reference would be stored as an edge to nothing. Instead, when a link target is not a node and exactly one source document shares its path stem, the edge resolves to that source — `guide.html` becomes an edge to `guide.md`, anchor intact. The manifest records the original path in `resolvedFrom`, and the linked-items sidebar shows it on hover, so the inference is visible rather than silent.
+
+The rule is deliberately narrow:
+
+- only `.html`, `.htm` and `.pdf` targets are treated as a published form. Sharing a stem with a document does not make `arch.png` a reference to `arch.md`
+- the target must not already be a node
+- exactly one source may share the stem. If both `guide.md` and `guide.yaml` exist, the link is left alone rather than guessed at
+
+A published-form link with no matching source stays unresolved, and is reported by [`edge-target-missing`](#rules) only if its extension is one Weft indexes — otherwise it shows in the sidebar as **not found**.
+
 ### Templated Links
 
 A link whose path still contains a placeholder — `{{version}}/api.md`, `${lang}/guide.md`, `{% raw %}`, `<%= path %>` — has not been resolved yet; the renderer decides what it points at. Weft records no edge for these rather than inventing one to the literal text, which would make [`edge-target-missing`](#rules) report correct source as broken.
