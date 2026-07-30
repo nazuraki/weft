@@ -35,11 +35,13 @@ async function load() {
 		client.buildIndex(data);
 		manifest = data;
 		const firstProject = data.projects?.[0]?.slug;
+		// Open a document the nav actually lists: docOrderStrict keeps hidden docs
+		// in the graph, so a README excluded from docOrder is still a node here.
+		const visible = data.nodes.filter((n) => !n.hiddenFromNav);
 		currentNodeId =
-			data.nodes.find((n) => n.id === "README.md")?.id ??
-			(firstProject
-				? data.nodes.find((n) => n.id === `${firstProject}/README.md`)?.id
-				: undefined) ??
+			visible.find((n) => n.id === "README.md")?.id ??
+			(firstProject ? visible.find((n) => n.id === `${firstProject}/README.md`)?.id : undefined) ??
+			visible[0]?.id ??
 			data.nodes[0]?.id ??
 			"";
 	} catch (e) {

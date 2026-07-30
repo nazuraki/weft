@@ -126,19 +126,23 @@ export function mergeGraphs(
 
 	if (config.docOrder?.length) {
 		const order = config.docOrder.map((entry) => normalizeDocOrderEntry(entry, roots));
+
+		nodes.sort((a, b) => {
+			const ai = order.indexOf(a.id);
+			const bi = order.indexOf(b.id);
+			if (ai === -1 && bi === -1) return 0;
+			if (ai === -1) return 1;
+			if (bi === -1) return -1;
+			return ai - bi;
+		});
+
+		// Strict mode is a nav filter, not a graph filter: dropping the unlisted
+		// nodes would leave every edge touching one of them dangling, so mark
+		// them instead and let the LHN skip them.
 		if (config.docOrderStrict) {
-			nodes = order
-				.map((id) => nodes.find((n) => n.id === id))
-				.filter((n): n is WeftNode => n !== undefined);
-		} else {
-			nodes.sort((a, b) => {
-				const ai = order.indexOf(a.id);
-				const bi = order.indexOf(b.id);
-				if (ai === -1 && bi === -1) return 0;
-				if (ai === -1) return 1;
-				if (bi === -1) return -1;
-				return ai - bi;
-			});
+			nodes = nodes.map((node) =>
+				order.includes(node.id) ? node : { ...node, hiddenFromNav: true }
+			);
 		}
 	}
 

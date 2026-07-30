@@ -35,7 +35,7 @@ export interface WeftConfig {
 	ogImage?: string;
 	/** Layout mode for the UI. "reader" hides the linked-items sidebar. Defaults to "default". */
 	layout?: "reader" | "default";
-	/** Explicit document order for the LHN. Unlisted docs appear after in alpha order unless docOrderStrict is true. */
+	/** Explicit document order for the LHN. Unlisted docs appear after, in alpha order. */
 	docOrder?: string[];
 	/** When true, only docs listed in docOrder appear in the LHN. Default false. */
 	docOrderStrict?: boolean;
@@ -59,6 +59,11 @@ export interface WeftNode {
 	theme?: "light" | "dark";
 	description?: string;
 	ogImage?: string;
+	/**
+	 * Excluded from the left-hand nav by `docOrderStrict`. Still a full graph
+	 * node: reachable by link, search and traversal, and a valid edge endpoint.
+	 */
+	hiddenFromNav?: boolean;
 }
 
 export interface LinkRef {
