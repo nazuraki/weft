@@ -39,7 +39,8 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `layout` | `"default" \| "reader"` | `"default"` | `"reader"` hides the linked-items sidebar for a cleaner reading experience |
 | `docOrder` | `string[]` | — | Explicit order for docs in the left-hand navigation. Filenames relative to `docsDir` |
 | `docOrderStrict` | `boolean` | `false` | When `true`, only docs listed in `docOrder` appear in the LHN. Unlisted docs stay in the graph — see [Strict Ordering](#strict-ordering) |
-| `ignore` | `string[]` | `["**/node_modules/**", "**/dist/**"]` | Glob patterns to exclude from indexing |
+| `ignore` | `string[]` | see [Build Output](#build-output) | Glob patterns to exclude from indexing |
+| `contributions` | `string[]` | — | Contribution files written by an external build — see [External Tool Integration](#external-tool-integration) |
 | `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
 
 ### Strict Ordering
@@ -47,6 +48,76 @@ The file is validated at load time: wrong types and bad enum values fail with th
 `docOrderStrict` narrows the left-hand nav, not the graph. A document left out of `docOrder` is marked `hiddenFromNav` in the manifest and skipped by the tree, but it remains a full node: still indexed for search, still reachable by link or URL, and still a valid endpoint for edges pointing at it.
 
 This matters because the two are not interchangeable. Removing those documents from the manifest would leave every edge touching one of them pointing at nothing, so a link from a listed document to an unlisted one would read as broken — including to the validation rules that check whether edges resolve.
+
+---
+
+## External Tool Integration
+
+Weft indexes source. Most documentation projects put a renderer or build tool between source and what readers receive, and that build knows things source cannot express: what a templated link resolved to, what it generated and from what.
+
+Rather than an adapter per tool, Weft reads one **contribution file** that any build can write — the same shape as a linter emitting SARIF or a compiler emitting source maps. Point at it with globs relative to the project root:
+
+```yaml
+contributions:
+  - build/weft-contribution.json
+```
+
+JSON or YAML, both accepted.
+
+```json
+{
+  "version": 1,
+  "tool": "my-renderer 1.4.0",
+  "nodes": [
+    { "id": "generated/summary.md", "type": "markdown", "title": "Generated Summary" }
+  ],
+  "edges": [
+    { "from": { "node": "generated/summary.md" }, "to": { "node": "index.md" }, "type": "derives-from" }
+  ],
+  "metadata": {
+    "handbook.md": { "title": "Handbook v2.41" }
+  }
+}
+```
+
+| Key | Purpose |
+|-----|---------|
+| `version` | Contribution schema version. Currently `1` |
+| `tool` | Optional. Named in any message about this file, so a bad contribution is traceable |
+| `nodes` | Documents the build knows about that indexing source cannot discover |
+| `edges` | Relationships the build knows about. Any edge `type` is valid; `derives-from` is the convention for generated output |
+| `metadata` | Field patches for documents Weft already indexed, keyed by node id |
+
+### Pipeline Order
+
+The order is part of the contract, not an implementation detail:
+
+1. **Weft indexes source.** Indexing rendered output instead would lose sidecars and source structure.
+2. **Contributions apply**, in the order their files sort by path — so a merge is reproducible regardless of how the filesystem enumerates a glob. A later contribution overrides an earlier one.
+3. **Ordering and nav filtering apply last**, to the combined set, so a contributed document sorts and honours `docOrder` exactly like an indexed one.
+
+### What a Patch May Set
+
+`metadata` may set `title`, `description`, `theme`, `ogImage`, `hiddenFromNav`, `contentHash` and `lineCount`.
+
+It may **not** set `id`, `type`, `anchors` or `project`. The first three are facts about the file Weft read and the last is graph topology; a build contributes what Weft cannot see, and overriding extraction output is not that. Attempting it fails with the offending field named.
+
+Two situations are reported rather than fatal, since neither makes the graph unusable:
+
+- a patch for a node id that does not exist is ignored with a warning
+- a contributed node whose id Weft **already indexed** is merged over, with a warning — usually the signature of build output landing inside `docsDir`
+
+### Build Output
+
+If a renderer emits into `docsDir`, Weft indexes every generated file as a node alongside the source it came from, and every document appears twice.
+
+`_site/`, `_book/`, `.quarto/`, `dist/` and `node_modules/` are excluded by default. Deliberately **not** excluded: `site/`, `public/`, `build/` and `out/` — all commonly hold sources, and hiding real documents by default is worse than indexing output. If your build writes to one of those inside `docsDir`, add it to `ignore` yourself.
+
+### Templated Links
+
+A link whose path still contains a placeholder — `{{version}}/api.md`, `${lang}/guide.md`, `{% raw %}`, `<%= path %>` — has not been resolved yet; the renderer decides what it points at. Weft records no edge for these rather than inventing one to the literal text, which would make [`edge-target-missing`](#rules) report correct source as broken.
+
+Template syntax in the *anchor* is ignored, since it does not change which document is targeted.
 
 ---
 
@@ -84,7 +155,7 @@ A missing document and a missing anchor are separate rules because they usually 
 
 Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml` — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
 
-> **Using a renderer with templated link paths?** A link whose path contains an unresolved template variable records an edge to a document that will never exist, and `edge-target-missing` will report it. Until Weft can learn what the build resolved, set that rule to `warn` or `off` for such a project.
+> **Using a renderer?** Links whose paths still hold template syntax produce no edges at all, so they cannot be reported as broken — see [Templated Links](#templated-links). If your build resolves paths in a form Weft cannot recognise as a placeholder, a [contribution file](#external-tool-integration) can declare the resolved edges instead.
 
 ### Pending References
 

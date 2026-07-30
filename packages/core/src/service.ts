@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import chokidar from "chokidar";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
+import { loadContributions } from "./contributions.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
 import type { Manifest, ProjectsIndex, SearchResult, WeftConfig, WeftEdge } from "./types.js";
@@ -86,7 +87,14 @@ export class WeftService {
 			this.graphs.set(root.slug, await buildRootGraph(this.config, root, this.roots));
 		}
 
-		this.manifest = mergeGraphs(this.config, this.roots, this.graphs);
+		// Reloaded every rebuild: a build running alongside `weft serve` rewrites
+		// its contribution file, and the graph should follow.
+		this.manifest = mergeGraphs(
+			this.config,
+			this.roots,
+			this.graphs,
+			await loadContributions(this.config)
+		);
 		this.searchIndex.build(this.manifest, (nodeId) => this.resolveNodePath(nodeId));
 		return this.manifest;
 	}

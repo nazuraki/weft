@@ -10,6 +10,13 @@ export {
 } from "./config.js";
 export type { DocsRoot } from "./config.js";
 export { countLines, hashContent, normalizeContent } from "./content.js";
+export {
+	CONTRIBUTION_VERSION,
+	applyContributions,
+	loadContributions,
+	validateContribution,
+} from "./contributions.js";
+export type { Contribution, LoadedContribution, NodePatch } from "./contributions.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { WeftService } from "./service.js";

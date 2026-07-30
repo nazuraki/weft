@@ -7,16 +7,25 @@ import type { WeftConfig, WeftProjectRef } from "./types.js";
 const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
 const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
 
+/**
+ * Directories excluded from indexing by default.
+ *
+ * Build output under `docsDir` would otherwise be indexed as nodes alongside
+ * the sources it was generated from, so every document would appear twice.
+ * Only unambiguous output directory names are listed: `site`, `public`, `build`
+ * and `out` are all commonly *source* directories, so excluding them by default
+ * would silently hide real documents. Add those per project.
+ */
 const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
 	docsDir: "docs",
 	entryPoint: "docs/README.md",
-	ignore: ["**/node_modules/**", "**/dist/**"],
+	ignore: ["**/node_modules/**", "**/dist/**", "**/_site/**", "**/_book/**", "**/.quarto/**"],
 };
 
 type UserConfig = Partial<Omit<WeftConfig, "rootDir">>;
 
 const STRING_KEYS = ["docsDir", "entryPoint", "siteTitle", "siteUrl", "ogImage"] as const;
-const STRING_ARRAY_KEYS = ["ignore", "docOrder"] as const;
+const STRING_ARRAY_KEYS = ["ignore", "docOrder", "contributions"] as const;
 const ENUM_KEYS = {
 	defaultTheme: ["light", "dark"],
 	layout: ["reader", "default"],

@@ -51,8 +51,18 @@ describe("loadConfig", () => {
 			rootDir: resolve(root),
 			docsDir: "docs",
 			entryPoint: "docs/README.md",
-			ignore: ["**/node_modules/**", "**/dist/**"],
+			ignore: ["**/node_modules/**", "**/dist/**", "**/_site/**", "**/_book/**", "**/.quarto/**"],
 		});
+	});
+
+	it("excludes common build output by default, but not names that are usually sources", async () => {
+		const { ignore } = await loadConfig(tempRoot());
+
+		expect(ignore).toContain("**/_site/**");
+		expect(ignore).toContain("**/_book/**");
+		// Excluding site/, public/, build/ or out/ by default would silently hide
+		// real documents in projects that keep sources there.
+		expect(ignore.some((p) => /(site|public|build|out)/.test(p.replace("_site", "")))).toBe(false);
 	});
 
 	it("loads weft.config.yaml and merges defaults", async () => {

@@ -41,6 +41,11 @@ export interface WeftConfig {
 	docOrderStrict?: boolean;
 	/** Per-rule severity for the validation stage. "off" disables the rule entirely. */
 	rules?: Record<string, RuleSeverity>;
+	/**
+	 * Contribution files an external build writes, as globs relative to the
+	 * project root. Merged into the manifest after source is indexed.
+	 */
+	contributions?: string[];
 }
 
 /** How serious a diagnostic is. Only "error" fails `weft check`. */
