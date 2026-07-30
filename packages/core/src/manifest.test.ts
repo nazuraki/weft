@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
+import { countLines, hashContent } from "./content.js";
 import { MANIFEST_VERSION, buildManifest, splitManifest } from "./manifest.js";
 import type { WeftConfig } from "./types.js";
 
@@ -88,6 +90,39 @@ describe("buildManifest", () => {
 
 		expect(manifest.nodes.find((n) => n.id === "README.md")?.type).toBe("markdown");
 		expect(manifest.nodes.find((n) => n.id === "api.yaml")?.type).toBe("openapi");
+	});
+
+	it("records a content hash and line count for every document", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+
+		for (const node of manifest.nodes) {
+			expect(node.contentHash).toMatch(/^[0-9a-f]{16}$/);
+			expect(node.lineCount).toBeGreaterThan(0);
+		}
+	});
+
+	it("hashes openapi documents as well as markdown ones", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		const api = manifest.nodes.find((n) => n.id === "api.yaml");
+
+		expect(api?.contentHash).toMatch(/^[0-9a-f]{16}$/);
+		expect(api?.lineCount).toBeGreaterThan(0);
+	});
+
+	it("gives different documents different hashes", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		const hashes = manifest.nodes.map((n) => n.contentHash);
+
+		expect(new Set(hashes).size).toBe(hashes.length);
+	});
+
+	it("matches hashing the file's content directly", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		const arch = manifest.nodes.find((n) => n.id === "architecture.md");
+		const raw = readFileSync(resolve(FIXTURES_DIR, "docs", "architecture.md"), "utf-8");
+
+		expect(arch?.contentHash).toBe(hashContent(raw));
+		expect(arch?.lineCount).toBe(countLines(raw));
 	});
 
 	it("stamps the current manifest schema version", async () => {

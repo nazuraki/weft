@@ -125,6 +125,8 @@ watch during `serve`. Never hand-edited.
       "id": "docs/architecture.md",
       "type": "markdown",
       "title": "Architecture Overview",
+      "contentHash": "9f2b4c1a7d3e5086",
+      "lineCount": 214,
       "anchors": [
         { "slug": "#overview", "text": "Overview", "line": 3, "level": 2 },
         { "slug": "#data-flow", "text": "Data Flow", "line": 41, "level": 2 }
@@ -134,6 +136,8 @@ watch during `serve`. Never hand-edited.
       "id": "docs/api.yaml",
       "type": "openapi",
       "title": "API Reference",
+      "contentHash": "3c81e05fa9b26d47",
+      "lineCount": 96,
       "anchors": [
         { "slug": "#/paths/users/get", "text": "GET /users" },
         { "slug": "#/components/schemas/User", "text": "User" }
@@ -191,6 +195,23 @@ annotations:
     created: 2025-03-19
     body: This section understates the caching layer complexity.
 ```
+
+---
+
+## Computed Node Properties
+
+Captured in `buildRootGraph` while each file is already in hand, so nothing has to re-read the docs tree to get them.
+
+| Field | Description |
+|-------|-------------|
+| `contentHash` | Content hash of the document, covering frontmatter as well as body |
+| `lineCount` | Lines of text, counted the way `wc -l` and an editor agree: a trailing newline terminates the last line rather than starting an empty one |
+
+Both are optional on `WeftNode`. A node that was not indexed from a text file — one declared by an external build tool, or a binary artifact — may legitimately have neither.
+
+**The hash normalizes before hashing:** a leading BOM is stripped and CRLF becomes LF, then SHA-256, keeping the first 16 hex characters. Raw-byte hashing would report every document as changed the moment CI checked it out with different line endings from the working tree that produced it — the same reason modification time is not used for staleness. The recipe is documented rather than internal precisely so a build tool can declare a hash it computed itself instead of having Weft recompute it.
+
+Deliberately absent: **modification time**, which git does not preserve, so a fresh clone makes every file look simultaneously modified. A date worth checking has to come from git history or be declared explicitly. **File size** is also absent — no check needs it, and it would be ambiguous next to a hash that normalizes line endings.
 
 ---
 
