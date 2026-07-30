@@ -136,6 +136,31 @@ describe("loadConfig", () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('unknown option "typo"'));
 	});
 
+	it("loads per-rule severities", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": ["rules:", "  edge-target-missing: warn", "  some-check: off"].join("\n"),
+		});
+
+		expect((await loadConfig(root)).rules).toEqual({
+			"edge-target-missing": "warn",
+			"some-check": "off",
+		});
+	});
+
+	it("rejects a non-mapping rules block", async () => {
+		const root = tempRoot({ "weft.config.yaml": "rules:\n  - edge-target-missing" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/"rules" must be a mapping of rule id to severity/
+		);
+	});
+
+	it("rejects an unknown severity, naming the rule", async () => {
+		const root = tempRoot({ "weft.config.yaml": "rules:\n  some-check: fatal" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/"rules\.some-check" must be "error", "warn", "info", "off"/
+		);
+	});
+
 	it("rejects a legacy JS/TS config with a migration message", async () => {
 		const root = tempRoot({ "weft.config.ts": "export default {};" });
 		await expect(loadConfig(root)).rejects.toThrow(

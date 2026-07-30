@@ -40,6 +40,30 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `docOrder` | `string[]` | — | Explicit order for docs in the left-hand navigation. Filenames relative to `docsDir` |
 | `docOrderStrict` | `boolean` | `false` | When `true`, only docs listed in `docOrder` appear in the LHN. Unlisted docs are hidden |
 | `ignore` | `string[]` | `["**/node_modules/**", "**/dist/**"]` | Glob patterns to exclude from indexing |
+| `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
+
+---
+
+## Validation
+
+`weft analyze` and `weft check` run a set of registered rules over the built graph and report [diagnostics](usage.md#weft-analyze-root-dir). Each rule has a default severity, which `rules` overrides per project:
+
+```yaml
+rules:
+  some-check: warn   # report, but do not fail `weft check`
+  noisy-check: off   # do not run at all
+```
+
+| Severity | Meaning |
+|----------|---------|
+| `error` | Reported, and fails `weft check` with exit code 1 |
+| `warn` | Reported, `weft check` still passes |
+| `info` | Reported as a note, `weft check` still passes |
+| `off` | The rule does not run |
+
+Run `weft analyze --list-rules` to see the available rule ids and their defaults. An id in `rules` that no rule declares is reported at the end of a run rather than rejected, so a config written against a newer Weft — or against a check supplied by an external tool — still loads.
+
+> The validation stage exists so individual checks can be built against one interface. None ship yet, so `rules` has nothing to configure until the first one lands.
 
 ---
 

@@ -47,6 +47,40 @@ Useful in CI to pre-build the manifest, or to verify graph state without launchi
 |------|---------|-------------|
 | `--quiet` | `false` | Suppress output |
 
+### `weft analyze [root-dir]`
+
+Builds the graph, runs every validation rule over it, and reports what they found. Always exits 0 — it reports, it does not gate.
+
+```sh
+weft analyze                 # current directory
+weft analyze --json          # machine-readable result
+weft analyze --list-rules    # rule ids and their default severities
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--json` | `false` | Emit the full result as JSON, including counts and which rules ran |
+| `--list-rules` | `false` | List the registered rules and exit without validating |
+
+`--list-rules` is how you find the ids to put in the [`rules`](configuration.md#validation) config block.
+
+### `weft check [root-dir]`
+
+The same validation, for CI. Exits `1` if any rule reports an **error**; warnings and notes report but pass, so a rule can be adopted at `warn` before being promoted.
+
+```sh
+weft check               # current directory
+weft check --json        # machine-readable result
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--json` | `false` | Emit the full result as JSON |
+
+Turn a noisy rule down or off per project with the [`rules`](configuration.md#validation) config block rather than dropping the command from CI.
+
+> No checks ship yet — the validation stage exists so each one can be built against a single interface. Both commands report a clean run until the first rule lands.
+
 ## Navigation
 
 - **Document tree** — left-hand sidebar lists all indexed docs; click any node to navigate.

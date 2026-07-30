@@ -20,6 +20,21 @@ export { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 export { extractMarkdownLinks } from "./links/markdown.js";
 export { extractSidecarLinks } from "./links/sidecar.js";
 export { parseOpenApiSpec } from "./anchors/openapi.js";
+export {
+	VALIDATOR_ERROR_RULE,
+	ValidatorRegistry,
+	defaultRegistry,
+	validateManifest,
+} from "./validate/index.js";
+export type {
+	Diagnostic,
+	DiagnosticTarget,
+	Finding,
+	Rule,
+	ValidationContext,
+	ValidationResult,
+	Validator,
+} from "./validate/index.js";
 export type {
 	WeftConfig,
 	WeftNode,
@@ -30,6 +45,8 @@ export type {
 	Manifest,
 	ProjectManifest,
 	ProjectsIndex,
+	RuleSeverity,
 	SearchResult,
+	Severity,
 	SiteConfig,
 } from "./types.js";

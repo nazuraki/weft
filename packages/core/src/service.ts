@@ -5,6 +5,12 @@ import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
 import type { Manifest, ProjectsIndex, SearchResult, WeftConfig, WeftEdge } from "./types.js";
+import {
+	type ValidationResult,
+	type ValidatorRegistry,
+	defaultRegistry,
+	validateManifest,
+} from "./validate/index.js";
 
 export class WeftService {
 	private config: WeftConfig;
@@ -135,6 +141,15 @@ export class WeftService {
 		const filePath = this.resolveNodePath(nodeId);
 		if (!filePath) throw new Error(`Document not found: ${nodeId}`);
 		return readFileSync(filePath, "utf-8");
+	}
+
+	/**
+	 * Run the validation stage over the current manifest, building it first if
+	 * necessary. Pass a registry to run a different set of checks than the
+	 * built-in ones.
+	 */
+	async validate(registry: ValidatorRegistry = defaultRegistry()): Promise<ValidationResult> {
+		return validateManifest(await this.getManifest(), this.config, registry);
 	}
 
 	/** Search the index. */
