@@ -1,4 +1,9 @@
 import GithubSlugger from "github-slugger";
+import type { Heading } from "mdast";
+import { toString } from "mdast-util-to-string";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+import { visit } from "unist-util-visit";
 import type { Anchor } from "../types.js";
 
 /**
@@ -21,31 +26,25 @@ function toLines(content: string): string[] {
  * The slugger also owns the `-1`, `-2` suffixes it appends to repeated slugs.
  */
 export function extractMarkdownAnchors(content: string): Anchor[] {
-	const anchors: Anchor[] = [];
+	const tree = unified().use(remarkParse).parse(content);
 	const slugger = new GithubSlugger();
-	let fence: string | undefined;
+	const anchors: Anchor[] = [];
 
-	toLines(content).forEach((line, index) => {
-		// A `#` opening a line inside a fenced block is code — a shell comment,
-		// say — not a heading, and GitHub gives it no anchor.
-		const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
-		if (fenceMatch) {
-			const marker = fenceMatch[1][0];
-			if (!fence) fence = marker;
-			else if (fence === marker) fence = undefined;
-			return;
-		}
-		if (fence) return;
+	visit(tree, "heading", (node: Heading) => {
+		// Slug the heading's *rendered* text, not its source line. GitHub slugs
+		// what it rendered, so `## See [docs](x.md)` is `#see-docs` — slugging the
+		// raw line would produce `#see-docsxmd` and the id in the page would never
+		// match the anchor in the graph.
+		//
+		// Image alt text and raw HTML are excluded to match `hast-util-to-string`,
+		// which is what the renderer's slug plugin sees.
+		const text = toString(node, { includeImageAlt: false, includeHtml: false });
 
-		const match = line.match(/^(#{1,6})\s+(.+)$/);
-		if (!match) return;
-
-		const text = match[2].trim();
 		anchors.push({
 			slug: `#${slugger.slug(text)}`,
 			text,
-			line: index + 1,
-			level: match[1].length,
+			line: node.position?.start.line ?? 0,
+			level: node.depth,
 		});
 	});
 

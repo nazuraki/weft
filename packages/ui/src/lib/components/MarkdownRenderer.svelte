@@ -1,9 +1,5 @@
 <script lang="ts">
-import rehypeStringify from "rehype-stringify";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import remarkRehype from "remark-rehype";
-import { unified } from "unified";
+import { renderMarkdown } from "$lib/markdown.js";
 
 interface Props {
 	content: string;
@@ -15,17 +11,11 @@ let htmlContent = $state("");
 let container: HTMLDivElement | undefined = $state();
 
 $effect(() => {
-	renderMarkdown(content);
+	render(content);
 });
 
-async function renderMarkdown(md: string) {
-	const result = await unified()
-		.use(remarkParse)
-		.use(remarkGfm)
-		.use(remarkRehype, { allowDangerousHtml: true })
-		.use(rehypeStringify, { allowDangerousHtml: true })
-		.process(md);
-	htmlContent = String(result);
+async function render(md: string) {
+	htmlContent = await renderMarkdown(md);
 }
 
 // Intercept link clicks for in-app navigation

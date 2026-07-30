@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { WeftClient } from "$lib/client.js";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
-import { parseOpenApiSpec } from "@weft/core/browser";
+import { openApiOperationAnchor, openApiSchemaAnchor, parseOpenApiSpec } from "@weft/core/browser";
 import { getContext } from "svelte";
 
 interface Props {
@@ -106,13 +106,14 @@ $effect(() => {
 	}
 });
 
+// Both ids come from @weft/core, the same functions the indexer uses to record
+// these anchors — computing them here as well would only agree by coincidence.
 function anchorId(path: string, method: string, operation: Operation): string {
-	if (operation.operationId) return operation.operationId;
-	return `/paths${path.replace(/\//g, "~1")}/${method}`;
+	return openApiOperationAnchor(path, method, operation.operationId);
 }
 
 function schemaAnchorId(name: string): string {
-	return `/components/schemas/${name}`;
+	return openApiSchemaAnchor(name);
 }
 
 function toggle(key: string) {
