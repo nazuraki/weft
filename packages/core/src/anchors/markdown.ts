@@ -1,6 +1,6 @@
 import GithubSlugger from "github-slugger";
 import type { Heading } from "mdast";
-import { toString } from "mdast-util-to-string";
+import { toString as mdastToString } from "mdast-util-to-string";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
@@ -38,7 +38,7 @@ export function extractMarkdownAnchors(content: string): Anchor[] {
 		//
 		// Image alt text and raw HTML are excluded to match `hast-util-to-string`,
 		// which is what the renderer's slug plugin sees.
-		const text = toString(node, { includeImageAlt: false, includeHtml: false });
+		const text = mdastToString(node, { includeImageAlt: false, includeHtml: false });
 
 		anchors.push({
 			slug: `#${slugger.slug(text)}`,
