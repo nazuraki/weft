@@ -1,3 +1,4 @@
+import type { Anchor } from "../types.js";
 import { extractMarkdownAnchors, extractMarkdownTitle } from "./markdown.js";
 import { extractOpenApiAnchors, extractOpenApiTitle } from "./openapi.js";
 
@@ -16,7 +17,7 @@ export function getDocType(filePath: string): DocType | undefined {
 	return EXTENSION_MAP[ext];
 }
 
-export function extractAnchors(content: string, docType: DocType): string[] {
+export function extractAnchors(content: string, docType: DocType): Anchor[] {
 	switch (docType) {
 		case "markdown":
 			return extractMarkdownAnchors(content);

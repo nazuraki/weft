@@ -10,8 +10,18 @@ const RULE_B: Rule = { id: "rule-b", description: "Checks b", defaultSeverity: "
 const MANIFEST: Manifest = {
 	version: 1,
 	nodes: [
-		{ id: "README.md", type: "markdown", title: "Readme", anchors: ["#intro"] },
-		{ id: "api.yaml", type: "openapi", title: "API", anchors: ["#listUsers"] },
+		{
+			id: "README.md",
+			type: "markdown",
+			title: "Readme",
+			anchors: [{ slug: "#intro", text: "Intro", line: 3, level: 2 }],
+		},
+		{
+			id: "api.yaml",
+			type: "openapi",
+			title: "API",
+			anchors: [{ slug: "#listUsers", text: "listUsers" }],
+		},
 	],
 	edges: [{ from: { node: "README.md" }, to: { node: "api.yaml" }, type: "references" }],
 };

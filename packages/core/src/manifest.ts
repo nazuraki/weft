@@ -16,6 +16,14 @@ import type {
 	WeftNode,
 } from "./types.js";
 
+/**
+ * Manifest schema version.
+ *
+ * 2 — `WeftNode.anchors` holds `Anchor` objects rather than bare slug strings,
+ * and slugs now match GitHub's own slugger, so some anchor values changed.
+ */
+export const MANIFEST_VERSION = 2;
+
 /** The nodes and edges discovered in a single docs root. */
 export interface RootGraph {
 	nodes: WeftNode[];
@@ -150,7 +158,7 @@ export function mergeGraphs(
 	const site = siteConfig(config);
 
 	return {
-		version: 1,
+		version: MANIFEST_VERSION,
 		nodes,
 		edges,
 		...(projects.length ? { projects } : {}),

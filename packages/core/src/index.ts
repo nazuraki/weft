@@ -12,7 +12,13 @@ export type { DocsRoot } from "./config.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { WeftService } from "./service.js";
-export { buildManifest, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
+export {
+	MANIFEST_VERSION,
+	buildManifest,
+	buildRootGraph,
+	mergeGraphs,
+	splitManifest,
+} from "./manifest.js";
 export type { RootGraph } from "./manifest.js";
 export { nodeIdToDocPath } from "./node-path.js";
 export { SearchIndex } from "./search.js";
@@ -36,6 +42,7 @@ export type {
 	Validator,
 } from "./validate/index.js";
 export type {
+	Anchor,
 	WeftConfig,
 	WeftNode,
 	WeftEdge,

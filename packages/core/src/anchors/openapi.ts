@@ -1,4 +1,5 @@
 import { parse } from "yaml";
+import type { Anchor } from "../types.js";
 
 /** Parse an OpenAPI YAML/JSON spec and return the raw object, or undefined if invalid. */
 export function parseOpenApiSpec(content: string): Record<string, unknown> | undefined {
@@ -11,12 +12,18 @@ export function parseOpenApiSpec(content: string): Record<string, unknown> | und
 	}
 }
 
-/** Extract anchors from an OpenAPI YAML/JSON spec: operation IDs and schema names. */
-export function extractOpenApiAnchors(content: string): string[] {
+/**
+ * Extract anchors from an OpenAPI YAML/JSON spec: operation IDs and schema names.
+ *
+ * These carry no `line` or `level`: they are positions in a parsed object, not
+ * headings in a source file, and the parser discards source offsets. `text` is
+ * the operation id or schema name the slug was built from.
+ */
+export function extractOpenApiAnchors(content: string): Anchor[] {
 	const spec = parse(content);
 	if (!spec || typeof spec !== "object") return [];
 
-	const anchors: string[] = [];
+	const anchors: Anchor[] = [];
 
 	// Extract from paths — operation IDs or method+path combos
 	if (spec.paths && typeof spec.paths === "object") {
@@ -26,9 +33,12 @@ export function extractOpenApiAnchors(content: string): string[] {
 				if (!operation || typeof operation !== "object" || !isHttpMethod(method)) continue;
 				const op = operation as Record<string, unknown>;
 				if (typeof op.operationId === "string") {
-					anchors.push(`#${op.operationId}`);
+					anchors.push({ slug: `#${op.operationId}`, text: op.operationId });
 				} else {
-					anchors.push(`#/paths${path.replace(/\//g, "~1")}/${method}`);
+					anchors.push({
+						slug: `#/paths${path.replace(/\//g, "~1")}/${method}`,
+						text: `${method.toUpperCase()} ${path}`,
+					});
 				}
 			}
 		}
@@ -38,7 +48,7 @@ export function extractOpenApiAnchors(content: string): string[] {
 	const schemas = spec.components?.schemas ?? spec.definitions; // OpenAPI 2.x
 	if (schemas && typeof schemas === "object") {
 		for (const name of Object.keys(schemas)) {
-			anchors.push(`#/components/schemas/${name}`);
+			anchors.push({ slug: `#/components/schemas/${name}`, text: name });
 		}
 	}
 

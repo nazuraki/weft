@@ -5,6 +5,7 @@
 export { parseOpenApiSpec } from "./anchors/openapi.js";
 export { nodeIdToDocPath } from "./node-path.js";
 export type {
+	Anchor,
 	Manifest,
 	ProjectManifest,
 	ProjectsIndex,

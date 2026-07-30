@@ -49,11 +49,30 @@ export type Severity = "error" | "warn" | "info";
 /** A rule's configured severity. "off" means the rule does not run. */
 export type RuleSeverity = Severity | "off";
 
+/**
+ * A linkable position within a document.
+ *
+ * `slug` is the only field an edge matches on — `line`, `level` and `text` exist
+ * so a consumer can order, nest, jump to, or recognise an anchor. Notably they
+ * let a renamed heading be told apart from a deleted one, which a bare slug
+ * cannot express.
+ */
+export interface Anchor {
+	/** URL fragment including the leading "#", exactly as `LinkRef.anchor` writes it. */
+	slug: string;
+	/** Source text the slug was derived from: the heading, or the operation id / schema name. */
+	text: string;
+	/** 1-based line in the source file. Absent for anchors with no line, such as OpenAPI. */
+	line?: number;
+	/** Heading level, 1-6. Absent for anchors that are not headings. */
+	level?: number;
+}
+
 export interface WeftNode {
 	id: string;
 	type: "markdown" | "openapi";
 	title: string;
-	anchors: string[];
+	anchors: Anchor[];
 	/** Slug of the owning project. Absent in single-project mode. */
 	project?: string;
 	theme?: "light" | "dark";

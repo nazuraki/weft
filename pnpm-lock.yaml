@@ -45,6 +45,9 @@ importers:
       chokidar:
         specifier: ^4.0.0
         version: 4.0.3
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       glob:
         specifier: ^11.0.0
         version: 11.1.0
@@ -866,6 +869,9 @@ packages:
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
+
+  github-slugger@2.0.0:
+    resolution: {integrity: sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw==}
 
   glob@11.1.0:
     resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
@@ -1937,6 +1943,8 @@ snapshots:
     optional: true
 
   function-bind@1.1.2: {}
+
+  github-slugger@2.0.0: {}
 
   glob@11.1.0:
     dependencies:

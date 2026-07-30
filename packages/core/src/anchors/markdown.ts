@@ -1,3 +1,6 @@
+import GithubSlugger from "github-slugger";
+import type { Anchor } from "../types.js";
+
 /**
  * Split content into lines, tolerating CRLF.
  *
@@ -9,21 +12,42 @@ function toLines(content: string): string[] {
 	return content.split(/\r?\n/);
 }
 
-/** Extract heading anchors from Markdown content using GitHub-style slug algorithm. */
-export function extractMarkdownAnchors(content: string): string[] {
-	const anchors: string[] = [];
-	const slugCounts = new Map<string, number>();
+/**
+ * Extract heading anchors from Markdown content.
+ *
+ * Slugs come from `github-slugger`, the implementation GitHub's own rendering
+ * uses, rather than an approximation of it: links are authored against how the
+ * document renders on GitHub (DD-2), so GitHub's slugs are the correct ones.
+ * The slugger also owns the `-1`, `-2` suffixes it appends to repeated slugs.
+ */
+export function extractMarkdownAnchors(content: string): Anchor[] {
+	const anchors: Anchor[] = [];
+	const slugger = new GithubSlugger();
+	let fence: string | undefined;
 
-	for (const line of toLines(content)) {
+	toLines(content).forEach((line, index) => {
+		// A `#` opening a line inside a fenced block is code — a shell comment,
+		// say — not a heading, and GitHub gives it no anchor.
+		const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+		if (fenceMatch) {
+			const marker = fenceMatch[1][0];
+			if (!fence) fence = marker;
+			else if (fence === marker) fence = undefined;
+			return;
+		}
+		if (fence) return;
+
 		const match = line.match(/^(#{1,6})\s+(.+)$/);
-		if (!match) continue;
+		if (!match) return;
 
-		const slug = githubSlug(match[2]);
-		const count = slugCounts.get(slug) ?? 0;
-		slugCounts.set(slug, count + 1);
-
-		anchors.push(count === 0 ? `#${slug}` : `#${slug}-${count}`);
-	}
+		const text = match[2].trim();
+		anchors.push({
+			slug: `#${slugger.slug(text)}`,
+			text,
+			line: index + 1,
+			level: match[1].length,
+		});
+	});
 
 	return anchors;
 }
@@ -53,14 +77,4 @@ export function extractMarkdownTitle(content: string): string | undefined {
 		if (match) return match[1].trim();
 	}
 	return undefined;
-}
-
-/** GitHub-style heading slug: lowercase, strip non-alphanum (keep hyphens/spaces), collapse spaces to hyphens. */
-function githubSlug(text: string): string {
-	return text
-		.toLowerCase()
-		.replace(/[^\w\s-]/g, "")
-		.replace(/\s+/g, "-")
-		.replace(/-+/g, "-")
-		.replace(/^-|-$/g, "");
 }
