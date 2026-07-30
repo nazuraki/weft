@@ -1,3 +1,4 @@
+import { edgeResolutionValidator } from "./rules/edge-resolution.js";
 import type { Rule, Validator } from "./types.js";
 
 /**
@@ -58,12 +59,7 @@ export class ValidatorRegistry {
 	}
 }
 
-/**
- * A fresh registry holding the built-in checks.
- *
- * There are none yet: this stage exists so the individual checks can be built
- * against one interface rather than retrofitted into one later.
- */
+/** A fresh registry holding the built-in checks. */
 export function defaultRegistry(): ValidatorRegistry {
-	return new ValidatorRegistry();
+	return new ValidatorRegistry().register(edgeResolutionValidator);
 }

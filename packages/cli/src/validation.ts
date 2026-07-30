@@ -39,8 +39,8 @@ function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-function formatDiagnostic(diagnostic: Diagnostic): string {
-	const head = `  ${diagnostic.severity.padEnd(5)}  ${diagnostic.rule.padEnd(24)}  ${formatTarget(diagnostic.target)}`;
+function formatDiagnostic(diagnostic: Diagnostic, ruleWidth: number): string {
+	const head = `  ${diagnostic.severity.padEnd(5)}  ${diagnostic.rule.padEnd(ruleWidth)}  ${formatTarget(diagnostic.target)}`;
 	const message = `          ${diagnostic.message}`;
 	const hint = diagnostic.hint ? `\n          hint: ${diagnostic.hint}` : "";
 	return `${head}\n${message}${hint}`;
@@ -57,10 +57,13 @@ export function formatReport(result: ValidationResult, options: { json?: boolean
 	if (options.json) return JSON.stringify(result, null, 2);
 
 	const lines: string[] = [];
+	// Size the rule column to what is actually being reported, so one long rule
+	// id does not knock every other row out of alignment.
+	const ruleWidth = Math.max(0, ...result.diagnostics.map((d) => d.rule.length));
 
 	for (const severity of SEVERITY_ORDER) {
 		for (const diagnostic of result.diagnostics.filter((d) => d.severity === severity)) {
-			lines.push(formatDiagnostic(diagnostic));
+			lines.push(formatDiagnostic(diagnostic, ruleWidth));
 		}
 	}
 

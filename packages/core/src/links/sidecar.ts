@@ -8,6 +8,7 @@ interface SidecarLink {
 	target: string;
 	type?: string;
 	label?: string;
+	pending?: boolean;
 }
 
 interface SidecarFile {
@@ -58,6 +59,7 @@ export function extractSidecarLinks(
 			to,
 			type: link.type ?? "references",
 			label: link.label,
+			...(link.pending === true ? { pending: true } : {}),
 		};
 	});
 }

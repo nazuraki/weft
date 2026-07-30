@@ -38,6 +38,27 @@ links:
 		expect(extractSidecarLinks("", "/project/docs/a.md.weft", SINGLE)).toEqual([]);
 	});
 
+	it("carries a pending marker onto the edge", () => {
+		const content = `
+links:
+  - target: appendix.md#glossary
+    pending: true
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edge.pending).toBe(true);
+	});
+
+	it("omits pending when unset or false, rather than writing it as false", () => {
+		const content = `
+links:
+  - target: b.md
+  - target: c.md
+    pending: false
+`;
+		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edges.every((e) => !("pending" in e))).toBe(true);
+	});
+
 	it("defaults type to references", () => {
 		const content = `
 links:
