@@ -24,6 +24,7 @@
 		"chokidar": "^4.0.0",
 		"github-slugger": "^2.0.0",
 		"glob": "^11.0.0",
+		"mdast-util-to-string": "^4.0.0",
 		"minisearch": "^7.0.0",
 		"remark-parse": "^11.0.0",
 		"unified": "^11.0.0",

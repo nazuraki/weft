@@ -64,11 +64,26 @@ describe("extractMarkdownAnchors", () => {
 		expect(extractMarkdownAnchors(crlf(content))[0].line).toBe(3);
 	});
 
-	it("keeps the raw heading text before slugification", () => {
+	it("keeps the heading's text as rendered, before slugification", () => {
 		const anchors = extractMarkdownAnchors("## What is `weft`?\n");
 
-		expect(anchors[0].text).toBe("What is `weft`?");
+		// The text a reader sees, not the source line — which is also what the
+		// slug is derived from, so the two cannot drift apart.
+		expect(anchors[0].text).toBe("What is weft?");
 		expect(anchors[0].slug).toBe("#what-is-weft");
+	});
+
+	it("resolves inline markup in the text rather than carrying its syntax", () => {
+		const anchors = extractMarkdownAnchors("## See [the docs](guide.md) first\n");
+
+		expect(anchors[0].text).toBe("See the docs first");
+		expect(anchors[0].slug).toBe("#see-the-docs-first");
+	});
+
+	it("finds setext headings, which the renderer also gives ids", () => {
+		const anchors = extractMarkdownAnchors("Setext Title\n============\n\nBody.\n");
+
+		expect(anchors).toEqual([{ slug: "#setext-title", text: "Setext Title", line: 1, level: 1 }]);
 	});
 });
 

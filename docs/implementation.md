@@ -219,9 +219,21 @@ Deliberately absent: **modification time**, which git does not preserve, so a fr
 
 Built by `packages/core/src/anchors/` during indexing. Per-format extractors:
 
-- **Markdown:** Extract `## Heading` → slug via `github-slugger`, the implementation GitHub itself uses (`#my-heading`). Headings inside fenced code blocks are skipped
+- **Markdown:** Parse with `remark`, then slug each heading's rendered text via `github-slugger`, the implementation GitHub itself uses (`#my-heading`). Both ATX (`## Heading`) and setext headings are found; a `#` inside a fenced code block is a code node, not a heading, so it gets no anchor
 - **OpenAPI:** Extract operation IDs and schema names from parsed spec
 - **Code files:** Extract function/class names; line ranges for `@doc` references
+
+### Anchors and Rendered Ids Are One Algorithm
+
+An anchor is only useful if the rendered page carries an element with that id — otherwise it is extracted, indexed, stored and offered as a UI affordance while doing nothing.
+
+The renderer adds `rehype-slug`, which slugs with `github-slugger`. The indexer slugs the same parsed heading with the same library, so the two agree by construction rather than by being kept in step:
+
+- **The input is the heading's rendered text, not its source line.** `## See [the docs](guide.md)` renders as "See the docs", so its id is `#see-the-docs`. Slugging the raw line would give `#see-the-docsguidemd`, and no id in the page would ever match it. GitHub slugs what it rendered, and so does Weft.
+- **Collision suffixes belong to `github-slugger`**, which both sides instantiate per document, so a repeated heading gets `-1`, `-2` identically on each.
+- **OpenAPI ids come from `openApiOperationAnchor` and `openApiSchemaAnchor`**, exported from `@weft/core/browser` and called by both the extractor and `OpenApiRenderer`, for the same reason.
+
+`packages/ui/src/lib/markdown.test.ts` renders fixtures — and this repo's own documents — and asserts that every anchor the indexer records resolves to an element id in the output.
 
 Each anchor is an object, not a bare slug:
 

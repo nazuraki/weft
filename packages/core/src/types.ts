@@ -65,7 +65,13 @@ export type RuleSeverity = Severity | "off";
 export interface Anchor {
 	/** URL fragment including the leading "#", exactly as `LinkRef.anchor` writes it. */
 	slug: string;
-	/** Source text the slug was derived from: the heading, or the operation id / schema name. */
+	/**
+	 * Text the slug was derived from: the heading as rendered, with inline
+	 * markup resolved, or the operation id / schema name.
+	 *
+	 * Rendered rather than raw because that is what the page slugs, so an id in
+	 * the document and an anchor in the graph cannot disagree.
+	 */
 	text: string;
 	/** 1-based line in the source file. Absent for anchors with no line, such as OpenAPI. */
 	line?: number;
