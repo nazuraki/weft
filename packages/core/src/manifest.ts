@@ -24,6 +24,21 @@ import type {
  */
 export const MANIFEST_VERSION = 2;
 
+/**
+ * File extensions the indexer turns into nodes.
+ *
+ * Shared with validation so the two cannot drift: a check that an edge resolves
+ * has to know which link targets were ever eligible to become nodes. Note this
+ * is narrower than `getDocType`, which also maps `.json`.
+ */
+export const INDEXED_EXTENSIONS = ["md", "markdown", "yaml", "yml"] as const;
+
+/** True when a node id names a file the indexer would have turned into a node. */
+export function isIndexedPath(path: string): boolean {
+	const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+	return (INDEXED_EXTENSIONS as readonly string[]).includes(ext);
+}
+
 /** The nodes and edges discovered in a single docs root. */
 export interface RootGraph {
 	nodes: WeftNode[];
@@ -42,7 +57,7 @@ export async function buildRootGraph(
 	const docsDir = root.absDir;
 
 	// Find all doc files
-	const files = await glob("**/*.{md,markdown,yaml,yml}", {
+	const files = await glob(`**/*.{${INDEXED_EXTENSIONS.join(",")}}`, {
 		cwd: docsDir,
 		ignore: config.ignore,
 		nodir: true,

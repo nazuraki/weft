@@ -69,7 +69,38 @@ rules:
 
 Run `weft analyze --list-rules` to see the available rule ids and their defaults. An id in `rules` that no rule declares is reported at the end of a run rather than rejected, so a config written against a newer Weft — or against a check supplied by an external tool — still loads.
 
-> The validation stage exists so individual checks can be built against one interface. None ship yet, so `rules` has nothing to configure until the first one lands.
+### Rules
+
+| Rule | Default | Reports |
+|------|---------|---------|
+| `edge-target-missing` | `error` | A link points at a document that is not in the graph |
+| `edge-anchor-missing` | `error` | The target document exists, but defines no such anchor |
+| `edge-source-anchor-missing` | `error` | A sidecar declares a source `anchor` its own document does not define |
+| `edge-pending` | `info` | A link marked `pending` still does not resolve |
+| `edge-pending-resolved` | `info` | A link marked `pending` now resolves, so the marker can be dropped |
+| `validator-error` | `error` | A rule threw while running |
+
+A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
+
+Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml` — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
+
+> **Using a renderer with templated link paths?** A link whose path contains an unresolved template variable records an edge to a document that will never exist, and `edge-target-missing` will report it. Until Weft can learn what the build resolved, set that rule to `warn` or `off` for such a project.
+
+### Pending References
+
+Writing a pointer to something you are about to create is normal practice, and a check that cannot express it fires on correct workflow and gets switched off. Mark such a link `pending` in a sidecar:
+
+```yaml
+# architecture.md.weft
+links:
+  - target: appendix.md#glossary
+    type: see-also
+    pending: true
+```
+
+A pending link reports under `edge-pending` at `info` instead of failing the build, so it stays visible and countable rather than silently excluded — a reference that has been pending a long time is itself worth noticing. Once the target exists, `edge-pending-resolved` tells you the marker can be removed, so the suppression does not outlive its reason.
+
+Only sidecar links can declare this. An inline Markdown link has nowhere to put a marker, so an inline reference to something unwritten reports as `edge-target-missing` until inline links can carry attributes.
 
 ---
 
@@ -187,6 +218,7 @@ links:
 | `type` | no | Edge type. Defaults to `references` |
 | `anchor` | no | Anchor within the *source* document where the edge originates (e.g. `#heading-slug`) |
 | `label` | no | Human-readable label for the edge, shown in linked-items sidebar |
+| `pending` | no | The target is known not to exist yet — see [Pending References](#pending-references) |
 
 ### Edge Types
 

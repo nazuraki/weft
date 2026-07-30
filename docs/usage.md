@@ -79,7 +79,7 @@ weft check --json        # machine-readable result
 
 Turn a noisy rule down or off per project with the [`rules`](configuration.md#validation) config block rather than dropping the command from CI.
 
-> No checks ship yet — the validation stage exists so each one can be built against a single interface. Both commands report a clean run until the first rule lands.
+Both commands currently run the edge-resolution checks: every link must point at a document in the graph, and every anchor must exist on the document it targets. See [Rules](configuration.md#rules) for the full list and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
 
 ## Navigation
 

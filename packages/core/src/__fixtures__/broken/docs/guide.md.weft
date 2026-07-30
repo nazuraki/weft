@@ -1,0 +1,10 @@
+links:
+  # Deliberately points at something not written yet.
+  - target: appendix.md#glossary
+    type: see-also
+    pending: true
+
+  # Declares a source anchor this document does not have.
+  - anchor: "#nonexistent"
+    target: README.md
+    type: references

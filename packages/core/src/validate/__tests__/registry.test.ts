@@ -71,8 +71,15 @@ describe("ValidatorRegistry", () => {
 });
 
 describe("defaultRegistry", () => {
-	it("registers no checks yet — this stage is the seam they are built against", () => {
-		expect(defaultRegistry().validators).toEqual([]);
+	it("registers the built-in checks", () => {
+		expect(defaultRegistry().rules.map((rule) => rule.id)).toEqual([
+			VALIDATOR_ERROR_RULE.id,
+			"edge-target-missing",
+			"edge-anchor-missing",
+			"edge-source-anchor-missing",
+			"edge-pending",
+			"edge-pending-resolved",
+		]);
 	});
 
 	it("still knows the reserved runner rule", () => {

@@ -95,6 +95,16 @@ export interface WeftEdge {
 	to: LinkRef;
 	type: string;
 	label?: string;
+	/**
+	 * The target is known not to exist yet. Writing a pointer to something you
+	 * are about to create is normal practice, so validation reports these
+	 * separately instead of as breakage — but still reports them, so a reference
+	 * left pending stays visible and countable.
+	 *
+	 * Only sidecar links can declare this today; an inline Markdown link has
+	 * nowhere to put it.
+	 */
+	pending?: boolean;
 }
 
 /** Presentation config carried in the manifest so the UI needs no config access. */
