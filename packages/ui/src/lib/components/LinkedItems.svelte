@@ -1,5 +1,6 @@
 <script lang="ts">
-import type { Manifest, WeftEdge } from "@weft/core";
+import { type LinkedItem, linkedItems } from "$lib/linked-items.js";
+import type { Manifest } from "@weft/core";
 
 interface Props {
 	nodeId: string;
@@ -9,21 +10,36 @@ interface Props {
 
 let { nodeId, manifest, onnavigate }: Props = $props();
 
-let outgoing = $derived(manifest.edges.filter((e) => e.from.node === nodeId));
-let incoming = $derived(manifest.edges.filter((e) => e.to.node === nodeId));
-
-function nodeTitle(id: string): string {
-	return manifest.nodes.find((n) => n.id === id)?.title ?? id;
-}
-
-function handleClick(edge: WeftEdge, direction: "outgoing" | "incoming") {
-	if (direction === "outgoing") {
-		onnavigate(edge.to.node, edge.to.anchor);
-	} else {
-		onnavigate(edge.from.node, edge.from.anchor);
-	}
-}
+let items = $derived(linkedItems(manifest, nodeId));
+let outgoing = $derived(items.outgoing);
+let incoming = $derived(items.incoming);
 </script>
+
+<!--
+	An unresolvable target is shown rather than dropped — a broken reference is
+	signal, and hiding it would leave `weft analyze` the only way to find
+	something the sidebar is looking straight at. It is not a button, because
+	clicking one used to navigate to a node that does not exist.
+-->
+{#snippet row(item: LinkedItem)}
+	{#if item.resolved}
+		<button
+			class="edge-link"
+			title={item.resolvedFrom ? `Linked as ${item.resolvedFrom}` : undefined}
+			onclick={() => onnavigate(item.target, item.anchor)}
+		>
+			<span class="edge-target">{item.label}</span>
+			{#if item.anchor}<span class="edge-anchor">{item.anchor}</span>{/if}
+			{#if item.edge.label}<span class="edge-label">{item.edge.label}</span>{/if}
+		</button>
+	{:else}
+		<div class="edge-link unresolved" title="No document with this id is in the graph">
+			<span class="edge-target">{item.target}</span>
+			{#if item.anchor}<span class="edge-anchor">{item.anchor}</span>{/if}
+			<span class="edge-missing">not found</span>
+		</div>
+	{/if}
+{/snippet}
 
 <div class="linked-items">
 	{#if outgoing.length === 0 && incoming.length === 0}
@@ -33,18 +49,8 @@ function handleClick(edge: WeftEdge, direction: "outgoing" | "incoming") {
 	{#if outgoing.length > 0}
 		<h3 class="section-title">Outgoing</h3>
 		<ul class="edge-list">
-			{#each outgoing as edge}
-				<li>
-					<button class="edge-link" onclick={() => handleClick(edge, 'outgoing')}>
-						<span class="edge-target">{nodeTitle(edge.to.node)}</span>
-						{#if edge.to.anchor}
-							<span class="edge-anchor">{edge.to.anchor}</span>
-						{/if}
-						{#if edge.label}
-							<span class="edge-label">{edge.label}</span>
-						{/if}
-					</button>
-				</li>
+			{#each outgoing as item}
+				<li>{@render row(item)}</li>
 			{/each}
 		</ul>
 	{/if}
@@ -52,18 +58,8 @@ function handleClick(edge: WeftEdge, direction: "outgoing" | "incoming") {
 	{#if incoming.length > 0}
 		<h3 class="section-title">Incoming</h3>
 		<ul class="edge-list">
-			{#each incoming as edge}
-				<li>
-					<button class="edge-link" onclick={() => handleClick(edge, 'incoming')}>
-						<span class="edge-target">{nodeTitle(edge.from.node)}</span>
-						{#if edge.from.anchor}
-							<span class="edge-anchor">{edge.from.anchor}</span>
-						{/if}
-						{#if edge.label}
-							<span class="edge-label">{edge.label}</span>
-						{/if}
-					</button>
-				</li>
+			{#each incoming as item}
+				<li>{@render row(item)}</li>
 			{/each}
 		</ul>
 	{/if}
@@ -104,6 +100,23 @@ function handleClick(edge: WeftEdge, direction: "outgoing" | "incoming") {
 	.edge-target {
 		color: var(--color-link);
 		font-weight: 500;
+	}
+	.unresolved {
+		cursor: default;
+	}
+	.unresolved:hover {
+		background: none;
+	}
+	.unresolved .edge-target {
+		color: var(--color-text-secondary);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		text-decoration: line-through;
+	}
+	.edge-missing {
+		color: var(--color-text-secondary);
+		font-size: 11px;
+		font-style: italic;
 	}
 	.edge-anchor {
 		color: var(--color-text-secondary);

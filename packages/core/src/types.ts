@@ -120,6 +120,12 @@ export interface WeftEdge {
 	type: string;
 	label?: string;
 	/**
+	 * The link path as written, when it differed from the node it resolved to —
+	 * a link to a document's published form (`guide.html`) pointing at the source
+	 * it was rendered from (`guide.md`). Absent when the link already named a node.
+	 */
+	resolvedFrom?: string;
+	/**
 	 * The target is known not to exist yet. Writing a pointer to something you
 	 * are about to create is normal practice, so validation reports these
 	 * separately instead of as breakage — but still reports them, so a reference

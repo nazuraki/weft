@@ -9,6 +9,7 @@ import { type LoadedContribution, applyContributions, loadContributions } from "
 import { parseFrontmatter } from "./frontmatter.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
+import { resolvePublishedLinks } from "./published-links.js";
 import type {
 	Manifest,
 	ProjectManifest,
@@ -156,7 +157,9 @@ export function mergeGraphs(
 	// honours docOrder exactly like an indexed one.
 	const merged = applyContributions({ nodes: scanned, edges: scannedEdges }, contributions);
 	let nodes: WeftNode[] = merged.nodes;
-	const edges: WeftEdge[] = merged.edges;
+	// After contributions, so a node the build declared can be what a published
+	// link resolves to.
+	const edges: WeftEdge[] = resolvePublishedLinks(merged.nodes, merged.edges);
 
 	nodes.sort((a, b) => a.id.localeCompare(b.id));
 

@@ -84,7 +84,7 @@ Both commands currently run the edge-resolution checks: every link must point at
 ## Navigation
 
 - **Document tree** — left-hand sidebar lists all indexed docs; click any node to navigate.
-- **Linked items** — right-hand sidebar shows edges to/from the current document (hidden in `reader` layout).
+- **Linked items** — right-hand sidebar shows edges to/from the current document (hidden in `reader` layout). A reference whose target is not in the graph is listed struck through and marked *not found* rather than as a working link — a broken reference is worth seeing, but it is not somewhere you can navigate.
 - **Search** — `Cmd+K` opens the search palette; full-text search across all doc content and anchors.
 - **Back / forward** — browser history is maintained; back/forward work as expected within the app.
 - **In-document links** — standard Markdown links between docs are intercepted and navigate within the app.
