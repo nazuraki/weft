@@ -1,6 +1,19 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap");
-
-:root {
+/*
+ * Design tokens, and nothing that touches the page.
+ *
+ * This file is shared with `@weft/embed`, which may be dropped into a document
+ * Weft does not own — so anything global (a `*` reset, `html`/`body` rules, a
+ * remote font import) lives in `app-page.css` and is loaded only by the
+ * standalone app. Every token is declared on `.weft-scope` as well as `:root`,
+ * so an embedded mount resolves them from its own container rather than
+ * requiring the host to have applied them at the document root.
+ *
+ * The `[data-theme]` blocks below are deliberately not `:root`-qualified: they
+ * match any element carrying the attribute, which is what lets an embedded
+ * mount set its own scheme without touching the host's.
+ */
+:root,
+.weft-scope {
 	--lhn-width: 240px;
 	--rhs-width: 260px;
 	--header-height: 48px;
@@ -61,20 +74,23 @@
 	color-scheme: light;
 }
 
-*,
-*::before,
-*::after {
+/*
+ * Base styles for an embedded mount, scoped to its own container.
+ *
+ * The same rules the standalone app applies to `html`/`body`, expressed so they
+ * reach only what Weft rendered. A host page keeps its own box model, fonts and
+ * background everywhere else.
+ */
+.weft-scope {
 	box-sizing: border-box;
-}
-
-html,
-body {
-	margin: 0;
-	padding: 0;
-	height: 100%;
 	font-family: var(--font-sans);
 	font-size: 14px;
 	line-height: 1.5;
 	color: var(--color-text);
-	background: var(--color-bg);
+}
+
+.weft-scope *,
+.weft-scope *::before,
+.weft-scope *::after {
+	box-sizing: border-box;
 }

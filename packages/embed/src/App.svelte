@@ -52,6 +52,12 @@ async function load() {
 load();
 </script>
 
+<!--
+	Scoped for the same reason `mountDoc` is: this bundle no longer ships a
+	global reset, so the box model and tokens have to reach the app from its own
+	container rather than from the host's document.
+-->
+<div class="weft-scope weft-app">
 {#if loadError}
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
@@ -69,8 +75,12 @@ load();
 {:else}
 	<p class="weft-loading">Loading…</p>
 {/if}
+</div>
 
 <style>
+	.weft-app {
+		height: 100%;
+	}
 	.weft-loading,
 	.weft-load-error {
 		padding: 16px;
