@@ -105,6 +105,77 @@ links:
 		expect(edge.asserts).toBeUndefined();
 	});
 
+	it("carries a recorded source hash onto a derives-from edge", () => {
+		const content = `
+links:
+  - target: guide.md
+    type: derives-from
+    sourceHash: abc123abc123abc1
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/guide.pdf.weft", SINGLE);
+
+		expect(edge.from.node).toBe("guide.pdf");
+		expect(edge.sourceHash).toBe("abc123abc123abc1");
+	});
+
+	it("keeps a hash whose characters all happen to be digits", () => {
+		// YAML reads this as the integer zero, losing every leading digit and any
+		// hope of matching. Rare enough that nobody would think to look for it.
+		const content = `
+links:
+  - target: guide.md
+    type: derives-from
+    sourceHash: 0000000000000000
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/guide.pdf.weft", SINGLE);
+
+		expect(edge.sourceHash).toBe("0000000000000000");
+	});
+
+	it("keeps a quoted hash unquoted", () => {
+		const content = `
+links:
+  - target: guide.md
+    type: derives-from
+    sourceHash: "1234567890123456"
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/guide.pdf.weft", SINGLE);
+
+		expect(edge.sourceHash).toBe("1234567890123456");
+	});
+
+	it("reads each link's own hash when several are declared", () => {
+		const content = `
+links:
+  - target: a.md
+    type: derives-from
+    sourceHash: aaaaaaaaaaaaaaa1
+  - target: b.md
+    type: derives-from
+  - target: c.md
+    type: derives-from
+    sourceHash: ccccccccccccccc3
+`;
+		const edges = extractSidecarLinks(content, "/project/docs/guide.pdf.weft", SINGLE);
+
+		expect(edges.map((e) => e.sourceHash)).toEqual([
+			"aaaaaaaaaaaaaaa1",
+			undefined,
+			"ccccccccccccccc3",
+		]);
+	});
+
+	it("omits sourceHash when the link records none", () => {
+		const content = `
+links:
+  - target: guide.md
+    type: derives-from
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/guide.pdf.weft", SINGLE);
+
+		expect("sourceHash" in edge).toBe(false);
+	});
+
 	it("defaults type to references", () => {
 		const content = `
 links:

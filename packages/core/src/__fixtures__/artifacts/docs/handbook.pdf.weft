@@ -1,0 +1,6 @@
+# The sidecar belongs to the artifact, so the edges run output -> source.
+links:
+  # Recorded hash still matches handbook.md, so this reports nothing.
+  - target: handbook.md
+    type: derives-from
+    sourceHash: 8739a4a018eb3517

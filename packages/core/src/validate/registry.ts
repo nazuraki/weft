@@ -1,3 +1,4 @@
+import { artifactValidator } from "./rules/artifacts.js";
 import { assertionValidator } from "./rules/assertions.js";
 import { edgeResolutionValidator } from "./rules/edge-resolution.js";
 import type { Rule, Validator } from "./types.js";
@@ -62,5 +63,8 @@ export class ValidatorRegistry {
 
 /** A fresh registry holding the built-in checks. */
 export function defaultRegistry(): ValidatorRegistry {
-	return new ValidatorRegistry().register(edgeResolutionValidator).register(assertionValidator);
+	return new ValidatorRegistry()
+		.register(edgeResolutionValidator)
+		.register(assertionValidator)
+		.register(artifactValidator);
 }

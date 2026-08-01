@@ -15,6 +15,12 @@ export interface LinkedItem {
 	 * to fix upstream.
 	 */
 	resolved: boolean;
+	/**
+	 * True when the row names a generated output rather than a document. It is a
+	 * real node, so it is not struck through the way a dead edge is — but there is
+	 * nothing to open, so the caller must not offer it as navigation.
+	 */
+	artifact: boolean;
 	/** The link path as written, when it differed from the node it resolved to. */
 	resolvedFrom?: string;
 }
@@ -35,6 +41,7 @@ function toItem(
 		// from a working one; the caller must use `resolved` to tell them apart.
 		label: node?.title ?? ref.node,
 		resolved: node !== undefined,
+		artifact: node?.type === "artifact",
 		...(direction === "outgoing" && edge.resolvedFrom ? { resolvedFrom: edge.resolvedFrom } : {}),
 	};
 }

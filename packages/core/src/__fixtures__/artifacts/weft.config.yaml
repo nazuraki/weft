@@ -1,0 +1,4 @@
+docsDir: docs
+entryPoint: docs/README.md
+artifacts:
+  - "**/*.pdf"

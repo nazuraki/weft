@@ -9,7 +9,7 @@ export {
 	slugify,
 } from "./config.js";
 export type { DocsRoot } from "./config.js";
-export { countLines, hashContent, normalizeContent } from "./content.js";
+export { countLines, hashBytes, hashContent, normalizeContent } from "./content.js";
 export {
 	CONTRIBUTION_VERSION,
 	applyContributions,
@@ -41,12 +41,16 @@ export {
 	parseOpenApiSpec,
 } from "./anchors/openapi.js";
 export {
+	ARTIFACT_SOURCE_UNRECORDED,
+	ARTIFACT_STALE,
 	ASSERT_LINE_COUNT_MISMATCH,
 	ASSERT_MODIFIED_MISMATCH,
 	ASSERT_UNVERIFIABLE,
 	ASSERT_VERSION_MISMATCH,
+	DERIVES_FROM,
 	VALIDATOR_ERROR_RULE,
 	ValidatorRegistry,
+	artifactValidator,
 	assertionValidator,
 	defaultRegistry,
 	validateManifest,

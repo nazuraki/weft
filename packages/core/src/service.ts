@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import chokidar from "chokidar";
+import { getDocType } from "./anchors/index.js";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
 import { loadContributions } from "./contributions.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
@@ -144,8 +145,22 @@ export class WeftService {
 		return written;
 	}
 
-	/** Read a document's content. */
+	/**
+	 * Read a document's content.
+	 *
+	 * An artifact is refused rather than read. Reading a binary as UTF-8 does not
+	 * throw — it returns a lossy decode — so without this the caller receives
+	 * nonsense wearing every sign of success, a 200 and a body, instead of an
+	 * error it can act on.
+	 */
 	read(nodeId: string): string {
+		const node = this.manifest?.nodes.find((candidate) => candidate.id === nodeId);
+		// The extension stands in for the type when the manifest is not built yet,
+		// and catches a path that was never a document in the first place.
+		if (node?.type === "artifact" || !getDocType(nodeId)) {
+			throw new Error(`Not a readable document: ${nodeId}`);
+		}
+
 		const filePath = this.resolveNodePath(nodeId);
 		if (!filePath) throw new Error(`Document not found: ${nodeId}`);
 		return readFileSync(filePath, "utf-8");

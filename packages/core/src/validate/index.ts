@@ -1,5 +1,11 @@
 export { VALIDATOR_ERROR_RULE, ValidatorRegistry, defaultRegistry } from "./registry.js";
 export {
+	ARTIFACT_SOURCE_UNRECORDED,
+	ARTIFACT_STALE,
+	DERIVES_FROM,
+	artifactValidator,
+} from "./rules/artifacts.js";
+export {
 	ASSERT_LINE_COUNT_MISMATCH,
 	ASSERT_MODIFIED_MISMATCH,
 	ASSERT_UNVERIFIABLE,

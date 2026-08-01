@@ -95,3 +95,34 @@ describe("linkedItems", () => {
 		expect(item.edge.label).toBe("Setup steps");
 	});
 });
+
+describe("linkedItems (artifacts)", () => {
+	const artifactManifest: Manifest = {
+		version: 2,
+		nodes: [
+			node("guide.md", "The Guide"),
+			{ id: "guide.pdf", type: "artifact", title: "guide.pdf", anchors: [], hiddenFromNav: true },
+		],
+		edges: [{ from: { node: "guide.pdf" }, to: { node: "guide.md" }, type: "derives-from" }],
+	};
+
+	it("marks a row whose target is a generated output", () => {
+		const [item] = linkedItems(artifactManifest, "guide.md").incoming;
+
+		// It is a real node, so it resolves — but there is nothing to open, and
+		// the caller must not offer it as navigation.
+		expect(item).toMatchObject({ target: "guide.pdf", resolved: true, artifact: true });
+	});
+
+	it("does not mark an ordinary document as an artifact", () => {
+		const [item] = linkedItems(artifactManifest, "guide.pdf").outgoing;
+
+		expect(item).toMatchObject({ target: "guide.md", artifact: false });
+	});
+
+	it("does not mark an unresolved target as an artifact", () => {
+		const [item] = linkedItems(manifest([toNowhere]), "index.md").outgoing;
+
+		expect(item.artifact).toBe(false);
+	});
+});

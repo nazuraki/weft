@@ -83,6 +83,8 @@ describe("defaultRegistry", () => {
 			"assert-line-count-mismatch",
 			"assert-modified-mismatch",
 			"assert-unverifiable",
+			"artifact-stale",
+			"artifact-source-unrecorded",
 		]);
 	});
 

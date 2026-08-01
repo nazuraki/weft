@@ -79,7 +79,7 @@ weft check --json        # machine-readable result
 
 Turn a noisy rule down or off per project with the [`rules`](configuration.md#validation) config block rather than dropping the command from CI.
 
-Both commands currently run two families of check. The **edge-resolution** rules require every link to point at a document in the graph, and every anchor to exist on the document it targets. The **assertion** rules check the claims links make about their targets — a cited version, length, or date that no longer holds. See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
+Both commands currently run three families of check. The **edge-resolution** rules require every link to point at a document in the graph, and every anchor to exist on the document it targets. The **assertion** rules check the claims links make about their targets — a cited version, length, or date that no longer holds. The **artifact** rules report a generated output that has fallen behind the source it was built from. See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, [Generated Artifacts](configuration.md#generated-artifacts) for registering outputs and checking them, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
 
 ## Navigation
 
@@ -102,3 +102,4 @@ Both commands currently run two families of check. The **edge-resolution** rules
 |------|-----------|-------|
 | Markdown | `.md` | Headings become anchors, slugged exactly as GitHub does. Headings inside fenced code blocks are ignored |
 | OpenAPI | `.yaml`, `.yml` | Operation IDs and schema names become anchors |
+| Artifact | any | Only when listed in [`artifacts`](configuration.md#generated-artifacts). Tracked and checked, never rendered — there is nothing in a PDF for Weft to show |

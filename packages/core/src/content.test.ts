@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countLines, hashContent, normalizeContent } from "./content.js";
+import { countLines, hashBytes, hashContent, normalizeContent } from "./content.js";
 
 const BOM = "\uFEFF";
 
@@ -60,6 +60,44 @@ describe("hashContent", () => {
 		const expected = createHash("sha256").update("# Title\n", "utf8").digest("hex").slice(0, 16);
 
 		expect(hashContent(content)).toBe(expected);
+	});
+});
+
+describe("hashBytes", () => {
+	const bytes = (...values: number[]) => Uint8Array.from(values);
+
+	it("is stable for identical bytes", () => {
+		expect(hashBytes(bytes(1, 2, 3))).toBe(hashBytes(bytes(1, 2, 3)));
+	});
+
+	it("changes when a single byte changes", () => {
+		expect(hashBytes(bytes(1, 2, 3))).not.toBe(hashBytes(bytes(1, 2, 4)));
+	});
+
+	// The opposite of hashContent on purpose: a PDF holds byte sequences that
+	// look like CRLF and are not line endings, so normalizing would hash
+	// something the file never was.
+	it("does not normalize line endings the way hashContent does", () => {
+		const crlf = bytes(0x61, 0x0d, 0x0a);
+		const lf = bytes(0x61, 0x0a);
+
+		expect(hashBytes(crlf)).not.toBe(hashBytes(lf));
+	});
+
+	it("hashes bytes that are not valid UTF-8 at all", () => {
+		expect(hashBytes(bytes(0xff, 0xfe, 0xfd))).toMatch(/^[0-9a-f]{16}$/);
+	});
+
+	it("is a short lowercase hex digest, like the text hash", () => {
+		expect(hashBytes(bytes(0))).toMatch(/^[0-9a-f]{16}$/);
+	});
+
+	it("matches a SHA-256 of the raw bytes computed independently", async () => {
+		const { createHash } = await import("node:crypto");
+		const input = bytes(0xde, 0xad, 0xbe, 0xef);
+		const expected = createHash("sha256").update(input).digest("hex").slice(0, 16);
+
+		expect(hashBytes(input)).toBe(expected);
 	});
 });
 

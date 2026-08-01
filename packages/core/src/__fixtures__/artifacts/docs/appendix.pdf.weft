@@ -1,0 +1,10 @@
+links:
+  # appendix.md has been edited since this was generated.
+  - target: appendix.md
+    type: derives-from
+    sourceHash: 0000000000000000
+
+  # A second input — a stylesheet change invalidates the output too — but with
+  # no hash recorded, so nothing can be told about it.
+  - target: handbook.md
+    type: derives-from

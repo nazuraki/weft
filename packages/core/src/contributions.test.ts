@@ -84,8 +84,38 @@ describe("validateContribution", () => {
 			/nodes\[0\] is missing "id"/
 		);
 		expect(() =>
-			validateContribution({ version: 1, nodes: [{ id: "a.pdf", type: "artifact" }] }, "c")
-		).toThrow(/must have type "markdown" or "openapi"/);
+			validateContribution({ version: 1, nodes: [{ id: "a.md", type: "prose" }] }, "c")
+		).toThrow(/must have type "markdown", "openapi", "artifact"/);
+	});
+
+	it("accepts a contributed artifact", () => {
+		// The build is the only party that knows what it generated, and a
+		// generated output is never discoverable by indexing source.
+		const { nodes } = validateContribution(
+			{ version: 1, nodes: [{ id: "out/guide.pdf", type: "artifact", hiddenFromNav: true }] },
+			"c.json"
+		);
+
+		expect(nodes?.[0]).toMatchObject({ id: "out/guide.pdf", type: "artifact" });
+	});
+
+	it("accepts a contributed derives-from edge carrying a source hash", () => {
+		const { edges } = validateContribution(
+			{
+				version: 1,
+				edges: [
+					{
+						from: { node: "out/guide.pdf" },
+						to: { node: "guide.md" },
+						type: "derives-from",
+						sourceHash: "abc123abc123abc1",
+					},
+				],
+			},
+			"c.json"
+		);
+
+		expect(edges?.[0].sourceHash).toBe("abc123abc123abc1");
 	});
 
 	it("defaults a contributed edge's type", () => {

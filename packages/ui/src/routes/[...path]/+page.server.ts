@@ -10,11 +10,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	// In multi-project mode there is no bare README.md — fall back to the first
 	// project's README before giving up on the first node in the manifest.
 	const firstProject = manifest.projects?.[0]?.slug;
+	// The last-resort fallback skips what the nav skips, so the landing page is
+	// never a generated output or a document the project deliberately hid.
+	const landable = manifest.nodes.filter((n) => !n.hiddenFromNav && n.type !== "artifact");
 	const node =
 		pathToNode(params.path ?? "", manifest.nodes) ??
 		manifest.nodes.find((n) => n.id === "README.md") ??
 		(firstProject ? manifest.nodes.find((n) => n.id === `${firstProject}/README.md`) : undefined) ??
-		manifest.nodes[0];
+		landable[0];
 
 	if (!node) error(404, "No documents found.");
 

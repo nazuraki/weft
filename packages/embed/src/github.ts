@@ -30,11 +30,15 @@ export class GitHubClient implements WeftClient {
 
 	buildIndex(manifest: Manifest): void {
 		this.manifest = manifest;
-		const docs = manifest.nodes.map((node) => ({
-			id: node.id,
-			title: node.title,
-			anchors: node.anchors.map((a) => `${a.slug} ${a.text}`).join(" "),
-		}));
+		// A generated output is not a search result: selecting one would navigate
+		// to something that cannot be opened.
+		const docs = manifest.nodes
+			.filter((node) => node.type !== "artifact")
+			.map((node) => ({
+				id: node.id,
+				title: node.title,
+				anchors: node.anchors.map((a) => `${a.slug} ${a.text}`).join(" "),
+			}));
 		this.index.addAll(docs);
 	}
 
@@ -55,6 +59,12 @@ export class GitHubClient implements WeftClient {
 	}
 
 	async fetchDoc(id: string): Promise<string> {
+		// Fetching an artifact would return its bytes with a 200 and hand them to
+		// the markdown renderer as text.
+		if (this.manifest?.nodes.find((node) => node.id === id)?.type === "artifact") {
+			throw new Error(`Not a readable document: ${id}`);
+		}
+
 		// Node ids are namespaced by project slug in multi-project mode, which is
 		// not where the file lives — resolve back through the project's docsDir.
 		const path = this.manifest ? nodeIdToDocPath(this.manifest, id) : id;
