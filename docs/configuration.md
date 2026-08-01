@@ -167,6 +167,10 @@ Run `weft analyze --list-rules` to see the available rule ids and their defaults
 | `edge-source-anchor-missing` | `error` | A sidecar declares a source `anchor` its own document does not define |
 | `edge-pending` | `info` | A link marked `pending` still does not resolve |
 | `edge-pending-resolved` | `info` | A link marked `pending` now resolves, so the marker can be dropped |
+| `assert-version-mismatch` | `error` | A link asserts a version its target no longer declares |
+| `assert-line-count-mismatch` | `warn` | A link asserts a line count its target no longer has |
+| `assert-modified-mismatch` | `warn` | A link asserts a date its target no longer matches |
+| `assert-unverifiable` | `warn` | A link asserts something that cannot be checked against its target |
 | `validator-error` | `error` | A rule threw while running |
 
 A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
@@ -190,6 +194,39 @@ links:
 A pending link reports under `edge-pending` at `info` instead of failing the build, so it stays visible and countable rather than silently excluded — a reference that has been pending a long time is itself worth noticing. Once the target exists, `edge-pending-resolved` tells you the marker can be removed, so the suppression does not outlive its reason.
 
 Only sidecar links can declare this. An inline Markdown link has nowhere to put a marker, so an inline reference to something unwritten reports as `edge-target-missing` until inline links can carry attributes.
+
+### Assertions
+
+Documents constantly assert things about each other. Which version it is. How long it is. When it last changed. Every such claim is true when written and rots silently afterwards, and the cost is usually paid by a reader — often an external one — acting on something that stopped being true months earlier.
+
+A sidecar link can state the claim where it can be checked:
+
+```yaml
+# integration-guide.md.weft
+links:
+  - target: spec.md
+    type: references
+    asserts:
+      version: "2.41"
+      lineCount: ~3500
+      modified: 2026-07
+```
+
+| Property | Compared against | Matching |
+|----------|------------------|----------|
+| `version` | The target's frontmatter `version` | Exact, as written |
+| `lineCount` | Lines of text in the target | Exact for a number; `~3500` allows ten percent either way |
+| `modified` | The target's last commit date | Prefix, so `2026-07` asserts the month and a full timestamp asserts the instant |
+
+A claim that no longer holds reports under its own rule, so a project can decide how much each one matters. A stale version is an `error` by default, because a version pointer is the most expensive thing in a documentation set to maintain by hand and nothing else signals when one goes stale. Length and date drift with ordinary editing, so those warn.
+
+`~` exists because prose makes approximate claims. "Roughly 3,500 lines" is what a document actually says, and an exact assertion would either be wrong immediately or have to be rewritten on every edit.
+
+A claim nothing can check — a `version` asserted against a document that declares none, a count that is not a number, a property no node has — reports as `assert-unverifiable`. Nothing is known to be wrong, but an assertion nobody can check is a check the author believes they have and does not.
+
+Assertions are skipped on a link marked `pending`, and on one whose target is not in the graph: that is `edge-target-missing`'s finding, and reporting it twice says nothing new.
+
+> **Where dates come from.** `modified` is the date of the last commit touching the file, never the filesystem's mtime. Git does not preserve modification times, so a fresh clone or a CI checkout makes every file look simultaneously modified — meaningless in exactly the environment these checks run in. A document that is untracked or uncommitted, or a project that is not a git repository, simply has no date, and asserting one reports as `assert-unverifiable`.
 
 ---
 
@@ -275,6 +312,9 @@ ogImage: assets/og-architecture.png
 | `description` | `string` | Used in `<meta name="description">` and `og:description` |
 | `theme` | `"light" \| "dark"` | Force a specific theme for this document only |
 | `ogImage` | `string` | Per-document `og:image`, overrides the global `ogImage` config |
+| `version` | `string` | The document's own version, so other documents can [assert](#assertions) it |
+
+`version` is read exactly as written, so quoting is optional but harmless — `2.10` stays `2.10` rather than becoming the number 2.1. A document with no version is entirely normal, and nothing treats its absence as a problem.
 
 ---
 
@@ -308,6 +348,7 @@ links:
 | `anchor` | no | Anchor within the *source* document where the edge originates (e.g. `#heading-slug`) |
 | `label` | no | Human-readable label for the edge, shown in linked-items sidebar |
 | `pending` | no | The target is known not to exist yet — see [Pending References](#pending-references) |
+| `asserts` | no | Claims this link makes about its target — see [Assertions](#assertions) |
 
 ### Edge Types
 
