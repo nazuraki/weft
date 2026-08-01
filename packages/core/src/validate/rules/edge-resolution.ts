@@ -94,8 +94,10 @@ export const edgeResolutionValidator: Validator = {
 		EDGE_PENDING,
 		EDGE_PENDING_RESOLVED,
 	],
+	// Only to explain a broken link, never to decide there is one.
+	needsHistory: true,
 
-	run({ manifest, nodes }) {
+	run({ manifest, nodes, history }) {
 		const findings: Finding[] = [];
 
 		for (const edge of manifest.edges) {
@@ -128,21 +130,34 @@ export const edgeResolutionValidator: Validator = {
 			const target = nodes.get(edge.to.node);
 
 			if (!target) {
-				findings.push(
-					edge.pending
-						? {
-								rule: EDGE_PENDING.id,
-								message: "Target document does not exist yet",
-								target: { kind: "edge", edge },
-							}
-						: {
-								rule: EDGE_TARGET_MISSING.id,
-								message: `No document ${edge.to.node} is in the graph`,
-								target: { kind: "edge", edge },
-								hint: "Create the document, fix the path, or mark the link pending in a sidecar.",
-								data: { target: edge.to.node },
-							}
-				);
+				if (edge.pending) {
+					findings.push({
+						rule: EDGE_PENDING.id,
+						message: "Target document does not exist yet",
+						target: { kind: "edge", edge },
+					});
+					continue;
+				}
+
+				// Moving a document is ordinary maintenance, and it breaks every
+				// link to it. Git already knows what moved where, so say so rather
+				// than leaving a pile of dangling references to be worked out by
+				// hand. Only when the destination is really in the graph — a rename
+				// to something since deleted explains nothing.
+				const movedTo = history.renames.get(edge.to.node);
+				const renamedTo = movedTo && nodes.has(movedTo) ? movedTo : undefined;
+
+				findings.push({
+					rule: EDGE_TARGET_MISSING.id,
+					message: renamedTo
+						? `${edge.to.node} moved to ${renamedTo}`
+						: `No document ${edge.to.node} is in the graph`,
+					target: { kind: "edge", edge },
+					hint: renamedTo
+						? `Point the link at ${renamedTo}.`
+						: "Create the document, fix the path, or mark the link pending in a sidecar.",
+					data: { target: edge.to.node, ...(renamedTo ? { renamedTo } : {}) },
+				});
 				continue;
 			}
 

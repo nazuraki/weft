@@ -19,7 +19,8 @@ export {
 export type { Contribution, LoadedContribution, NodePatch } from "./contributions.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
-export { lastCommitDates, parseGitLog } from "./git.js";
+export { fileHistory, lastCommitDates, parseGitLog } from "./git.js";
+export type { FileHistory } from "./git.js";
 export { WeftService } from "./service.js";
 export {
 	MANIFEST_VERSION,
@@ -48,17 +49,22 @@ export {
 	ASSERT_UNVERIFIABLE,
 	ASSERT_VERSION_MISMATCH,
 	DERIVES_FROM,
+	NODE_DIVERGED,
+	NODE_DUPLICATE,
 	VALIDATOR_ERROR_RULE,
 	ValidatorRegistry,
 	artifactValidator,
 	assertionValidator,
 	defaultRegistry,
+	duplicateValidator,
+	graphHistory,
 	validateManifest,
 } from "./validate/index.js";
 export type {
 	Diagnostic,
 	DiagnosticTarget,
 	Finding,
+	GraphHistory,
 	Rule,
 	ValidationContext,
 	ValidationResult,

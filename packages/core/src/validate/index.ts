@@ -5,6 +5,8 @@ export {
 	DERIVES_FROM,
 	artifactValidator,
 } from "./rules/artifacts.js";
+export { NODE_DIVERGED, NODE_DUPLICATE, duplicateValidator } from "./rules/duplicates.js";
+export { NO_HISTORY, graphHistory } from "./history.js";
 export {
 	ASSERT_LINE_COUNT_MISMATCH,
 	ASSERT_MODIFIED_MISMATCH,
@@ -25,6 +27,7 @@ export type {
 	Diagnostic,
 	DiagnosticTarget,
 	Finding,
+	GraphHistory,
 	Rule,
 	ValidationContext,
 	ValidationResult,

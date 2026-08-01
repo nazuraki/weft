@@ -247,6 +247,89 @@ describe("edge resolution (pending references)", () => {
 	});
 });
 
+describe("edge resolution (targets that moved)", () => {
+	/** Run the validator against a fixed rename map rather than a real repository. */
+	async function checkWithRenames(manifest: Manifest, renames: Record<string, string>) {
+		const registry = new ValidatorRegistry().register({
+			...edgeResolutionValidator,
+			run: (context) =>
+				edgeResolutionValidator.run({
+					...context,
+					history: { blobs: new Map(), renames: new Map(Object.entries(renames)) },
+				}),
+		});
+		return validateManifest(manifest, CONFIG, registry);
+	}
+
+	it("says a target moved rather than leaving the breakage unexplained", async () => {
+		const manifest = graph(
+			[node("README.md"), node("guides/setup.md")],
+			[edge("README.md", "setup.md")]
+		);
+
+		const [diagnostic] = (await checkWithRenames(manifest, { "setup.md": "guides/setup.md" }))
+			.diagnostics;
+		// Moving a document is ordinary maintenance, and it breaks every link to
+		// it. Git already knows what happened, so the report should too.
+		expect(diagnostic.message).toBe("setup.md moved to guides/setup.md");
+		expect(diagnostic.data?.renamedTo).toBe("guides/setup.md");
+	});
+
+	it("still reports it as broken, since the link does need fixing", async () => {
+		const manifest = graph(
+			[node("README.md"), node("guides/setup.md")],
+			[edge("README.md", "setup.md")]
+		);
+
+		const { diagnostics, counts } = await checkWithRenames(manifest, {
+			"setup.md": "guides/setup.md",
+		});
+		expect(diagnostics[0].rule).toBe("edge-target-missing");
+		expect(counts.error).toBe(1);
+	});
+
+	it("names the new id in the hint", async () => {
+		const manifest = graph(
+			[node("README.md"), node("guides/setup.md")],
+			[edge("README.md", "setup.md")]
+		);
+
+		const [diagnostic] = (await checkWithRenames(manifest, { "setup.md": "guides/setup.md" }))
+			.diagnostics;
+		expect(diagnostic.hint).toBe("Point the link at guides/setup.md.");
+	});
+
+	it("reports a genuinely missing target plainly", async () => {
+		const manifest = graph([node("README.md")], [edge("README.md", "gone.md")]);
+
+		const [diagnostic] = (await checkWithRenames(manifest, {})).diagnostics;
+		expect(diagnostic.message).toBe("No document gone.md is in the graph");
+		expect(diagnostic.data?.renamedTo).toBeUndefined();
+	});
+
+	it("does not suggest a destination that is no longer in the graph", async () => {
+		// A file moved and then deleted explains nothing, and pointing the link
+		// at it would just break it differently.
+		const manifest = graph([node("README.md")], [edge("README.md", "setup.md")]);
+
+		const [diagnostic] = (await checkWithRenames(manifest, { "setup.md": "guides/setup.md" }))
+			.diagnostics;
+		expect(diagnostic.message).toBe("No document setup.md is in the graph");
+		expect(diagnostic.data?.renamedTo).toBeUndefined();
+	});
+
+	it("leaves a pending link alone even when it names something that moved", async () => {
+		const manifest = graph(
+			[node("README.md"), node("guides/setup.md")],
+			[edge("README.md", "setup.md", { pending: true })]
+		);
+
+		const [diagnostic] = (await checkWithRenames(manifest, { "setup.md": "guides/setup.md" }))
+			.diagnostics;
+		expect(diagnostic.rule).toBe("edge-pending");
+	});
+});
+
 // Extraction and validation exercised together over real files, since the
 // check is only as good as the edges the indexer hands it.
 describe("edge resolution (over a real docs tree)", () => {

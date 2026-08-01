@@ -252,3 +252,55 @@ describe("validateManifest", () => {
 		expect(result.counts).toEqual({ error: 0, warn: 0, info: 0 });
 	});
 });
+
+describe("validateManifest (git history)", () => {
+	/** Capture the history a validator was handed. */
+	function watching(rules: Rule[], needsHistory: boolean) {
+		const seen: ValidationContext["history"][] = [];
+		const validator: Validator = {
+			rules,
+			needsHistory,
+			run: (context) => {
+				seen.push(context.history);
+				return [];
+			},
+		};
+		return { validator, seen };
+	}
+
+	it("hands a validator that wants history an object it can read", async () => {
+		const { validator, seen } = watching([RULE_A], true);
+
+		await validateManifest(MANIFEST, config(), new ValidatorRegistry().register(validator));
+
+		// /project is not a repository, so it is empty — but never absent, since a
+		// check must be able to read it without guarding first.
+		expect(seen[0].blobs.size).toBe(0);
+		expect(seen[0].renames.size).toBe(0);
+	});
+
+	it("hands the same empty history to a validator that does not want it", async () => {
+		const { validator, seen } = watching([RULE_A], false);
+
+		await validateManifest(MANIFEST, config(), new ValidatorRegistry().register(validator));
+
+		expect(seen[0].blobs.size).toBe(0);
+	});
+
+	it("does not gather history when every rule that wants it is off", async () => {
+		// Reading git is the only IO validation does, so a project running without
+		// the history-based checks should pay for no subprocess at all.
+		const { validator, seen } = watching([RULE_A], true);
+		const plain = watching([RULE_B], false);
+
+		const result = await validateManifest(
+			MANIFEST,
+			config({ rules: { "rule-a": "off" } }),
+			new ValidatorRegistry().register(validator).register(plain.validator)
+		);
+
+		expect(seen).toHaveLength(0);
+		expect(result.rulesSkipped).toEqual(["rule-a"]);
+		expect(plain.seen[0].blobs.size).toBe(0);
+	});
+});
