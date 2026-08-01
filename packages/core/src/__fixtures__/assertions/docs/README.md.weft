@@ -1,0 +1,25 @@
+links:
+  # Was true when written. The spec has since moved to 2.42.
+  - target: spec.md
+    type: references
+    label: Wire protocol
+    asserts:
+      version: "2.41"
+
+  # A length claim that has drifted well past any reasonable tolerance.
+  - target: spec.md#framing
+    type: references
+    asserts:
+      lineCount: 999
+
+  # The registry declares no version, so this claim cannot be checked at all.
+  - target: registry.md
+    type: references
+    asserts:
+      version: "1.0"
+
+  # Correct today, and reported by nothing.
+  - target: spec.md#errors
+    type: references
+    asserts:
+      version: "2.42"

@@ -107,6 +107,47 @@ export interface WeftNode {
 	 * checked. Absent for nodes that have no lines, such as a binary artifact.
 	 */
 	lineCount?: number;
+	/**
+	 * Version the document declares in its own frontmatter.
+	 *
+	 * Declared rather than computed, because only the author knows which edits
+	 * constitute a new version. Absence is normal and never an error — an
+	 * append-only registry has no version to give.
+	 */
+	version?: string;
+	/**
+	 * When the document last changed, as an ISO 8601 timestamp with offset.
+	 *
+	 * Taken from the last commit touching the file rather than from the
+	 * filesystem: git does not preserve modification times, so a fresh clone or
+	 * a CI checkout makes every file look simultaneously modified — meaningless
+	 * in exactly the environment these checks run in. Absent when the file is
+	 * untracked, uncommitted, or the project is not a git repository.
+	 */
+	modified?: string;
+}
+
+/**
+ * Claims a link makes about the document it points at, checked against that
+ * document's current state.
+ *
+ * A key-value bag rather than a `version` field, because a mechanism built for
+ * version alone needs reopening the first time someone cites a length or a
+ * date. Every value is optional, and asserting nothing is the normal case.
+ */
+export interface Assertions {
+	/** The target's declared version, compared exactly as written. */
+	version?: string;
+	/**
+	 * The target's length. A number must match exactly; `"~3500"` allows ten
+	 * percent either way, for the "roughly N lines" claim prose actually makes.
+	 */
+	lineCount?: number | string;
+	/**
+	 * When the target last changed, as a prefix of its ISO timestamp — `"2026-07"`
+	 * accepts any day in that month, and a full timestamp matches only itself.
+	 */
+	modified?: string;
 }
 
 export interface LinkRef {
@@ -135,6 +176,11 @@ export interface WeftEdge {
 	 * nowhere to put it.
 	 */
 	pending?: boolean;
+	/**
+	 * Claims this link makes about its target. Like `pending`, only a sidecar
+	 * link can declare them — an inline Markdown link has nowhere to put them.
+	 */
+	asserts?: Assertions;
 }
 
 /** Presentation config carried in the manifest so the UI needs no config access. */

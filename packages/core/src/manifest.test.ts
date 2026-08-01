@@ -37,6 +37,12 @@ function monorepoConfig(overrides: Partial<WeftConfig> = {}): WeftConfig {
 }
 
 describe("buildManifest", () => {
+	const tempDirs: string[] = [];
+
+	afterEach(() => {
+		for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
 	it("discovers all doc nodes", async () => {
 		const manifest = await buildManifest(fixtureConfig());
 
@@ -124,6 +130,47 @@ describe("buildManifest", () => {
 
 		expect(arch?.contentHash).toBe(hashContent(raw));
 		expect(arch?.lineCount).toBe(countLines(raw));
+	});
+
+	it("records the version a document declares in its frontmatter", async () => {
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: resolve(FIXTURES_DIR, "assertions") })
+		);
+
+		expect(manifest.nodes.find((n) => n.id === "spec.md")?.version).toBe("2.42");
+	});
+
+	it("leaves a document that declares no version without one", async () => {
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: resolve(FIXTURES_DIR, "assertions") })
+		);
+
+		// Absence is normal — an append-only registry has no version to give —
+		// so nothing downstream may treat it as an error.
+		expect(manifest.nodes.find((n) => n.id === "registry.md")?.version).toBeUndefined();
+	});
+
+	it("dates every document from git history", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+
+		for (const node of manifest.nodes) {
+			// The fixtures are committed, so every one of them has a date. It comes
+			// from the last commit touching the file, never from the filesystem: a
+			// clone would give every document the checkout's mtime.
+			expect(node.modified).toBeDefined();
+			expect(Number.isNaN(Date.parse(node.modified as string))).toBe(false);
+		}
+	});
+
+	it("indexes a docs tree outside a repository, just without dates", async () => {
+		const loose = mkdtempSync(resolve(tmpdir(), "weft-loose-"));
+		tempDirs.push(loose);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(loose, "docs"), { recursive: true });
+
+		const manifest = await buildManifest(fixtureConfig({ rootDir: loose }));
+
+		expect(manifest.nodes.length).toBeGreaterThan(0);
+		expect(manifest.nodes.every((n) => n.modified === undefined)).toBe(true);
 	});
 
 	it("stamps the current manifest schema version", async () => {

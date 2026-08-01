@@ -19,6 +19,7 @@ export {
 export type { Contribution, LoadedContribution, NodePatch } from "./contributions.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
+export { lastCommitDates, parseGitLog } from "./git.js";
 export { WeftService } from "./service.js";
 export {
 	MANIFEST_VERSION,
@@ -40,8 +41,13 @@ export {
 	parseOpenApiSpec,
 } from "./anchors/openapi.js";
 export {
+	ASSERT_LINE_COUNT_MISMATCH,
+	ASSERT_MODIFIED_MISMATCH,
+	ASSERT_UNVERIFIABLE,
+	ASSERT_VERSION_MISMATCH,
 	VALIDATOR_ERROR_RULE,
 	ValidatorRegistry,
+	assertionValidator,
 	defaultRegistry,
 	validateManifest,
 } from "./validate/index.js";
@@ -56,6 +62,7 @@ export type {
 } from "./validate/index.js";
 export type {
 	Anchor,
+	Assertions,
 	WeftConfig,
 	WeftNode,
 	WeftEdge,

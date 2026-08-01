@@ -10,6 +10,7 @@ export {
 export { nodeIdToDocPath } from "./node-path.js";
 export type {
 	Anchor,
+	Assertions,
 	Manifest,
 	ProjectManifest,
 	ProjectsIndex,

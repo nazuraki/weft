@@ -1,7 +1,7 @@
 import { relative, sep } from "node:path";
 import { parse } from "yaml";
 import { type DocsRoot, nodeIdFor, rootForPath } from "../config.js";
-import type { LinkRef, WeftEdge } from "../types.js";
+import type { Assertions, LinkRef, WeftEdge } from "../types.js";
 
 interface SidecarLink {
 	anchor?: string;
@@ -9,10 +9,27 @@ interface SidecarLink {
 	type?: string;
 	label?: string;
 	pending?: boolean;
+	asserts?: Assertions;
 }
 
 interface SidecarFile {
 	links?: SidecarLink[];
+}
+
+/**
+ * True when a link declared a non-empty assertion mapping.
+ *
+ * What was asserted is not checked here: extraction records the claim, and the
+ * validation stage is where a malformed or uncheckable one gets reported, with
+ * a rule id and a severity a project can configure.
+ */
+function hasAssertions(value: unknown): value is Assertions {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.keys(value).length > 0
+	);
 }
 
 /**
@@ -60,6 +77,7 @@ export function extractSidecarLinks(
 			type: link.type ?? "references",
 			label: link.label,
 			...(link.pending === true ? { pending: true } : {}),
+			...(hasAssertions(link.asserts) ? { asserts: link.asserts } : {}),
 		};
 	});
 }

@@ -7,6 +7,7 @@ import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots }
 import { countLines, hashContent } from "./content.js";
 import { type LoadedContribution, applyContributions, loadContributions } from "./contributions.js";
 import { parseFrontmatter } from "./frontmatter.js";
+import { lastCommitDates } from "./git.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
@@ -73,6 +74,10 @@ export async function buildRootGraph(
 		nodir: true,
 	});
 
+	// One history walk for the whole root, since every file read below wants a
+	// date. Empty outside a git work tree, which is not an error.
+	const modifiedDates = await lastCommitDates(docsDir);
+
 	const nodes: WeftNode[] = [];
 	const edges: WeftEdge[] = [];
 
@@ -92,6 +97,9 @@ export async function buildRootGraph(
 			frontmatter.description ??
 			(docType === "markdown" ? extractMarkdownDescription(body) : undefined);
 
+		// git reports forward slashes on every platform, glob does not.
+		const modified = modifiedDates.get(relative(docsDir, absPath).replace(/\\/g, "/"));
+
 		nodes.push({
 			id: nodeIdFor(root, relative(docsDir, absPath)),
 			type: docType,
@@ -101,6 +109,8 @@ export async function buildRootGraph(
 			// these has to re-read the docs tree to get them.
 			contentHash: hashContent(raw),
 			lineCount: countLines(raw),
+			...(frontmatter.version ? { version: frontmatter.version } : {}),
+			...(modified ? { modified } : {}),
 			...(root.slug ? { project: root.slug } : {}),
 			...(frontmatter.theme ? { theme: frontmatter.theme } : {}),
 			...(description ? { description } : {}),
