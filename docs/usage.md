@@ -85,6 +85,56 @@ See [Rules](configuration.md#rules) for the full list, [Assertions](configuratio
 
 Two of these read git history, so `weft check` runs `git log` once when they are enabled. Outside a repository they have nothing to say and the rest of the checks are unaffected.
 
+## Embedding
+
+`@weft/embed` offers two mounts, and which one you want depends on how much of the page is yours.
+
+`mountWeft` gives you the whole product — header, document tree, search, theme handling — and fetches documents from a GitHub repo or a base URL:
+
+```js
+const unmount = Weft.mountWeft('#root', { repo: 'acme/docs', branch: 'main' });
+```
+
+`mountDoc` gives you the reader and the graph around it, and nothing else. No header, no tree, no search palette, no window-level key handler — for a host that already has all of those and wants the part it does not:
+
+```js
+const doc = Weft.mountDoc('#host', {
+  client,                  // your own fetchDoc + search
+  manifest,                // you load it; Weft does not decide where it lives
+  nodeId: 'guide.md',
+  linkedItems: true,       // opt into the sidebar without the rest
+  onNavigate: (id, anchor) => router.go(id, anchor),
+});
+
+doc.update({ nodeId: 'api.md' });   // re-point it
+doc.destroy();                      // remove it
+```
+
+Three things about this mount are deliberate:
+
+**The client is yours.** `WeftClient` is two methods — `fetchDoc(id)` and `search(query)`. A host with its own document endpoints and its own search backend should not have to re-serve files at a URL shape Weft picked, nor ship a second search index to duplicate one it already has.
+
+**Navigation is an output, not an action.** Following a link inside a document calls `onNavigate` and changes nothing. The host owns its URL and its history, and calls `update` if it decides to show the new document.
+
+**Weft does not touch your page.** Everything it renders sits inside `.weft-scope`, so its box model, fonts and colours reach only its own subtree — your reset and your typography are untouched outside it. It never writes `data-theme` on `documentElement`, either: set it on the container to pick a scheme, or leave it and Weft inherits what you already decided.
+
+### Theming contract
+
+These custom properties are the integration surface. Set them on the mount container (or anywhere above it) to make Weft look like the rest of your page:
+
+| Group | Properties |
+|-------|------------|
+| Surfaces | `--color-bg`, `--color-bg-secondary`, `--color-bg-elevated` |
+| Lines | `--color-border`, `--color-border-subtle` |
+| Text | `--color-text`, `--color-text-secondary` |
+| Emphasis | `--color-link`, `--color-link-hover`, `--color-accent`, `--color-accent-subtle` |
+| Type | `--font-sans`, `--font-heading`, `--font-mono` |
+| Code | `--code-keyword`, `--code-string`, `--code-number`, `--code-comment`, `--code-function`, `--code-variable`, `--code-type`, `--code-meta` |
+
+Weft ships defaults for both schemes, keyed off `data-theme="light"` or `data-theme="dark"` on any ancestor.
+
+> **Not published yet.** Neither `@weft/cli` nor `@weft/embed` is on npm, so embedding today means building from a checkout and vendoring `weft.iife.js` and `weft.css` by hand — with no version to pin and no signal when they change.
+
 ## Navigation
 
 - **Document tree** — left-hand sidebar lists all indexed docs; click any node to navigate.
