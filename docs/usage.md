@@ -79,7 +79,11 @@ weft check --json        # machine-readable result
 
 Turn a noisy rule down or off per project with the [`rules`](configuration.md#validation) config block rather than dropping the command from CI.
 
-Both commands currently run three families of check. The **edge-resolution** rules require every link to point at a document in the graph, and every anchor to exist on the document it targets. The **assertion** rules check the claims links make about their targets — a cited version, length, or date that no longer holds. The **artifact** rules report a generated output that has fallen behind the source it was built from. See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, [Generated Artifacts](configuration.md#generated-artifacts) for registering outputs and checking them, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
+Both commands currently run four families of check. The **edge-resolution** rules require every link to point at a document in the graph, and every anchor to exist on the document it targets — naming what a moved target became, rather than reporting an unexplained break. The **assertion** rules check the claims links make about their targets: a cited version, length, or date that no longer holds. The **artifact** rules report a generated output that has fallen behind the source it was built from. The **copy** rules report the same document kept in two places, both while the copies still agree and once they have drifted apart.
+
+See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, [Generated Artifacts](configuration.md#generated-artifacts) for registering outputs, [Duplicate and Diverged Copies](configuration.md#duplicate-and-diverged-copies) for the copy checks, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
+
+Two of these read git history, so `weft check` runs `git log` once when they are enabled. Outside a repository they have nothing to say and the rest of the checks are unaffected.
 
 ## Navigation
 

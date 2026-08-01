@@ -174,9 +174,21 @@ Run `weft analyze --list-rules` to see the available rule ids and their defaults
 | `assert-unverifiable` | `warn` | A link asserts something that cannot be checked against its target |
 | `artifact-stale` | `error` | A generated output no longer reflects the source it was built from |
 | `artifact-source-unrecorded` | `info` | A `derives-from` edge records no source hash, so staleness cannot be checked |
+| `node-duplicate` | `info` | Several documents hold identical content at different paths |
+| `node-diverged` | `warn` | Documents that once held identical content no longer match |
 | `validator-error` | `error` | A rule threw while running |
 
 A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
+
+**Moved documents are named, not merely reported broken.** Renaming a document breaks every link to it, and a pile of dangling references gives no clue what happened. Weft consults git's rename detection, so a link to a document that moved reports what it became:
+
+```
+  error  edge-target-missing  README.md -> setup.md
+          setup.md moved to guides/setup.md
+          hint: Point the link at guides/setup.md.
+```
+
+It stays `edge-target-missing` at the same severity — the link does need fixing either way — and the new id is also in `data.renamedTo` for `--json` consumers. A destination that has since been deleted is not suggested, since pointing the link at it would only break it differently.
 
 Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml` — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
 
@@ -365,6 +377,30 @@ Any string is valid as an edge type. Conventional types:
 | `see-also` | Related reading, no formal dependency |
 | `annotates` | This doc adds context to a specific part of the target |
 | `derives-from` | This was generated from the target — see [Generated Artifacts](#generated-artifacts) |
+
+---
+
+## Duplicate and Diverged Copies
+
+The same document kept in two places drifts, and the graph sees two unrelated nodes. The expensive version of this is a copy in an outbound directory and a copy in an internal one, byte-identical for months, until an edit pass scoped to one location quietly makes the copy that reaches external readers the wrong one.
+
+Weft reports it in two stages, because a copy is a different problem before and after it drifts.
+
+`node-duplicate` compares content hashes and reports documents that currently agree, at `info`. Nothing is wrong yet — but this is the cheapest moment the problem will ever be visible, and the window closes on the first edit to either copy.
+
+`node-diverged` reports documents that **once** held identical content and no longer do, at `warn`. This is the half that matters, and it cannot be done by comparing hashes: two copies stop sharing a hash at exactly the moment they start being a problem, so a check built only on hashes goes quiet precisely when it should speak. Weft asks git instead — these paths held the same blob at some point in history — and rename detection means a copy that has since been moved is still recognised.
+
+```
+  info   node-duplicate  (graph)
+          Identical content at 2 paths: outbound-setup.md, setup.md
+
+  warn   node-diverged   (graph)
+          Once identical, now different: guides/setup.md, outbound-setup.md
+```
+
+Both read only what reached the manifest, so [`ignore`](#build-output) already applies. Both name the graph rather than one of the copies: nothing here knows which came first, and naming one would imply it is the original. If one copy really is generated from the other, say so with a [`derives-from`](#generated-artifacts) edge.
+
+> **These need git.** Divergence is history, and without a repository there is none — the check simply has nothing to say. That is not the same as reporting the copies are fine, so a project that relies on it should make sure CI checks out enough history for `git log` to see the past (a shallow clone sees only what it fetched).
 
 ---
 
