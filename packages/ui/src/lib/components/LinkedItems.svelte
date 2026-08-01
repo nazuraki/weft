@@ -22,7 +22,13 @@ let incoming = $derived(items.incoming);
 	clicking one used to navigate to a node that does not exist.
 -->
 {#snippet row(item: LinkedItem)}
-	{#if item.resolved}
+	{#if item.artifact}
+		<div class="edge-link artifact" title="A generated output — there is nothing to open here">
+			<span class="edge-target">{item.label}</span>
+			{#if item.edge.label}<span class="edge-label">{item.edge.label}</span>{/if}
+			<span class="edge-note">generated output</span>
+		</div>
+	{:else if item.resolved}
 		<button
 			class="edge-link"
 			title={item.resolvedFrom ? `Linked as ${item.resolvedFrom}` : undefined}
@@ -101,11 +107,21 @@ let incoming = $derived(items.incoming);
 		color: var(--color-link);
 		font-weight: 500;
 	}
-	.unresolved {
+	.unresolved, .artifact {
 		cursor: default;
 	}
-	.unresolved:hover {
+	.unresolved:hover, .artifact:hover {
 		background: none;
+	}
+	.artifact .edge-target {
+		color: var(--color-text-secondary);
+		font-family: var(--font-mono);
+		font-size: 12px;
+	}
+	.edge-note {
+		color: var(--color-text-secondary);
+		font-size: 11px;
+		font-style: italic;
 	}
 	.unresolved .edge-target {
 		color: var(--color-text-secondary);

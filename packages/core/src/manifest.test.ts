@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
-import { countLines, hashContent } from "./content.js";
+import { countLines, hashBytes, hashContent } from "./content.js";
 import { MANIFEST_VERSION, buildManifest, splitManifest } from "./manifest.js";
 import type { WeftConfig } from "./types.js";
 
@@ -217,6 +217,134 @@ describe("buildManifest", () => {
 		);
 
 		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual(["architecture.md", "README.md"]);
+	});
+});
+
+describe("buildManifest (artifacts)", () => {
+	const ARTIFACTS_DIR = resolve(FIXTURES_DIR, "artifacts");
+
+	function artifactConfig(overrides: Partial<WeftConfig> = {}): WeftConfig {
+		return {
+			rootDir: ARTIFACTS_DIR,
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: [],
+			artifacts: ["**/*.pdf"],
+			...overrides,
+		};
+	}
+
+	it("registers a configured output as a node", async () => {
+		const manifest = await buildManifest(artifactConfig());
+
+		expect(manifest.nodes.map((n) => n.id).sort()).toContain("handbook.pdf");
+	});
+
+	it("indexes nothing extra when no artifacts are configured", async () => {
+		const manifest = await buildManifest(artifactConfig({ artifacts: undefined }));
+
+		// A PDF is not an indexable extension, so without the config key it was
+		// never going to become a node.
+		expect(manifest.nodes.every((n) => !n.id.endsWith(".pdf"))).toBe(true);
+	});
+
+	it("marks an artifact so it never reaches the nav", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const pdf = manifest.nodes.find((n) => n.id === "handbook.pdf");
+
+		expect(pdf?.type).toBe("artifact");
+		expect(pdf?.hiddenFromNav).toBe(true);
+	});
+
+	it("gives an artifact a hash but no anchors and no line count", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const pdf = manifest.nodes.find((n) => n.id === "handbook.pdf");
+
+		expect(pdf?.contentHash).toMatch(/^[0-9a-f]{16}$/);
+		expect(pdf?.anchors).toEqual([]);
+		expect(pdf?.lineCount).toBeUndefined();
+	});
+
+	it("hashes the artifact's bytes rather than a text reading of them", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const pdf = manifest.nodes.find((n) => n.id === "handbook.pdf");
+		const raw = readFileSync(resolve(ARTIFACTS_DIR, "docs", "handbook.pdf"));
+
+		expect(pdf?.contentHash).toBe(hashBytes(raw));
+		// Reading a PDF as UTF-8 does not throw, it silently mangles — so the two
+		// recipes genuinely disagree here rather than coinciding.
+		expect(pdf?.contentHash).not.toBe(hashContent(raw.toString("utf-8")));
+	});
+
+	it("titles an artifact with its file name", async () => {
+		const manifest = await buildManifest(artifactConfig());
+
+		expect(manifest.nodes.find((n) => n.id === "handbook.pdf")?.title).toBe("handbook.pdf");
+	});
+
+	it("respects ignore globs", async () => {
+		const manifest = await buildManifest(artifactConfig({ ignore: ["**/appendix.pdf"] }));
+		const ids = manifest.nodes.map((n) => n.id);
+
+		expect(ids).toContain("handbook.pdf");
+		expect(ids).not.toContain("appendix.pdf");
+	});
+
+	it("does not let a wide artifact glob replace an indexed document", async () => {
+		const manifest = await buildManifest(artifactConfig({ artifacts: ["**/*"] }));
+		const handbook = manifest.nodes.find((n) => n.id === "handbook.md");
+
+		// The document has anchors and content; replacing it with a hash and a
+		// file name would be a downgrade.
+		expect(handbook?.type).toBe("markdown");
+		expect(manifest.nodes.filter((n) => n.id === "handbook.md")).toHaveLength(1);
+	});
+
+	it("leaves a link to a registered artifact pointing at the artifact", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const link = manifest.edges.find(
+			(e) => e.from.node === "README.md" && e.to.node === "handbook.pdf"
+		);
+
+		// Published-form resolution rewrites `handbook.pdf` to `handbook.md` when
+		// the PDF is not a node. Registering it means the real target exists, so
+		// the link must be left alone.
+		expect(link).toBeDefined();
+		expect(link?.resolvedFrom).toBeUndefined();
+	});
+
+	it("namespaces an artifact id by project", async () => {
+		const manifest = await buildManifest({
+			rootDir: ARTIFACTS_DIR,
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: [],
+			artifacts: ["**/*.pdf"],
+			projects: [{ name: "Guides", docsDir: "docs" }],
+		});
+		const pdf = manifest.nodes.find((n) => n.id === "guides/handbook.pdf");
+
+		expect(pdf).toBeDefined();
+		expect(pdf?.project).toBe("guides");
+	});
+
+	it("reads derives-from edges from a sidecar beside the artifact", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const derived = manifest.edges.filter((e) => e.type === "derives-from");
+
+		expect(derived.map((e) => `${e.from.node} -> ${e.to.node}`).sort()).toEqual([
+			"appendix.pdf -> appendix.md",
+			"appendix.pdf -> handbook.md",
+			"handbook.pdf -> handbook.md",
+		]);
+	});
+
+	it("carries the recorded source hash onto the edge", async () => {
+		const manifest = await buildManifest(artifactConfig());
+		const edge = manifest.edges.find((e) => e.from.node === "handbook.pdf");
+		const source = manifest.nodes.find((n) => n.id === "handbook.md");
+
+		expect(edge?.sourceHash).toBe(source?.contentHash);
 	});
 });
 

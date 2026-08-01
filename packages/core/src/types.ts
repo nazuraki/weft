@@ -46,6 +46,16 @@ export interface WeftConfig {
 	 * project root. Merged into the manifest after source is indexed.
 	 */
 	contributions?: string[];
+	/**
+	 * Generated outputs to register as nodes, as globs relative to each docs
+	 * root. A PDF built from a document is not indexable, so without this there
+	 * is nothing for a `derives-from` edge to point at.
+	 *
+	 * Relative to the docs root rather than the project root so ids stay clean
+	 * and resolvable; an output living elsewhere is declared by a contribution
+	 * instead.
+	 */
+	artifacts?: string[];
 }
 
 /** How serious a diagnostic is. Only "error" fails `weft check`. */
@@ -81,7 +91,16 @@ export interface Anchor {
 
 export interface WeftNode {
 	id: string;
-	type: "markdown" | "openapi";
+	/**
+	 * What kind of thing this node is.
+	 *
+	 * `artifact` is a generated output — a PDF built from markdown, say. It is a
+	 * full graph node and a valid edge endpoint, but it is not a document: it has
+	 * no anchors, nothing to render, and it never appears in navigation. Consumers
+	 * that read a node's content must skip it, since reading a binary as text
+	 * succeeds and yields nonsense rather than failing.
+	 */
+	type: "markdown" | "openapi" | "artifact";
 	title: string;
 	anchors: Anchor[];
 	/** Slug of the owning project. Absent in single-project mode. */
@@ -181,6 +200,20 @@ export interface WeftEdge {
 	 * link can declare them — an inline Markdown link has nowhere to put them.
 	 */
 	asserts?: Assertions;
+	/**
+	 * On a `derives-from` edge: the source's content hash at the moment the
+	 * artifact was generated. An artifact is stale when this no longer equals the
+	 * source's current hash.
+	 *
+	 * Kin to `asserts` — both record what was true when written — but kept
+	 * separate because the finding differs. A stale assertion is fixed by editing
+	 * the claim; a stale artifact is fixed by regenerating it.
+	 *
+	 * Recorded by whatever did the generating, which is the only party that knows
+	 * it. `hashContent` documents the recipe so a build can compute it without
+	 * running Weft.
+	 */
+	sourceHash?: string;
 }
 
 /** Presentation config carried in the manifest so the UI needs no config access. */

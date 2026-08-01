@@ -1,4 +1,5 @@
-import { type Document, isMap, isScalar, parseDocument } from "yaml";
+import { type Document, isMap, parseDocument } from "yaml";
+import { scalarText } from "./scalar-source.js";
 
 export interface Frontmatter {
 	title?: string;
@@ -10,23 +11,12 @@ export interface Frontmatter {
 	[key: string]: unknown;
 }
 
-/**
- * Read `version` exactly as it was written.
- *
- * YAML parses an unquoted `2.10` as the number 2.1, so a document that says
- * 2.10 and a link asserting "2.10" would disagree over a difference that exists
- * only in the parse. The scalar keeps its source text, so prefer that over the
- * parsed value and leave quoting up to the author.
- */
+/** Read `version` exactly as it was written — see `scalarText`. */
 function documentVersion(doc: Document): string | undefined {
 	const contents = doc.contents;
 	if (!isMap(contents)) return undefined;
 
-	const node = contents.get("version", true);
-	if (!isScalar(node) || node.value === null || node.value === undefined) return undefined;
-
-	const source = typeof node.source === "string" ? node.source.trim() : "";
-	return source || String(node.value);
+	return scalarText(contents.get("version", true));
 }
 
 /** Strip and parse YAML frontmatter from markdown content. */

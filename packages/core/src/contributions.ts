@@ -8,6 +8,14 @@ import type { WeftConfig, WeftEdge, WeftNode } from "./types.js";
 export const CONTRIBUTION_VERSION = 1;
 
 /**
+ * Node types a contribution may declare.
+ *
+ * `artifact` matters most here: a build knows what it generated and from what,
+ * and a generated output is never discoverable by indexing source.
+ */
+const NODE_TYPES = ["markdown", "openapi", "artifact"];
+
+/**
  * Node fields a contribution may set on a document Weft already indexed.
  *
  * `id`, `type`, `anchors` and `project` are excluded on purpose: the first
@@ -71,8 +79,11 @@ function validateNode(raw: unknown, file: string, index: number): WeftNode {
 	if (typeof raw.id !== "string" || !raw.id) {
 		throw fail(file, `nodes[${index}] is missing "id"`);
 	}
-	if (raw.type !== "markdown" && raw.type !== "openapi") {
-		throw fail(file, `nodes[${index}] ("${raw.id}") must have type "markdown" or "openapi"`);
+	if (!NODE_TYPES.includes(raw.type as string)) {
+		throw fail(
+			file,
+			`nodes[${index}] ("${raw.id}") must have type ${NODE_TYPES.map((t) => `"${t}"`).join(", ")}`
+		);
 	}
 	if (raw.anchors !== undefined && !Array.isArray(raw.anchors)) {
 		throw fail(file, `nodes[${index}] ("${raw.id}") has a non-array "anchors"`);

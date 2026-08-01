@@ -143,6 +143,62 @@ describe("WeftService", () => {
 	});
 });
 
+describe("WeftService (artifacts)", () => {
+	const ARTIFACTS_DIR = resolve(FIXTURES_DIR, "artifacts");
+
+	function createArtifactService(): WeftService {
+		return new WeftService({
+			rootDir: ARTIFACTS_DIR,
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: [],
+			artifacts: ["**/*.pdf"],
+		});
+	}
+
+	it("refuses to read an artifact rather than returning a lossy decode", async () => {
+		const service = createArtifactService();
+		await service.getManifest();
+
+		// Reading a PDF as UTF-8 does not throw — it succeeds and returns
+		// nonsense, so the caller would get a 200 and a body full of mojibake.
+		expect(() => service.read("handbook.pdf")).toThrow(/Not a readable document/);
+	});
+
+	it("still reads the document beside it", async () => {
+		const service = createArtifactService();
+		await service.getManifest();
+
+		expect(service.read("handbook.md")).toContain("Integration Handbook");
+	});
+
+	it("refuses a path that was never a document, manifest or not", () => {
+		expect(() => createArtifactService().read("notes.txt")).toThrow(/Not a readable document/);
+	});
+
+	it("keeps artifacts out of the search index", async () => {
+		const service = createArtifactService();
+		// "PDF" appears in the artifact's bytes; a binary-decoded index would
+		// match it, and selecting the result would navigate nowhere.
+		const results = await service.search("PDF");
+
+		expect(results.every((r) => !r.id.endsWith(".pdf"))).toBe(true);
+	});
+
+	it("still finds the documents", async () => {
+		const results = await createArtifactService().search("onboarding");
+
+		expect(results.map((r) => r.id)).toContain("handbook.md");
+	});
+
+	it("traverses to an artifact, which is a real node", async () => {
+		const service = createArtifactService();
+		const edges = await service.traverse("handbook.pdf");
+
+		expect(edges.map((e) => e.to.node)).toContain("handbook.md");
+	});
+});
+
 describe("WeftService (multi-project)", () => {
 	it("exposes a root per project", () => {
 		const service = createMonorepoService();

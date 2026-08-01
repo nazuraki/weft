@@ -128,6 +128,23 @@ describe("loadConfig", () => {
 		await expect(loadConfig(root)).rejects.toThrow(/"docOrder" must be an array of strings/);
 	});
 
+	it("loads artifact globs", async () => {
+		const root = tempRoot({ "weft.config.yaml": "artifacts:\n  - '**/*.pdf'" });
+
+		expect((await loadConfig(root)).artifacts).toEqual(["**/*.pdf"]);
+	});
+
+	it("rejects non-string artifact globs", async () => {
+		const root = tempRoot({ "weft.config.yaml": "artifacts: '**/*.pdf'" });
+		await expect(loadConfig(root)).rejects.toThrow(/"artifacts" must be an array of strings/);
+	});
+
+	it("leaves artifacts unset when not configured", async () => {
+		const root = tempRoot({ "weft.config.yaml": "docsDir: d" });
+
+		expect((await loadConfig(root)).artifacts).toBeUndefined();
+	});
+
 	it("rejects bad enum values", async () => {
 		const root = tempRoot({ "weft.config.yaml": "layout: fancy" });
 		await expect(loadConfig(root)).rejects.toThrow(/"layout" must be "reader" or "default"/);

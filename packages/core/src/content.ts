@@ -33,6 +33,20 @@ export function hashContent(content: string): string {
 }
 
 /**
+ * Content hash of a file Weft cannot read as text, over its exact bytes.
+ *
+ * Same algorithm as `hashContent` minus the normalizing, because normalizing is
+ * a text operation: a PDF holds byte sequences that look like CRLF and are not
+ * line endings, and rewriting them would hash something the file never was.
+ *
+ * The two recipes share a field on the node but are never compared with each
+ * other — a document's hash is only ever matched against another document's.
+ */
+export function hashBytes(bytes: Uint8Array): string {
+	return createHash("sha256").update(bytes).digest("hex").slice(0, HASH_LENGTH);
+}
+
+/**
  * Number of lines of text, counting the way an editor and `wc -l` agree on: a
  * trailing newline terminates the last line rather than starting an empty one.
  */

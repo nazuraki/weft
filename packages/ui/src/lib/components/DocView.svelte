@@ -8,7 +8,7 @@ import OpenApiRenderer from "./OpenApiRenderer.svelte";
 interface Props {
 	nodeId: string;
 	anchor?: string;
-	nodeType?: "markdown" | "openapi";
+	nodeType?: "markdown" | "openapi" | "artifact";
 	onnavigate: (nodeId: string, anchor?: string) => void;
 }
 
@@ -20,8 +20,11 @@ let content = $state("");
 let loading = $state(true);
 let error = $state("");
 
+// An artifact is never fetched. Reading a binary as text succeeds and returns a
+// lossy decode, so without this the renderer would be handed mojibake and draw
+// it as if it were the document.
 $effect(() => {
-	if (nodeType !== "openapi") loadDoc(nodeId);
+	if (nodeType !== "openapi" && nodeType !== "artifact") loadDoc(nodeId);
 });
 
 async function loadDoc(id: string) {
@@ -46,7 +49,12 @@ $effect(() => {
 </script>
 
 <div class="doc-view">
-	{#if nodeType === 'openapi'}
+	{#if nodeType === 'artifact'}
+		<p class="artifact">
+			<strong>{nodeId}</strong> is a generated output. Weft tracks it so its sources can be
+			checked, but there is nothing here to render.
+		</p>
+	{:else if nodeType === 'openapi'}
 		<OpenApiRenderer {nodeId} {anchor} />
 	{:else if loading}
 		<p class="loading">Loading...</p>
@@ -62,7 +70,7 @@ $effect(() => {
 		max-width: 800px;
 		margin: 0 auto;
 	}
-	.loading, .error {
+	.loading, .error, .artifact {
 		color: var(--color-text-secondary);
 	}
 	.error {

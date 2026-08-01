@@ -25,7 +25,7 @@ const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
 type UserConfig = Partial<Omit<WeftConfig, "rootDir">>;
 
 const STRING_KEYS = ["docsDir", "entryPoint", "siteTitle", "siteUrl", "ogImage"] as const;
-const STRING_ARRAY_KEYS = ["ignore", "docOrder", "contributions"] as const;
+const STRING_ARRAY_KEYS = ["ignore", "docOrder", "contributions", "artifacts"] as const;
 const ENUM_KEYS = {
 	defaultTheme: ["light", "dark"],
 	layout: ["reader", "default"],

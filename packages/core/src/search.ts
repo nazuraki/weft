@@ -32,7 +32,12 @@ export class SearchIndex {
 	build(manifest: Manifest, resolvePath: (nodeId: string) => string | undefined): void {
 		this.index.removeAll();
 
-		const docs: SearchDoc[] = manifest.nodes.map((node) => {
+		// Artifacts are excluded outright. Reading a PDF as UTF-8 does not throw —
+		// it yields a lossy decode — so the catch below would never fire and the
+		// index would fill with binary noise that matches queries by accident.
+		const searchable = manifest.nodes.filter((node) => node.type !== "artifact");
+
+		const docs: SearchDoc[] = searchable.map((node) => {
 			let content = "";
 			const path = resolvePath(node.id);
 			try {

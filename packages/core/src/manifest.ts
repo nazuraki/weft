@@ -4,7 +4,7 @@ import { glob } from "glob";
 import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
-import { countLines, hashContent } from "./content.js";
+import { countLines, hashBytes, hashContent } from "./content.js";
 import { type LoadedContribution, applyContributions, loadContributions } from "./contributions.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { lastCommitDates } from "./git.js";
@@ -123,6 +123,8 @@ export async function buildRootGraph(
 		}
 	}
 
+	nodes.push(...(await findArtifacts(config, root, new Set(nodes.map((node) => node.id)))));
+
 	// Extract links from sidecar files
 	for (const sidecarFile of sidecarFiles) {
 		const absPath = resolve(docsDir, sidecarFile);
@@ -131,6 +133,49 @@ export async function buildRootGraph(
 	}
 
 	return { nodes, edges };
+}
+
+/**
+ * Register the generated outputs configured for a root.
+ *
+ * An artifact is a node so an edge has something to point at, and nothing more:
+ * no anchors to extract, no text to read, and never in the nav. The title is the
+ * file name because a node must have one and a PDF does not offer a better
+ * answer — nothing displays it, since `hiddenFromNav` keeps artifacts out of the
+ * tree and consumers are expected to skip them.
+ */
+async function findArtifacts(
+	config: WeftConfig,
+	root: DocsRoot,
+	indexed: Set<string>
+): Promise<WeftNode[]> {
+	if (!config.artifacts?.length) return [];
+
+	const files = await glob(config.artifacts, {
+		cwd: root.absDir,
+		ignore: config.ignore,
+		nodir: true,
+		posix: true,
+	});
+
+	// Sorted so a manifest does not change purely because the filesystem
+	// enumerated a directory differently. A pattern wide enough to catch an
+	// indexed document loses to the document: it has anchors and content, and
+	// replacing it with a hash and a file name would be a downgrade.
+	return files
+		.sort()
+		.filter((file) => !indexed.has(nodeIdFor(root, file)))
+		.map((file) => ({
+			id: nodeIdFor(root, file),
+			type: "artifact" as const,
+			title: file.slice(file.lastIndexOf("/") + 1),
+			anchors: [],
+			// Bytes, not normalized text: an artifact is whatever it literally is.
+			// No line count either — there are no lines to count.
+			contentHash: hashBytes(readFileSync(resolve(root.absDir, file))),
+			hiddenFromNav: true,
+			...(root.slug ? { project: root.slug } : {}),
+		}));
 }
 
 /**
