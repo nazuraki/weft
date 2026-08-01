@@ -59,6 +59,52 @@ links:
 		expect(edges.every((e) => !("pending" in e))).toBe(true);
 	});
 
+	it("carries assertions onto the edge", () => {
+		const content = `
+links:
+  - target: spec.md
+    asserts:
+      version: "2.41"
+      lineCount: ~3500
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edge.asserts).toEqual({ version: "2.41", lineCount: "~3500" });
+	});
+
+	it("omits asserts when a link makes no claim", () => {
+		const content = `
+links:
+  - target: b.md
+  - target: c.md
+    asserts: {}
+`;
+		const edges = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edges.every((e) => !("asserts" in e))).toBe(true);
+	});
+
+	it("records a claim it cannot make sense of rather than dropping it", () => {
+		// Extraction records what was written; the validation stage is where an
+		// uncheckable claim gets a rule id and a configurable severity.
+		const content = `
+links:
+  - target: b.md
+    asserts:
+      nonsense: yes
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edge.asserts).toEqual({ nonsense: "yes" });
+	});
+
+	it("ignores an asserts that is not a mapping", () => {
+		const content = `
+links:
+  - target: b.md
+    asserts: "2.41"
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/a.md.weft", SINGLE);
+		expect(edge.asserts).toBeUndefined();
+	});
+
 	it("defaults type to references", () => {
 		const content = `
 links:

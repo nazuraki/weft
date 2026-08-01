@@ -23,6 +23,10 @@ const PATCHABLE_FIELDS = [
 	"hiddenFromNav",
 	"contentHash",
 	"lineCount",
+	// A build tool often knows a version Weft cannot see — one kept in a release
+	// file or a tag rather than in the document's own frontmatter.
+	"version",
+	"modified",
 ] as const;
 
 /** Field patch applied to a node that already exists in the graph. */

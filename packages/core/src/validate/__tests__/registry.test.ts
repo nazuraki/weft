@@ -79,6 +79,10 @@ describe("defaultRegistry", () => {
 			"edge-source-anchor-missing",
 			"edge-pending",
 			"edge-pending-resolved",
+			"assert-version-mismatch",
+			"assert-line-count-mismatch",
+			"assert-modified-mismatch",
+			"assert-unverifiable",
 		]);
 	});
 

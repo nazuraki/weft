@@ -79,7 +79,7 @@ weft check --json        # machine-readable result
 
 Turn a noisy rule down or off per project with the [`rules`](configuration.md#validation) config block rather than dropping the command from CI.
 
-Both commands currently run the edge-resolution checks: every link must point at a document in the graph, and every anchor must exist on the document it targets. See [Rules](configuration.md#rules) for the full list and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
+Both commands currently run two families of check. The **edge-resolution** rules require every link to point at a document in the graph, and every anchor to exist on the document it targets. The **assertion** rules check the claims links make about their targets — a cited version, length, or date that no longer holds. See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
 
 ## Navigation
 
