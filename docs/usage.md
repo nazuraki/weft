@@ -171,7 +171,7 @@ Weft renders light unless something asks for dark. Set `data-theme="dark"` on th
 Markdown is rendered with GitHub-flavoured Markdown plus:
 
 - **Syntax highlighting** on fenced blocks that declare a language, with the language shown as a chip on the block. Highlighting is class-based and themed with Weft's own custom properties, so it follows light and dark without a second stylesheet.
-- **Scrollable tables** — every table is wrapped so a wide one scrolls itself instead of moving the page sideways, with a sticky header row.
+- **Scrollable tables** — every table is wrapped so a wide one scrolls itself instead of moving the page sideways, with zebra striping and a row hover.
 - **Heading permalinks** — every heading gets an id (the same slug the graph indexes) and a `#` control to copy a link to it.
 
 ### Raw HTML is sanitized

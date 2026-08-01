@@ -54,10 +54,8 @@ function handleClick(e: MouseEvent) {
 		line-height: 1.6;
 		word-wrap: break-word;
 	}
-	.markdown-body :global(h1),
-	.markdown-body :global(h2),
-	.markdown-body :global(h3),
-	.markdown-body :global(h4) {
+	/* h5 and h6 were omitted here too, so they rendered in the body font. */
+	.markdown-body :global(:is(h1, h2, h3, h4, h5, h6)) {
 		font-family: var(--w-font-heading, var(--w-font-sans));
 		font-weight: 600;
 		letter-spacing: -0.01em;
@@ -115,8 +113,15 @@ function handleClick(e: MouseEvent) {
 	}
 	/*
 	 * Tables scroll inside their own wrapper rather than pushing the page
-	 * sideways. `min-width` is what makes the wrapper do anything: without it
-	 * the table shrinks to fit and the columns become unreadable instead.
+	 * sideways. `min-width: 100%` makes a narrow table still fill the measure;
+	 * what makes the wrapper scroll is a table whose min-content width exceeds
+	 * it, which is a function of its columns rather than anything set here.
+	 *
+	 * No sticky header. `overflow-x: auto` makes this wrapper a scroll container
+	 * on both axes, so a `position: sticky` cell sticks to the wrapper — which
+	 * has no height constraint and therefore never scrolls vertically. Making it
+	 * work would mean a `max-height` region, which breaks Ctrl-F, printing and
+	 * mobile scroll chaining; no comparable docs renderer does it either.
 	 */
 	.markdown-body :global(.table-wrap) {
 		overflow-x: auto;
@@ -137,13 +142,14 @@ function handleClick(e: MouseEvent) {
 	.markdown-body :global(th), .markdown-body :global(td) {
 		border: 1px solid var(--w-border);
 		padding: 6px 13px;
-		white-space: nowrap;
 	}
 	.markdown-body :global(th) {
 		background: var(--w-bg-secondary);
 		font-weight: 600;
-		position: sticky;
-		top: 0;
+		/* Headers only. On `td` this turns a prose column — the description
+		   columns in this repo's own docs — into one unwrappable line, trading
+		   vertical wrap for forced horizontal scrolling. */
+		white-space: nowrap;
 	}
 	.markdown-body :global(tbody tr:nth-child(even)) {
 		background: var(--w-bg-secondary);
@@ -152,13 +158,14 @@ function handleClick(e: MouseEvent) {
 		background: var(--w-accent-subtle);
 	}
 
-	/* Anchor affordances: the id alone is addressable, this makes it usable. */
-	.markdown-body :global(h1),
-	.markdown-body :global(h2),
-	.markdown-body :global(h3),
-	.markdown-body :global(h4),
-	.markdown-body :global(h5),
-	.markdown-body :global(h6) {
+	/*
+	 * Anchor affordances: the id alone is addressable, this makes it usable.
+	 *
+	 * `:is()` rather than six selectors, here and on the hover rule below. Two
+	 * hand-maintained copies of the same heading list is what let the hover rule
+	 * silently omit h5 and h6 while this one included them.
+	 */
+	.markdown-body :global(:is(h1, h2, h3, h4, h5, h6)) {
 		/* px, not rem: `.weft-scope` now sets font-size on the root, so `rem`
 		   means 14px here and 16px in an embed whose host has not. */
 		scroll-margin-top: 16px;
@@ -170,10 +177,7 @@ function handleClick(e: MouseEvent) {
 		text-decoration: none;
 		font-weight: 400;
 	}
-	.markdown-body :global(h1:hover .heading-anchor),
-	.markdown-body :global(h2:hover .heading-anchor),
-	.markdown-body :global(h3:hover .heading-anchor),
-	.markdown-body :global(h4:hover .heading-anchor),
+	.markdown-body :global(:is(h1, h2, h3, h4, h5, h6):hover .heading-anchor),
 	.markdown-body :global(.heading-anchor:focus) {
 		opacity: 1;
 	}
