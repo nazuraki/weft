@@ -11,15 +11,43 @@ function renderedIds(html: string): string[] {
 }
 
 /**
+ * Every `<name …>` start tag as an attribute map — order- and quoting-agnostic.
+ *
+ * Matching attributes positionally would pin `hast-util-to-html`'s serialization
+ * order, which is an implementation detail of a transitive dependency: a bump
+ * that swapped two attributes would fail a test with nothing behaviourally
+ * wrong.
+ */
+function tagsOf(html: string, name: string): Record<string, string>[] {
+	return [...html.matchAll(new RegExp(`<${name}(?=[\\s/>])[^>]*>`, "g"))].map((m) =>
+		Object.fromEntries(
+			[...m[0].matchAll(/([\w:-]+)(?:="([^"]*)")?/g)]
+				.slice(1)
+				.filter((a) => a[1])
+				.map((a) => [a[1], a[2] ?? ""])
+		)
+	);
+}
+
+/**
  * The loop this issue exists to close: an anchor is extracted, indexed, stored,
  * transported and offered as a UI affordance, and none of that means anything
  * unless the rendered page actually carries an element with that id.
  */
 async function assertAnchorsReachable(markdown: string) {
+	const html = await renderMarkdown(markdown);
 	const indexed = extractAnchors(markdown, "markdown").map((a) => a.slug);
-	const inPage = renderedIds(await renderMarkdown(markdown));
 
-	expect(inPage).toEqual(indexed);
+	expect(renderedIds(html)).toEqual(indexed);
+
+	// No in-page link may point at nothing — heading permalinks, footnote refs
+	// and backrefs alike. Checked here rather than on a synthetic fixture so it
+	// runs over every document this suite already renders, including this repo's
+	// own docs. `dangling` rather than a per-href loop so a failure names the
+	// broken target instead of dumping every id in the document.
+	const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+	const hrefs = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+	expect([...new Set(hrefs.filter((href) => !ids.has(href)))]).toEqual([]);
 }
 
 describe("renderMarkdown", () => {
@@ -40,6 +68,34 @@ describe("renderMarkdown", () => {
 	it("keeps GFM support", async () => {
 		const html = await renderMarkdown("| a | b |\n| - | - |\n| 1 | 2 |\n");
 		expect(html).toContain("<table>");
+	});
+});
+
+describe("renderMarkdown (footnotes)", () => {
+	const DOC = "# Title\n\nText with a note[^1].\n\n[^1]: The note itself.\n";
+
+	it("wires footnote ref, definition, backref and label to each other", async () => {
+		const html = await renderMarkdown(DOC);
+
+		const [ref] = tagsOf(html, "a").filter((t) => "data-footnote-ref" in t);
+		const [back] = tagsOf(html, "a").filter((t) => "data-footnote-backref" in t);
+		const defs = tagsOf(html, "li").filter((t) => t.id);
+		const headings = [1, 2, 3, 4, 5, 6].flatMap((n) => tagsOf(html, `h${n}`)).filter((t) => t.id);
+
+		expect(ref).toBeDefined();
+		expect(back).toBeDefined();
+		expect(defs.length).toBeGreaterThan(0);
+
+		// Asserted as relationships, not literals. The `user-content-` prefix comes
+		// from `mdast-util-to-hast`, not from anything here, and this codebase
+		// argues elsewhere for dropping it — pinning the string would fail a change
+		// that broke nothing. What must hold is that the two ends agree.
+		expect(ref.href).toBe(`#${defs[0].id}`);
+		expect(back.href).toBe(`#${ref.id}`);
+		// The one literal worth keeping: `aria-describedby` names it by hand, so a
+		// pass that re-slugs this heading orphans every footnote reference —
+		// silently, and invisibly to every other assertion in this file.
+		expect(headings.map((h) => h.id)).toContain(ref["aria-describedby"]);
 	});
 });
 
