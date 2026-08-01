@@ -75,6 +75,16 @@ export function rehypeDropForgedIds() {
 				}
 			}
 
+			// `footnote-label` is authentic only as the heading inside the footnote
+			// section — `aria-describedby` hardcodes it. A body heading titled
+			// "Footnote label" slugs onto it, and being earlier in document order
+			// than the appended section it would otherwise win the dedup below and
+			// leave every footnote reference pointing at the wrong element.
+			if (id === FOOTNOTE_LABEL && !inFootnoteSection(node)) {
+				node.properties.id = undefined;
+				return;
+			}
+
 			if (seen.has(id)) node.properties.id = undefined;
 			else seen.add(id);
 		});

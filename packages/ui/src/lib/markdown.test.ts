@@ -211,15 +211,26 @@ describe("renderMarkdown (sanitization)", () => {
 		expect(ids).toContain(ref);
 	});
 
-	it("drops a duplicate id even with no raw HTML involved", async () => {
+	it("keeps footnote-label on the real section, not a body heading that collided", async () => {
 		// A heading titled "Footnote label" slugs onto the id the footnote section
-		// already owns, and `rehype-slug` does not register ids it did not create —
-		// so both survived and every `aria-describedby` named the wrong element.
+		// already owns. No duplicate is not enough — the id must land on the
+		// element `aria-describedby` names, which is the `<h2>` inside the footnote
+		// section, not the body heading that came first in document order.
 		const html = await renderMarkdown("## Footnote label\n\nnote[^1]\n\n[^1]: x\n");
 		const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+		expect(ids.length).toBe(new Set(ids).size); // no duplicate
 
-		expect(ids.length).toBe(new Set(ids).size);
-		expect(ids).toContain("footnote-label");
+		const label = tagsOf(html, "h2").find((t) => t.id === "footnote-label");
+		expect(label).toBeDefined(); // it's the section's h2 (h2, not the body's h2? both are h2 — check class)
+		expect(label?.class).toContain("sr-only"); // the generated label carries sr-only; the body heading does not
+	});
+
+	it("strips a browser-shortcut binding and a focus-order override", async () => {
+		const html = await renderMarkdown('<p accesskey="k" tabindex="5" title="t">x</p>\n');
+
+		expect(html).not.toContain("accesskey");
+		expect(html).not.toContain("tabindex");
+		expect(html).toContain('title="t"');
 	});
 
 	it("keeps svg elements inside svg, so a document cannot rename the host's tab", async () => {

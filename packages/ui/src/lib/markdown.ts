@@ -134,15 +134,15 @@ export function buildSchema(): SanitizeSchema {
 	allowClass("a", "heading-anchor");
 	allowClass("div", "table-wrap");
 
-	// `id` and `name` are allowed on every element by `defaultSchema`, and with
-	// no clobber prefix they reach the DOM as written. Any element carrying an
-	// id becomes a `window` named property, and `<img name="x">` is the classic
-	// clobbering vector — so both come off the global list and back on only
-	// where something legitimately needs them. `accessKey` goes too: it lets a
-	// document bind a browser keyboard shortcut, and nothing here wants that.
-	attributes["*"] = (attributes["*"] ?? []).filter(
-		(name) => name !== "id" && name !== "name" && name !== "accessKey"
-	);
+	// These are allowed on every element by `defaultSchema`, and with no clobber
+	// prefix they reach the DOM as written. Any element with an `id` becomes a
+	// `window` named property; `<img name="x">` is the classic clobbering vector;
+	// `accessKey` binds a browser shortcut; and a positive `tabIndex` reorders
+	// focus across the whole host page in an embed. None is anything a rendered
+	// document legitimately needs, so all four come off the global list and back
+	// on only where something requires them.
+	const GLOBAL_STRIPPED = new Set(["id", "name", "accessKey", "tabIndex"]);
+	attributes["*"] = (attributes["*"] ?? []).filter((name) => !GLOBAL_STRIPPED.has(name as string));
 	// Headings: the slugger's output, and only the slugger's — a document's own
 	// heading id is stripped upstream by `rehypeDropHeadingIds`.
 	for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6"]) allow(tag, "id");
