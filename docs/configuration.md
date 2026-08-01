@@ -41,6 +41,7 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `docOrderStrict` | `boolean` | `false` | When `true`, only docs listed in `docOrder` appear in the LHN. Unlisted docs stay in the graph — see [Strict Ordering](#strict-ordering) |
 | `ignore` | `string[]` | see [Build Output](#build-output) | Glob patterns to exclude from indexing |
 | `contributions` | `string[]` | — | Contribution files written by an external build — see [External Tool Integration](#external-tool-integration) |
+| `artifacts` | `string[]` | — | Generated outputs to register as nodes, as globs relative to each docs root — see [Generated Artifacts](#generated-artifacts) |
 | `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
 
 ### Strict Ordering
@@ -171,6 +172,8 @@ Run `weft analyze --list-rules` to see the available rule ids and their defaults
 | `assert-line-count-mismatch` | `warn` | A link asserts a line count its target no longer has |
 | `assert-modified-mismatch` | `warn` | A link asserts a date its target no longer matches |
 | `assert-unverifiable` | `warn` | A link asserts something that cannot be checked against its target |
+| `artifact-stale` | `error` | A generated output no longer reflects the source it was built from |
+| `artifact-source-unrecorded` | `info` | A `derives-from` edge records no source hash, so staleness cannot be checked |
 | `validator-error` | `error` | A rule threw while running |
 
 A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
@@ -361,6 +364,49 @@ Any string is valid as an edge type. Conventional types:
 | `references` | General reference (default) |
 | `see-also` | Related reading, no formal dependency |
 | `annotates` | This doc adds context to a specific part of the target |
+| `derives-from` | This was generated from the target — see [Generated Artifacts](#generated-artifacts) |
+
+---
+
+## Generated Artifacts
+
+A documentation set that publishes ships outputs built from its sources, usually PDFs, and those are the copies that reach external readers. They are also the copies nobody looks at again after building them, so an output that has fallen behind its source goes unnoticed by everyone except the audience.
+
+Weft indexes `.md`, `.markdown`, `.yaml` and `.yml`. A PDF is none of those, so it is not a node and an edge has nothing to point at. Register outputs explicitly:
+
+```yaml
+artifacts:
+  - "**/*.pdf"
+```
+
+Globs are relative to each docs root, the same as document indexing, and `ignore` applies to them too. An artifact node carries an id, a content hash and nothing else it does not need: no anchors, no line count, and it never appears in navigation. An output that lives outside every docs root is declared by a [contribution](#external-tool-integration) instead, with `type: artifact`.
+
+> **Artifacts hash their bytes, documents hash their normalized text.** Both fill `contentHash` with the same SHA-256 and truncation, but a document's hash strips a BOM and converts CRLF to LF first. That is a text operation, and a binary holds byte sequences that merely look like line endings. The two are never compared against each other.
+
+### Staleness
+
+Declare what an output was built from, and from which version of it, with a `derives-from` edge carrying `sourceHash` — the source's `contentHash` at the moment of generation:
+
+```yaml
+# handbook.pdf.weft — the sidecar belongs to the artifact, so edges run output -> source
+links:
+  - target: handbook.md
+    type: derives-from
+    sourceHash: 8739a4a018eb3517
+
+  # A template change invalidates the output too.
+  - target: theme.md
+    type: derives-from
+    sourceHash: 41c0f2a9de7b0c85
+```
+
+When the source's current hash no longer matches, `artifact-stale` reports it — an error by default, because the stale copy is the one the audience sees. Each source is checked on its own, so several `derives-from` edges cover an output whose inputs are more than one document.
+
+An edge with no `sourceHash` reports as `artifact-source-unrecorded` at `info`. Nothing is known to be wrong: `derives-from` is also a fair way to express that two things are related without asking for the relationship to be checked. It stays visible and countable rather than silent.
+
+**The hash has to be recorded by whatever does the generating**, since that is the only party that knows which version it read. `hashContent`'s recipe is documented for exactly this — strip a leading BOM, convert CRLF to LF, SHA-256, keep the first 16 hex characters — so a build can compute it without running Weft. A build that already knows what it produced is usually better off declaring the whole thing through a [contribution](#external-tool-integration).
+
+> **Why not modification times?** Git does not preserve them. A fresh clone or a CI checkout gives every file the same timestamp, so a check built on mtime would be meaningless in exactly the environment it should run in.
 
 ---
 
