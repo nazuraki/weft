@@ -181,7 +181,7 @@ export function buildSchema(): SanitizeSchema {
 function validateSchema(schema: unknown): SanitizeSchema {
 	const candidate = schema as SanitizeSchema | null | undefined;
 	if (!candidate || typeof candidate !== "object") {
-		throw new TypeError("weft: extendSchema must return a sanitize schema, got " + typeof schema);
+		throw new TypeError(`weft: extendSchema must return a sanitize schema, got ${typeof schema}`);
 	}
 	if (!Array.isArray(candidate.tagNames)) {
 		throw new TypeError(
