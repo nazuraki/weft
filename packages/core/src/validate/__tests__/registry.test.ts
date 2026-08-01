@@ -85,6 +85,8 @@ describe("defaultRegistry", () => {
 			"assert-unverifiable",
 			"artifact-stale",
 			"artifact-source-unrecorded",
+			"node-duplicate",
+			"node-diverged",
 		]);
 	});
 

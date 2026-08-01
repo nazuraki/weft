@@ -1,4 +1,5 @@
 import type { Manifest, RuleSeverity, Severity, WeftConfig, WeftNode } from "../types.js";
+import { NO_HISTORY, graphHistory } from "./history.js";
 import { VALIDATOR_ERROR_RULE, type ValidatorRegistry, defaultRegistry } from "./registry.js";
 import type { Diagnostic, Finding, Rule, ValidationContext, ValidationResult } from "./types.js";
 
@@ -36,10 +37,18 @@ export async function validateManifest(
 
 	const unknownRules = Object.keys(config.rules ?? {}).filter((id) => !registry.rule(id));
 
+	// Gathered once for every check that wants it, and skipped outright when
+	// none is enabled — reading git history is the only IO validation does.
+	const wantsHistory = registry.validators.some(
+		(validator) => validator.needsHistory && validator.rules.some((rule) => enabled.has(rule.id))
+	);
+	const history = wantsHistory ? await graphHistory(config) : NO_HISTORY;
+
 	const context: ValidationContext = {
 		manifest,
 		config,
 		nodes,
+		history,
 		isEnabled: (ruleId) => enabled.has(ruleId),
 	};
 
