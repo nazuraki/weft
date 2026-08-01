@@ -81,7 +81,7 @@ function handleNavigate(id: string, hash?: string) {
 		gap: 24px;
 	}
 	.doc.with-sidebar {
-		grid-template-columns: 1fr var(--rhs-width, 260px);
+		grid-template-columns: 1fr var(--w-rhs-width, 260px);
 	}
 	.reader {
 		min-width: 0;
@@ -90,7 +90,7 @@ function handleNavigate(id: string, hash?: string) {
 		min-width: 0;
 	}
 	.missing {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-style: italic;
 	}
 </style>

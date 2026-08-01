@@ -1,76 +1,135 @@
 /*
  * Design tokens, and nothing that touches the page.
  *
- * This file is shared with `@weft/embed`, which may be dropped into a document
+ * This file ships inside `@weft/embed`, which may be dropped into a document
  * Weft does not own — so anything global (a `*` reset, `html`/`body` rules, a
- * remote font import) lives in `app-page.css` and is loaded only by the
- * standalone app. Every token is declared on `.weft-scope` as well as `:root`,
- * so an embedded mount resolves them from its own container rather than
- * requiring the host to have applied them at the document root.
+ * remote font import) lives in `app-page.css`, loaded only by the standalone
+ * app.
  *
- * The `[data-theme]` blocks below are deliberately not `:root`-qualified: they
- * match any element carrying the attribute, which is what lets an embedded
- * mount set its own scheme without touching the host's.
+ * TWO NAMESPACES, and the split is the whole contract:
+ *
+ *   --weft-*  PUBLIC. The host's input. Weft only ever READS these, never
+ *             declares one. That is not stylistic: a value declared on an
+ *             element beats an inherited one at any specificity, so the moment
+ *             Weft declares a public name, a host can no longer set it from an
+ *             ancestor — which is the only place the docs tell them to set it.
+ *
+ *   --w-*     PRIVATE. Declared here and nowhere else, read at every use site.
+ *             Deliberately unmistakable as internal, so a host's own generic
+ *             tokens (`--color-bg` and friends) are never shadowed inside
+ *             markup a contributed render plugin put in Weft's subtree.
+ *
+ * `styles.test.ts` pins both halves; without it the split rots the first time
+ * someone "helpfully" adds a default.
  */
 :root,
 .weft-scope {
-	--lhn-width: 240px;
-	--rhs-width: 260px;
-	--header-height: 48px;
+	--w-lhn-width: var(--weft-lhn-width, 240px);
+	--w-rhs-width: var(--weft-rhs-width, 260px);
+	--w-header-height: var(--weft-header-height, 48px);
 
-	--font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--font-heading: "Space Grotesk", "Inter", sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+	--w-font-sans: var(
+		--weft-font-sans,
+		"Inter",
+		-apple-system,
+		BlinkMacSystemFont,
+		"Segoe UI",
+		sans-serif
+	);
+	--w-font-heading: var(--weft-font-heading, "Space Grotesk", "Inter", sans-serif);
+	--w-font-mono: var(
+		--weft-font-mono,
+		ui-monospace,
+		SFMono-Regular,
+		"SF Mono",
+		Menlo,
+		Consolas,
+		monospace
+	);
+
+	/* Light is the base, so a mount with no `data-theme` anywhere still renders. */
+	--w-bg: var(--weft-color-bg, #fef7ff);
+	--w-bg-secondary: var(--weft-color-bg-secondary, #f4eff4);
+	--w-bg-elevated: var(--weft-color-bg-elevated, #ece6f0);
+	--w-border: var(--weft-color-border, #cac4d0);
+	--w-border-subtle: var(--weft-color-border-subtle, #e6e0e9);
+	--w-text: var(--weft-color-text, #1c1b1f);
+	--w-text-secondary: var(--weft-color-text-secondary, #49454f);
+	--w-link: var(--weft-color-link, #6750a4);
+	--w-link-hover: var(--weft-color-link-hover, #4f378a);
+	--w-accent: var(--weft-color-accent, #6750a4);
+	--w-accent-subtle: var(--weft-color-accent-subtle, #eaddff);
+	--w-code-keyword: var(--weft-code-keyword, #6750a4);
+	--w-code-string: var(--weft-code-string, #2e7d32);
+	--w-code-number: var(--weft-code-number, #b45309);
+	--w-code-comment: var(--weft-code-comment, #6b6b74);
+	--w-code-function: var(--weft-code-function, #1565c0);
+	--w-code-variable: var(--weft-code-variable, #ad1457);
+	--w-code-type: var(--weft-code-type, #00695c);
+	--w-code-meta: var(--weft-code-meta, #49454f);
+	color-scheme: light;
 }
 
-[data-theme="dark"] {
-	--color-bg: #131315;
-	--color-bg-secondary: #1b1b1d;
-	--color-bg-elevated: #201f21;
-	--color-border: #494553;
-	--color-border-subtle: #353437;
-	--color-text: #e5e1e4;
-	--color-text-secondary: #948e9f;
-	--color-link: #cebdff;
-	--color-link-hover: #e8ddff;
-	--color-accent: #cebdff;
-	--color-accent-subtle: #2d2543;
-	/*
-	 * Syntax highlighting tokens. Named by role rather than by highlight.js
-	 * class so a host can retheme code without learning the `hljs-*` taxonomy,
-	 * and so one set of names covers both schemes.
-	 */
-	--code-keyword: #cebdff;
-	--code-string: #a5d6a7;
-	--code-number: #ffcc80;
-	--code-comment: #8b8595;
-	--code-function: #8ab4f8;
-	--code-variable: #f48fb1;
-	--code-type: #80cbc4;
-	--code-meta: #948e9f;
+/*
+ * Dark is opt-in, via `data-theme="dark"` on any of three places.
+ *
+ * The first selector is deliberately (0,3,0) — the class is repeated to outrank
+ * the second, which is (0,2,0). Without that they TIE, and a tie hands the
+ * decision to source order: a mount that sets its own `data-theme="dark"` inside
+ * a host page carrying `data-theme="light"` silently renders light. Verified in
+ * a browser. Do not "tidy" the duplicate away; `styles.test.ts` guards it.
+ *
+ * The third selector is what keeps the per-document override working — the
+ * element carrying it sits inside Weft's own scope, never in the host's page.
+ */
+.weft-scope.weft-scope[data-theme="dark"],
+[data-theme="dark"] .weft-scope,
+.weft-scope [data-theme="dark"] {
+	--w-bg: var(--weft-color-bg, #131315);
+	--w-bg-secondary: var(--weft-color-bg-secondary, #1b1b1d);
+	--w-bg-elevated: var(--weft-color-bg-elevated, #201f21);
+	--w-border: var(--weft-color-border, #494553);
+	--w-border-subtle: var(--weft-color-border-subtle, #353437);
+	--w-text: var(--weft-color-text, #e5e1e4);
+	--w-text-secondary: var(--weft-color-text-secondary, #948e9f);
+	--w-link: var(--weft-color-link, #cebdff);
+	--w-link-hover: var(--weft-color-link-hover, #e8ddff);
+	--w-accent: var(--weft-color-accent, #cebdff);
+	--w-accent-subtle: var(--weft-color-accent-subtle, #2d2543);
+	--w-code-keyword: var(--weft-code-keyword, #cebdff);
+	--w-code-string: var(--weft-code-string, #a5d6a7);
+	--w-code-number: var(--weft-code-number, #ffcc80);
+	--w-code-comment: var(--weft-code-comment, #8b8595);
+	--w-code-function: var(--weft-code-function, #8ab4f8);
+	--w-code-variable: var(--weft-code-variable, #f48fb1);
+	--w-code-type: var(--weft-code-type, #80cbc4);
+	--w-code-meta: var(--weft-code-meta, #948e9f);
 	color-scheme: dark;
 }
 
-[data-theme="light"] {
-	--color-bg: #fef7ff;
-	--color-bg-secondary: #f4eff4;
-	--color-bg-elevated: #ece6f0;
-	--color-border: #cac4d0;
-	--color-border-subtle: #e6e0e9;
-	--color-text: #1c1b1f;
-	--color-text-secondary: #49454f;
-	--color-link: #6750a4;
-	--color-link-hover: #4f378a;
-	--color-accent: #6750a4;
-	--color-accent-subtle: #eaddff;
-	--code-keyword: #6750a4;
-	--code-string: #2e7d32;
-	--code-number: #b45309;
-	--code-comment: #6b6b74;
-	--code-function: #1565c0;
-	--code-variable: #ad1457;
-	--code-type: #00695c;
-	--code-meta: #49454f;
+/* Light, when something above has already asked for dark. Mirrors the set above. */
+.weft-scope.weft-scope[data-theme="light"],
+[data-theme="light"] .weft-scope,
+.weft-scope [data-theme="light"] {
+	--w-bg: var(--weft-color-bg, #fef7ff);
+	--w-bg-secondary: var(--weft-color-bg-secondary, #f4eff4);
+	--w-bg-elevated: var(--weft-color-bg-elevated, #ece6f0);
+	--w-border: var(--weft-color-border, #cac4d0);
+	--w-border-subtle: var(--weft-color-border-subtle, #e6e0e9);
+	--w-text: var(--weft-color-text, #1c1b1f);
+	--w-text-secondary: var(--weft-color-text-secondary, #49454f);
+	--w-link: var(--weft-color-link, #6750a4);
+	--w-link-hover: var(--weft-color-link-hover, #4f378a);
+	--w-accent: var(--weft-color-accent, #6750a4);
+	--w-accent-subtle: var(--weft-color-accent-subtle, #eaddff);
+	--w-code-keyword: var(--weft-code-keyword, #6750a4);
+	--w-code-string: var(--weft-code-string, #2e7d32);
+	--w-code-number: var(--weft-code-number, #b45309);
+	--w-code-comment: var(--weft-code-comment, #6b6b74);
+	--w-code-function: var(--weft-code-function, #1565c0);
+	--w-code-variable: var(--weft-code-variable, #ad1457);
+	--w-code-type: var(--weft-code-type, #00695c);
+	--w-code-meta: var(--weft-code-meta, #49454f);
 	color-scheme: light;
 }
 
@@ -83,10 +142,10 @@
  */
 .weft-scope {
 	box-sizing: border-box;
-	font-family: var(--font-sans);
+	font-family: var(--w-font-sans);
 	font-size: 14px;
 	line-height: 1.5;
-	color: var(--color-text);
+	color: var(--w-text);
 }
 
 .weft-scope *,

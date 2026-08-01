@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,20 @@ const SRC = resolve(fileURLToPath(import.meta.url), "../../..", "src");
 /** Rules only — a comment's `*` continuation lines look exactly like a selector. */
 function rules(file: string): string {
 	return readFileSync(resolve(SRC, file), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/** Every file under `src` that can carry a `<style>` block or CSS. */
+function styleBearingFiles(): string[] {
+	const out: string[] = [];
+	const walk = (dir: string) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = resolve(dir, entry.name);
+			if (entry.isDirectory()) walk(path);
+			else if (/\.(svelte|css)$/.test(entry.name) && entry.name !== "app.css") out.push(path);
+		}
+	};
+	walk(SRC);
+	return out;
 }
 
 const tokens = rules("app.css");
@@ -35,22 +49,76 @@ describe("app.css (shipped in the embed bundle)", () => {
 		expect(tokens).not.toContain("@import");
 	});
 
-	it("declares its tokens on a scope class as well as the document root", () => {
-		// Without this an embedded mount would resolve every custom property to
-		// nothing unless the host happened to apply them at :root.
-		expect(tokens).toMatch(/:root,\s*\.weft-scope/);
-	});
-
-	it("scopes its base styles to that class", () => {
+	it("scopes its base styles to the scope class", () => {
 		expect(tokens).toMatch(/\.weft-scope\s*\{/);
 		expect(tokens).toMatch(/\.weft-scope \*/);
 	});
+});
 
-	it("leaves the theme blocks unqualified, so a mount can set its own scheme", () => {
-		// `[data-theme="dark"]` matches any element carrying the attribute. Tying
-		// it to :root would make an embedded mount unable to differ from the host.
-		expect(tokens).toMatch(/^\[data-theme="dark"\]/m);
-		expect(tokens).toMatch(/^\[data-theme="light"\]/m);
+/**
+ * The two-namespace contract. `--weft-*` is the host's input and Weft only ever
+ * reads it; `--w-*` is private and declared in `app.css` alone.
+ *
+ * This is not naming taste. A value declared on an element beats an inherited
+ * one at any specificity, so the moment Weft declares a public name a host can
+ * no longer set it from an ancestor — which is the only place the docs tell
+ * them to set it.
+ */
+describe("the public/private token split", () => {
+	it("never declares a public token, only reads one", () => {
+		// `@property` registers a name without a `:` declaration, so it counts too.
+		expect(tokens).not.toMatch(/--weft-[\w-]+\s*:/);
+		expect(tokens).not.toMatch(/@property\s+--weft-/);
+		expect(tokens).toMatch(/var\(--weft-/);
+	});
+
+	it("gives every public token a fallback, so a host that sets none still renders", () => {
+		const bare = [...tokens.matchAll(/var\(\s*(--weft-[\w-]+)\s*\)/g)].map((m) => m[1]);
+		expect([...new Set(bare)]).toEqual([]);
+	});
+
+	it("declares its private tokens in app.css and nowhere else", () => {
+		// A component <style> introducing its own token would be un-overridable
+		// forever, and invisible to every other check here.
+		const offenders = styleBearingFiles().filter((file) =>
+			/--w(eft)?-[\w-]+\s*:/.test(readFileSync(file, "utf-8"))
+		);
+		expect(offenders).toEqual([]);
+	});
+});
+
+/**
+ * The theme blocks are the leak this rework exists to close, and the fix has a
+ * sharp edge of its own.
+ */
+describe("the theme blocks", () => {
+	it("cannot reach the host's markup", () => {
+		// The old shape — a bare `[data-theme="dark"]` — matches ANY element with
+		// the attribute, so a host theming its own page inherited Weft's tokens and
+		// a real `color-scheme`. Anchored on a rule boundary rather than line start:
+		// the formatter de-indents top-level rules, so `^` would forbid the correct
+		// implementation while missing the bug indented or second in a comma list.
+		expect(tokens).not.toMatch(/(^|\})\s*\[data-theme="(dark|light)"\]\s*[,{]/);
+	});
+
+	it("still lets a mount differ from its host, and a document from its mount", () => {
+		expect(tokens).toMatch(/\.weft-scope\[data-theme="dark"\]/);
+		expect(tokens).toMatch(/\[data-theme="dark"\]\s+\.weft-scope/);
+		// The per-document override: the element carrying it is inside Weft's own
+		// scope, so this selector can only ever match markup Weft rendered.
+		expect(tokens).toMatch(/\.weft-scope\s+\[data-theme="dark"\]/);
+	});
+
+	it("outranks the host-ancestor branch rather than tying with it", () => {
+		// `.weft-scope[data-theme]` and `[data-theme] .weft-scope` are both (0,2,0).
+		// A tie hands the decision to source order, and a mount that sets its own
+		// dark scheme inside a light host silently renders light — verified in a
+		// browser. The repeated class makes the mount's own branch (0,3,0).
+		//
+		// It reads like a copy-paste error, which is exactly why this test exists:
+		// the first person to tidy it away restores the bug with nothing to catch it.
+		expect(tokens).toMatch(/\.weft-scope\.weft-scope\[data-theme="dark"\]/);
+		expect(tokens).toMatch(/\.weft-scope\.weft-scope\[data-theme="light"\]/);
 	});
 });
 
@@ -59,5 +127,15 @@ describe("app-page.css (standalone app only)", () => {
 		expect(page).toMatch(/^\s*\*,/m);
 		expect(page).toMatch(/^html,/m);
 		expect(page).toContain("@import");
+	});
+});
+
+describe("the standalone app", () => {
+	it("carries the scope class on its root element", () => {
+		// Tokens are declared on `.weft-scope` now, so without this the standalone
+		// app resolves every one of them to nothing — a failure no CSS-only check
+		// can see, because the mistake is in an HTML file.
+		const html = readFileSync(resolve(SRC, "app.html"), "utf-8");
+		expect(html).toMatch(/<html[^>]*\bclass="[^"]*\bweft-scope\b/);
 	});
 });

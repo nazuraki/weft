@@ -125,12 +125,11 @@ export interface DocMount {
  * box model and fonts. Set `data-theme="dark"` on the container to pick a
  * scheme, or leave it and Weft inherits whatever the host already decided.
  *
- * The custom properties it consumes are the integration surface, and they are
- * documented rather than merely discoverable: `--color-bg`,
- * `--color-bg-secondary`, `--color-bg-elevated`, `--color-border`,
- * `--color-border-subtle`, `--color-text`, `--color-text-secondary`,
- * `--color-link`, `--color-accent`, `--color-accent-subtle`, `--font-sans`,
- * `--font-mono`, `--font-heading`, and the `--code-*` syntax tokens.
+ * Theme it by setting `--weft-*` custom properties on the container or any
+ * ancestor; Weft reads those and never declares them, so a host value always
+ * wins. The full list lives in `docs/usage.md`'s theming contract rather than
+ * here — two hand-maintained copies of twenty-odd names had already drifted
+ * apart by the time this comment was first written.
  *
  * @example
  * const doc = Weft.mountDoc('#host', {

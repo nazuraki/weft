@@ -120,18 +120,23 @@ Three things about this mount are deliberate:
 
 ### Theming contract
 
-These custom properties are the integration surface. Set them on the mount container (or anywhere above it) to make Weft look like the rest of your page:
+These `--weft-*` custom properties are the integration surface. Set any of them on the mount container, or any ancestor of it, to make Weft look like the rest of your page:
 
 | Group | Properties |
 |-------|------------|
-| Surfaces | `--color-bg`, `--color-bg-secondary`, `--color-bg-elevated` |
-| Lines | `--color-border`, `--color-border-subtle` |
-| Text | `--color-text`, `--color-text-secondary` |
-| Emphasis | `--color-link`, `--color-link-hover`, `--color-accent`, `--color-accent-subtle` |
-| Type | `--font-sans`, `--font-heading`, `--font-mono` |
-| Code | `--code-keyword`, `--code-string`, `--code-number`, `--code-comment`, `--code-function`, `--code-variable`, `--code-type`, `--code-meta` |
+| Surfaces | `--weft-color-bg`, `--weft-color-bg-secondary`, `--weft-color-bg-elevated` |
+| Lines | `--weft-color-border`, `--weft-color-border-subtle` |
+| Text | `--weft-color-text`, `--weft-color-text-secondary` |
+| Emphasis | `--weft-color-link`, `--weft-color-link-hover`, `--weft-color-accent`, `--weft-color-accent-subtle` |
+| Type | `--weft-font-sans`, `--weft-font-heading`, `--weft-font-mono` |
+| Code | `--weft-code-keyword`, `--weft-code-string`, `--weft-code-number`, `--weft-code-comment`, `--weft-code-function`, `--weft-code-variable`, `--weft-code-type`, `--weft-code-meta` |
+| Layout | `--weft-lhn-width`, `--weft-rhs-width`, `--weft-header-height` |
 
-Weft ships defaults for both schemes, keyed off `data-theme="light"` or `data-theme="dark"` on any ancestor.
+**Weft never declares these — it only reads them.** That's what makes the contract hold from an ancestor: a value declared on an element beats an inherited one at any specificity, so a token Weft set on its own root could not be overridden from the container this section tells you to use. Anything you leave unset falls back to Weft's own default.
+
+Weft renders light unless something asks for dark. Set `data-theme="dark"` on the container, or anywhere above it, to select the dark defaults for whichever properties you did not set yourself. A mount's own `data-theme` always wins over a host's, so an embed can be dark inside a light page.
+
+> The `--w-*` properties you'll see in the stylesheet are internal — the resolved values, not the inputs. Setting one does nothing useful; set the `--weft-*` name instead.
 
 > **Not published yet.** Neither `@weft/cli` nor `@weft/embed` is on npm, so embedding today means building from a checkout and vendoring `weft.iife.js` and `weft.css` by hand — with no version to pin and no signal when they change.
 

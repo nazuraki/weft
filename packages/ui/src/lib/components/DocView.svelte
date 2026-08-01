@@ -82,7 +82,7 @@ $effect(() => {
 		margin: 0 auto;
 	}
 	.loading, .error, .artifact {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 	}
 	.error {
 		color: #d1242f;

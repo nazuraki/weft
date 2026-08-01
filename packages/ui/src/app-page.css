@@ -18,9 +18,9 @@ body {
 	margin: 0;
 	padding: 0;
 	height: 100%;
-	font-family: var(--font-sans);
+	font-family: var(--w-font-sans);
 	font-size: 14px;
 	line-height: 1.5;
-	color: var(--color-text);
-	background: var(--color-bg);
+	color: var(--w-text);
+	background: var(--w-bg);
 }

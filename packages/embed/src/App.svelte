@@ -84,8 +84,8 @@ load();
 	.weft-loading,
 	.weft-load-error {
 		padding: 16px;
-		font-family: var(--font-sans, sans-serif);
-		color: var(--color-text-secondary, #656d76);
+		font-family: var(--w-font-sans, sans-serif);
+		color: var(--w-text-secondary, #656d76);
 	}
 	.weft-load-error {
 		color: #d1242f;
