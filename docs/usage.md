@@ -107,3 +107,31 @@ Two of these read git history, so `weft check` runs `git log` once when they are
 | Markdown | `.md` | Headings become anchors, slugged exactly as GitHub does. Headings inside fenced code blocks are ignored |
 | OpenAPI | `.yaml`, `.yml` | Operation IDs and schema names become anchors |
 | Artifact | any | Only when listed in [`artifacts`](configuration.md#generated-artifacts). Tracked and checked, never rendered — there is nothing in a PDF for Weft to show |
+
+## Rendering
+
+Markdown is rendered with GitHub-flavoured Markdown plus:
+
+- **Syntax highlighting** on fenced blocks that declare a language, with the language shown as a chip on the block. Highlighting is class-based and themed with Weft's own custom properties, so it follows light and dark without a second stylesheet.
+- **Scrollable tables** — every table is wrapped so a wide one scrolls itself instead of moving the page sideways, with a sticky header row.
+- **Heading permalinks** — every heading gets an id (the same slug the graph indexes) and a `#` control to copy a link to it.
+
+### Raw HTML is sanitized
+
+Documents may contain raw HTML, and it is filtered through an allowlist before it reaches the page. Inline event handlers, `<iframe>`, and `javascript:` links do not survive; ordinary formatting and a plain inline `<svg>` figure do.
+
+This matters most for `@weft/embed`, where a host page renders Markdown it may not control — the person carrying the risk is not always the person who can merge to the docs repo.
+
+### Contributing render passes
+
+A corpus with conventions of its own — severity markers, status chips, a house callout style — can supply its own render passes rather than forking the renderer:
+
+```js
+mountWeft('#root', {
+  repo: 'acme/docs',
+  rehypePlugins: [myCallouts],
+  extendSchema: (schema) => ({ /* allow what myCallouts emits */ }),
+});
+```
+
+Contributed plugins run after raw HTML is parsed, so they can see all of it, and **before** sanitizing, so what they emit is checked like everything else. That ordering is deliberate in both directions: a plugin cannot smuggle markup past the allowlist, and a stock allowlist would otherwise strip exactly the classes the plugin just added — which is what `extendSchema` is for.
