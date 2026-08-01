@@ -11,6 +11,9 @@ install:
 dev:
     pnpm dev
 
+# Run the app (dev server)
+run: dev
+
 # Build all packages
 build:
     pnpm -r run build
@@ -42,7 +45,7 @@ build-embed:
     pnpm --filter @weft/embed build
 
 # Build the GitHub Pages site into _site/
-build-pages: build-embed
+pages: build-embed
     node scripts/gen-manifest.mjs
     mkdir -p _site/docs
     cp site/index.html _site/index.html

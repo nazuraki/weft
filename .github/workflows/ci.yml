@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  check:
-    name: Lint, typecheck & test
+  lint:
+    name: Lint & typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,6 +31,26 @@ jobs:
 
       - name: Typecheck
         run: just typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: extractions/setup-just@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       # The embed bundle's own build step asserts it ships nothing that can
       # reach a host page. Run on PRs so a regression fails here rather than on
