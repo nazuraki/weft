@@ -160,6 +160,52 @@ describe("renderMarkdown (sanitization)", () => {
 		expect(html).toContain('href="guide.md"');
 	});
 
+	// Emptying `clobberPrefix` is what keeps graph anchors resolvable, and it is
+	// also what makes every id and name a document writes reach the DOM as
+	// written. Any element with an id becomes a `window` named property, so the
+	// allowlist has to take that back.
+	it("strips an id a document puts on an ordinary element", async () => {
+		const html = await renderMarkdown(
+			'<div id="location">x</div>\n\n<img id="pluginConfig" src="a.png">\n'
+		);
+
+		expect(html).not.toContain('id="location"');
+		expect(html).not.toContain('id="pluginConfig"');
+		expect(html).toContain("<div>");
+	});
+
+	it("strips a name, the classic clobbering vector", async () => {
+		const html = await renderMarkdown('<img name="attacker" src="a.png">\n');
+
+		expect(html).not.toContain("attacker");
+		expect(html).toContain("<img");
+	});
+
+	it("replaces a heading id a document chose with the slugger's own", async () => {
+		// Left alone, `<h2 id="pluginConfig">` clobbers exactly as `<img id>` does,
+		// and a raw attribute reaches values the slugger never emits.
+		const html = await renderMarkdown('<h2 id="pluginConfig">Data Flow</h2>\n');
+
+		expect(html).not.toContain("pluginConfig");
+		expect(html).toContain('id="data-flow"');
+	});
+
+	it("does not let a document forge a footnote id", async () => {
+		const html = await renderMarkdown(
+			'<a id="user-content-fnEVIL">a</a>\n\n<li id="user-content-fnord">b</li>\n'
+		);
+
+		expect(html).not.toContain("fnEVIL");
+		expect(html).not.toContain("fnord");
+	});
+
+	it("strips accesskey, which binds a browser shortcut", async () => {
+		const html = await renderMarkdown('<p accesskey="k" title="t">x</p>\n');
+
+		expect(html).not.toContain("accesskey");
+		expect(html).toContain('title="t"');
+	});
+
 	// The trap this schema exists to avoid: defaultSchema renames every id to
 	// user-content-*, which would break every anchor the graph points at.
 	it("leaves heading ids unprefixed, so graph anchors still resolve", async () => {
@@ -255,6 +301,43 @@ describe("renderMarkdown (contributed plugins)", () => {
 		expect(html).not.toContain('class="sev"');
 		expect(html).toContain("<strong>");
 	});
+
+	/**
+	 * A plugin whose *attacher* registers another plugin.
+	 *
+	 * `unified` resolves attachers at freeze time, not at `.use()` time, so this
+	 * appends a transformer to the END of its processor's list. In a single
+	 * processor that lands past `rehypeSanitize` — the case above uses an
+	 * ordinary transformer and never exercised this shape, which is how a
+	 * documented "sanitize last" survived review while being false.
+	 */
+	function selfRegistering() {
+		return function (this: { use: (plugin: unknown) => void }) {
+			this.use(() => (tree: import("hast").Root) => {
+				tree.children.push({
+					type: "element",
+					tagName: "img",
+					properties: { src: "x", onError: "alert(1)" },
+					children: [],
+				});
+			});
+			return () => {};
+		};
+	}
+
+	for (const seam of ["rehypePlugins", "remarkPlugins"] as const) {
+		it(`cannot be bypassed by a self-registering plugin via ${seam}`, async () => {
+			const html = await renderMarkdown("# T\n", { [seam]: [selfRegistering()] });
+
+			// Positive control first. Without it this passes when the plugin never
+			// ran at all, and passes when the property name is misspelled — an
+			// unknown hast property serializes verbatim through a bypass, so
+			// `not.toContain("onerror")` would go green with a live handler.
+			expect(html).toContain('<img src="x">');
+			expect(html).not.toContain("onerror");
+			expect(html).not.toMatch(/\bon\w+=/i);
+		});
+	}
 
 	it("lets a contributed plugin see raw HTML from the document", async () => {
 		// rehype-raw is what makes this possible — while raw HTML stays opaque,

@@ -6,6 +6,38 @@ const LANGUAGE_CLASS = /^language-(.+)$/;
 
 const HEADINGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
 
+/**
+ * `remark-gfm` names this id by hand in every footnote reference's
+ * `aria-describedby`, so re-slugging the heading orphans all of them.
+ */
+const FOOTNOTE_LABEL = "footnote-label";
+
+/**
+ * Discard any `id` a document put on a heading, so the slugger's is the only one
+ * that survives.
+ *
+ * `rehype-slug` skips an element that already has an id, so without this a
+ * document chooses its own — and an id on any element becomes a `window` named
+ * property, whatever its tag. A slug is constrained to what `github-slugger`
+ * emits from heading text; a raw attribute is not, and `pluginConfig` or
+ * `a b c:d.e` are trivially reachable.
+ *
+ * Runs before the slugger rather than after the sanitizer, which was the other
+ * way to close this: sanitizing last is a stronger property than sanitizing
+ * early, and re-slugging a sanitized tree changes the text the slug is derived
+ * from — a `<script>` inside a heading is dropped wholesale, so the id stops
+ * matching the one `@weft/core` computed from the source.
+ */
+export function rehypeDropHeadingIds() {
+	return (tree: Root) => {
+		visit(tree, "element", (node: Element) => {
+			if (!HEADINGS.has(node.tagName) || !node.properties) return;
+			if (node.properties.id === FOOTNOTE_LABEL) return;
+			node.properties.id = undefined;
+		});
+	};
+}
+
 function classNames(node: Element): string[] {
 	const value: unknown = node.properties?.className;
 	if (Array.isArray(value)) return value.map(String);

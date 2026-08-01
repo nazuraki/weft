@@ -1,3 +1,4 @@
+import type { Root } from "hast";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -9,6 +10,7 @@ import remarkRehype from "remark-rehype";
 import { type PluggableList, unified } from "unified";
 import {
 	rehypeCodeLanguage,
+	rehypeDropHeadingIds,
 	rehypeHeadingPermalinks,
 	rehypeTableWrap,
 } from "./rehype-affordances.js";
@@ -32,7 +34,11 @@ const SVG_TAGS = [
 	"tspan",
 ];
 
-/** Presentational SVG attributes. Deliberately no event handlers and no `href`. */
+/**
+ * Presentational SVG attributes. Deliberately no event handlers, no `href`, and
+ * no `className` — nothing styles a generated SVG's classes, and allowing them
+ * freely was inconsistent with the per-value gating everywhere else.
+ */
 const SVG_ATTRS = [
 	"viewBox",
 	"xmlns",
@@ -58,7 +64,6 @@ const SVG_ATTRS = [
 	"opacity",
 	"textAnchor",
 	"fontSize",
-	"className",
 ];
 
 function unique<T>(values: T[]): T[] {
@@ -91,8 +96,8 @@ export function buildSchema(): SanitizeSchema {
 	const schema = structuredClone(defaultSchema);
 	const attributes: Record<string, unknown[]> = { ...(schema.attributes ?? {}) };
 
-	/** Allow an attribute with any value. */
-	const allow = (tag: string, ...names: string[]) => {
+	/** Allow an attribute — bare for any value, or `[name, ...allowed]` to restrict it. */
+	const allow = (tag: string, ...names: (string | (string | RegExp)[])[]) => {
 		attributes[tag] = unique([...(attributes[tag] ?? []), ...names]);
 	};
 
@@ -127,8 +132,25 @@ export function buildSchema(): SanitizeSchema {
 	allowClass("a", "heading-anchor");
 	allowClass("div", "table-wrap");
 
-	for (const tag of SVG_TAGS) allow(tag, ...SVG_ATTRS.filter((name) => name !== "className"));
-	for (const tag of SVG_TAGS) allowClass(tag, /./);
+	// `id` and `name` are allowed on every element by `defaultSchema`, and with
+	// no clobber prefix they reach the DOM as written. Any element carrying an
+	// id becomes a `window` named property, and `<img name="x">` is the classic
+	// clobbering vector — so both come off the global list and back on only
+	// where something legitimately needs them. `accessKey` goes too: it lets a
+	// document bind a browser keyboard shortcut, and nothing here wants that.
+	attributes["*"] = (attributes["*"] ?? []).filter(
+		(name) => name !== "id" && name !== "name" && name !== "accessKey"
+	);
+	// Headings: the slugger's output, and only the slugger's — a document's own
+	// heading id is stripped upstream by `rehypeDropHeadingIds`.
+	for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6"]) allow(tag, "id");
+	// Footnotes: `mdast-util-to-hast` emits these and the hrefs that match them.
+	// Scoped to the exact shapes it produces, so a document cannot plant a
+	// duplicate id earlier in the page and hijack a footnote's target.
+	allow("a", ["id", /^user-content-fnref-/]);
+	allow("li", ["id", /^user-content-fn-/]);
+
+	for (const tag of SVG_TAGS) allow(tag, ...SVG_ATTRS);
 
 	return {
 		...schema,
@@ -164,17 +186,22 @@ export interface RenderOptions {
 /**
  * Render a document to HTML.
  *
- * The order of this chain is the contract, not an implementation detail:
+ * The order of this chain is the contract, not an implementation detail, and it
+ * is enforced by *two processors* rather than by the order of `.use()` calls.
  *
  * `rehype-raw` parses raw HTML into the tree rather than leaving it as opaque
  * passthrough. That is what makes it visible to the sanitizer — and to any
  * contributed plugin, which cannot transform what it cannot see.
  *
- * Contributed plugins run next, then this renderer's own passes, and
- * sanitization runs last over everything. Sanitizing earlier would check the
- * document and then let plugin output through unexamined; sanitizing with a
- * stock allowlist would strip the classes the highlighter had just added. Both
- * failures are silent, which is why the ordering is spelled out here.
+ * Contributed plugins run in stage 1; this renderer's own passes and the
+ * sanitizer run in stage 2. Sanitizing earlier would check the document and then
+ * let plugin output through unexamined; sanitizing with a stock allowlist would
+ * strip the classes the highlighter had just added. Both failures are silent.
+ *
+ * A single processor could not express this. `unified` freezes its attacher list
+ * before running, so a plugin whose attacher calls `this.use()` appends past
+ * everything registered after it — a documented "sanitize last" that a
+ * self-registering plugin walks straight through, on either seam.
  *
  * `rehype-slug` gives every heading an `id`, which is what makes an anchor in
  * the graph reachable. It slugs with `github-slugger`, the same implementation
@@ -188,21 +215,33 @@ export async function renderMarkdown(
 ): Promise<string> {
 	const schema = (options.extendSchema ?? ((value: SanitizeSchema) => value))(buildSchema());
 
-	const result = await unified()
+	// Stage 1 — everything a host can reach. Its output is untrusted.
+	const contributed = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
 		.use(options.remarkPlugins ?? [])
 		.use(remarkRehype, { allowDangerousHtml: true })
 		.use(rehypeRaw)
-		.use(options.rehypePlugins ?? [])
+		.use(options.rehypePlugins ?? []);
+
+	const tree = (await contributed.run(contributed.parse(markdown) as never)) as Root;
+
+	// Stage 2 — first-party, and a *separate processor* on purpose.
+	//
+	// `unified` resolves attachers at freeze time, not at `.use()` time. So a
+	// contributed plugin whose attacher calls `this.use()` appends a transformer
+	// to the END of its own processor's list — past every pass below, including
+	// the sanitizer, if these shared one processor. They do not. A plugin can
+	// only ever append to the stage it was given.
+	const trusted = unified()
+		.use(rehypeDropHeadingIds)
 		.use(rehypeSlug)
 		.use(rehypeHeadingPermalinks)
 		.use(rehypeHighlight, { detect: false })
 		.use(rehypeCodeLanguage)
 		.use(rehypeTableWrap)
 		.use(rehypeSanitize, schema)
-		.use(rehypeStringify)
-		.process(markdown);
+		.use(rehypeStringify);
 
-	return String(result);
+	return trusted.stringify((await trusted.run(tree)) as Root);
 }
