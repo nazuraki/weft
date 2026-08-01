@@ -6,5 +6,10 @@ build
 node-compile-cache
 .claude/settings.local.json
 .DS_Store
+Thumbs.db
 .gitnexus
 _site
+.env
+.env.*
+.idea/
+.vscode/

@@ -6,6 +6,21 @@ slide decks, functional specs — are nodes in a navigable graph with typed, anc
 relationships between them. Any document can be the entry point. Navigation is a first-class
 interaction, not an afterthought.
 
+## Prerequisites
+
+- Node.js >= 24
+- [pnpm](https://pnpm.io/) 9+
+- [just](https://github.com/casey/just) (task runner)
+
+## Quickstart
+
+```sh
+just install
+just dev
+```
+
+`just dev` builds the core packages and starts `weft serve` on the local docs graph.
+
 ## Core Concepts
 
 **Node:** Any document artifact — a Markdown file, an OpenAPI spec, a converted slide deck,
@@ -49,3 +64,7 @@ file watch.
 `weft.config.yaml`). A monorepo with several products sets `projects` instead, giving each product
 its own docs root inside one graph — see
 [Multiple Projects](docs/configuration.md#multiple-projects).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -18,6 +18,14 @@ All project artifacts — design docs, architecture diagrams, API specs, databas
 
 Any document can be the entry point. Navigation is a first-class interaction, not an afterthought.
 
+## Who It's For
+
+Software teams whose documentation already lives in the repository — or should. The primary
+users are developers and technical leads navigating a project's design docs, specs, and
+decision records from within their normal workflow. Secondary users are adjacent contributors
+(product, design, QA) who read those documents and need to see how they connect, without
+learning a separate tool or leaving the repo's published docs.
+
 ## Design Constraints
 
 - **Repository-native.** Weft indexes the `docs/` directory and codebase in place. No external service, no separate content store.
