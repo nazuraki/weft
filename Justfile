@@ -11,6 +11,9 @@ install:
 dev:
     pnpm dev
 
+# Run the app (dev server)
+run: dev
+
 # Build all packages
 build:
     pnpm -r run build
@@ -35,7 +38,7 @@ test:
     pnpm -r run test
 
 # Build the GitHub Pages site into _site/
-build-pages:
+pages:
     pnpm --filter @weft/core build
     pnpm --filter @weft/ui exec svelte-kit sync
     pnpm --filter @weft/embed build
