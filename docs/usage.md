@@ -188,8 +188,16 @@ A corpus with conventions of its own — severity markers, status chips, a house
 mountWeft('#root', {
   repo: 'acme/docs',
   rehypePlugins: [myCallouts],
-  extendSchema: (schema) => ({ /* allow what myCallouts emits */ }),
+  extendSchema: (schema) => ({
+    ...schema,                          // extend it — do not replace it
+    attributes: {
+      ...schema.attributes,
+      span: [...(schema.attributes?.span ?? []), ['className', 'callout']],
+    },
+  }),
 });
 ```
+
+**Spread the schema you were given.** Returning a fresh object drops `tagNames`, and a missing `tagNames` disables the allowlist rather than emptying it — every tag would be permitted, `<script>` included. Weft rejects a schema without `tagNames` or `attributes` rather than rendering with it, so the mistake fails loudly instead of silently.
 
 Contributed plugins run after raw HTML is parsed, so they can see all of it, and **before** sanitizing, so what they emit is checked like everything else. That ordering is deliberate in both directions: a plugin cannot smuggle markup past the allowlist, and a stock allowlist would otherwise strip exactly the classes the plugin just added — which is what `extendSchema` is for.

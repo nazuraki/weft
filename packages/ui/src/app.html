@@ -1,13 +1,5 @@
 <!doctype html>
-<!--
-	`weft-scope` on the root, not on `<body>`: the theme blocks set `color-scheme`,
-	and the ROOT element's used value is what drives viewport scrollbar rendering
-	and the pre-paint canvas colour. On `<body>` you get a dark app with light
-	scrollbars and a white flash before first paint.
-
-	It is also what makes the standalone app resolve its tokens at all, now that
-	they are declared on `.weft-scope` rather than globally.
--->
+<!-- weft-scope must stay on the root — see app.css -->
 <html lang="en" class="weft-scope">
 	<head>
 		<meta charset="utf-8" />

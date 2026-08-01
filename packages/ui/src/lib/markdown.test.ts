@@ -190,13 +190,50 @@ describe("renderMarkdown (sanitization)", () => {
 		expect(html).toContain('id="data-flow"');
 	});
 
-	it("does not let a document forge a footnote id", async () => {
+	it("does not let a document forge a footnote id and hijack the real one", async () => {
+		// The earlier version of this test probed `user-content-fnEVIL` and
+		// `user-content-fnord` — neither matches the schema's pattern, so both were
+		// already stripped by the global filter and the test proved nothing. The id
+		// below is the *exact* one the generator emits, which is the whole attack:
+		// planted earlier in the document, it wins every lookup for that fragment.
 		const html = await renderMarkdown(
-			'<a id="user-content-fnEVIL">a</a>\n\n<li id="user-content-fnord">b</li>\n'
+			'<ol><li id="user-content-fn-1">EVIL</li></ol>\n\nreal[^1]\n\n[^1]: legit\n'
 		);
 
-		expect(html).not.toContain("fnEVIL");
-		expect(html).not.toContain("fnord");
+		const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+		expect(html).toContain("EVIL"); // positive control: the element survived
+		expect(html).not.toMatch(/id="user-content-fn-1"[^>]*>EVIL/);
+		expect(ids.length).toBe(new Set(ids).size);
+
+		// And the real footnote still resolves.
+		const ref = html.match(/href="#(user-content-fn-\d+)"/)?.[1];
+		expect(ref).toBeDefined();
+		expect(ids).toContain(ref);
+	});
+
+	it("drops a duplicate id even with no raw HTML involved", async () => {
+		// A heading titled "Footnote label" slugs onto the id the footnote section
+		// already owns, and `rehype-slug` does not register ids it did not create —
+		// so both survived and every `aria-describedby` named the wrong element.
+		const html = await renderMarkdown("## Footnote label\n\nnote[^1]\n\n[^1]: x\n");
+		const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+
+		expect(ids.length).toBe(new Set(ids).size);
+		expect(ids).toContain("footnote-label");
+	});
+
+	it("refuses a schema that would disable the allowlist", async () => {
+		// `{...schema, tagNames: undefined}` overrides the default AND passes
+		// hast-util-sanitize's falsy check, allowing every tag — a live <script>.
+		await expect(
+			renderMarkdown("<script>alert(1)</script>\n", {
+				extendSchema: (s) => ({ ...s, tagNames: undefined }) as never,
+			})
+		).rejects.toThrow(/tagNames/);
+
+		await expect(renderMarkdown("# x\n", { extendSchema: () => null as never })).rejects.toThrow(
+			/sanitize schema/
+		);
 	});
 
 	it("strips accesskey, which binds a browser shortcut", async () => {

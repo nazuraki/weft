@@ -12,6 +12,75 @@ const HEADINGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
  */
 const FOOTNOTE_LABEL = "footnote-label";
 
+/** The ids `mdast-util-to-hast` gives a footnote reference and its definition. */
+const FOOTNOTE_ID = /^user-content-fn(ref)?-/;
+
+/**
+ * Drop structural ids a document has no business owning, and any duplicate.
+ *
+ * Two problems, one walk.
+ *
+ * A document can write `<li id="user-content-fn-1">` in raw HTML. That is the
+ * same id the real footnote definition gets, and being earlier in the document
+ * it wins every `#user-content-fn-1` lookup — so the footnote link lands on the
+ * attacker's content. Allowing the shape in the sanitizer cannot tell the two
+ * apart, because by then they are identical; what distinguishes them is where
+ * they sit. A real definition is an `li` inside the generated
+ * `section[data-footnotes]`, and a real reference is an `a` carrying
+ * `data-footnote-ref`.
+ *
+ * And any id repeated in one document breaks whatever points at it — reached
+ * without raw HTML at all by a heading titled "Footnote label", which slugs
+ * onto the footnote section's own id. Later duplicates lose, so the first
+ * legitimate holder keeps it.
+ *
+ * Residual, stated rather than papered over: a document that forges the whole
+ * structure — `section[data-footnotes]` wrapping an `ol` wrapping the `li` —
+ * still gets there first. Closing that needs provenance the tree no longer
+ * carries at this point. It raises the bar from one attribute to three nested
+ * elements, and the failure is a link landing in the wrong place rather than
+ * anything executing.
+ */
+export function rehypeDropForgedIds() {
+	return (tree: Root) => {
+		const seen = new Set<string>();
+		const footnoteSections: Element[] = [];
+
+		visit(tree, "element", (node: Element) => {
+			if (node.tagName === "section" && node.properties?.dataFootnotes !== undefined) {
+				footnoteSections.push(node);
+			}
+		});
+
+		const inFootnoteSection = (node: Element) =>
+			footnoteSections.some((section) => {
+				let found = false;
+				visit(section, "element", (candidate: Element) => {
+					if (candidate === node) found = true;
+				});
+				return found;
+			});
+
+		visit(tree, "element", (node: Element) => {
+			const id = node.properties?.id;
+			if (typeof id !== "string" || !id) return;
+
+			if (FOOTNOTE_ID.test(id)) {
+				const legitimate =
+					(node.tagName === "a" && node.properties?.dataFootnoteRef !== undefined) ||
+					(node.tagName === "li" && inFootnoteSection(node));
+				if (!legitimate) {
+					node.properties.id = undefined;
+					return;
+				}
+			}
+
+			if (seen.has(id)) node.properties.id = undefined;
+			else seen.add(id);
+		});
+	};
+}
+
 /**
  * Discard any `id` a document put on a heading, so the slugger's is the only one
  * that survives.

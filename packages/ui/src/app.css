@@ -22,7 +22,24 @@
  * `styles.test.ts` pins both halves; without it the split rots the first time
  * someone "helpfully" adds a default.
  */
-:root,
+/*
+ * Scoped, with no `:root` beside it. `:root` IS the host's `<html>`, at higher
+ * specificity than the host's own `html` rule can reach — so declaring here
+ * pushed Weft's tokens and, far worse, a real `color-scheme` onto every page
+ * that loaded the bundle. That is the leak this whole split exists to close,
+ * and it shipped anyway because the guard looked for `html` and `body` as
+ * strings and `:root` is neither while being exactly that element.
+ *
+ * Nothing needs it: the standalone app carries `weft-scope` on `<html>`, and an
+ * embedded mount matches on its own root.
+ *
+ * The class belongs on the ROOT element in the standalone app, not on `<body>`:
+ * the theme blocks set `color-scheme`, and the root's used value is what drives
+ * viewport scrollbar rendering and the pre-paint canvas colour. On `<body>` you
+ * get a dark app with light scrollbars and a white flash before first paint.
+ * `app.html` carries a one-line pointer here rather than this explanation,
+ * because that file is served to every visitor.
+ */
 .weft-scope {
 	--w-lhn-width: var(--weft-lhn-width, 240px);
 	--w-rhs-width: var(--weft-rhs-width, 260px);
@@ -147,6 +164,14 @@
 	font-size: 14px;
 	line-height: 1.5;
 	color: var(--w-text);
+	/*
+	 * Paired with `color`, deliberately. `app-page.css` sets both on `html, body`;
+	 * porting that to a scoped block kept the foreground and dropped this, so a
+	 * dark mount painted light-grey text straight onto a light host's canvas —
+	 * 1.29:1 against a 4.5:1 requirement, i.e. the documented dark-in-light embed
+	 * was unreadable. Code blocks hid it by painting their own background.
+	 */
+	background: var(--w-bg);
 }
 
 .weft-scope *,

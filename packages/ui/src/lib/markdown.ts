@@ -10,6 +10,7 @@ import remarkRehype from "remark-rehype";
 import { type PluggableList, unified } from "unified";
 import {
 	rehypeCodeLanguage,
+	rehypeDropForgedIds,
 	rehypeDropHeadingIds,
 	rehypeHeadingPermalinks,
 	rehypeTableWrap,
@@ -145,10 +146,13 @@ export function buildSchema(): SanitizeSchema {
 	// heading id is stripped upstream by `rehypeDropHeadingIds`.
 	for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6"]) allow(tag, "id");
 	// Footnotes: `mdast-util-to-hast` emits these and the hrefs that match them.
-	// Scoped to the exact shapes it produces, so a document cannot plant a
-	// duplicate id earlier in the page and hijack a footnote's target.
-	allow("a", ["id", /^user-content-fnref-/]);
-	allow("li", ["id", /^user-content-fn-/]);
+	// Anchored at both ends — an unanchored prefix leaves the whole tail to the
+	// document, including the emitter's own suffix. The shape alone cannot tell a
+	// real definition from a forged one, though, because they are identical by
+	// the time the sanitizer sees them; `rehypeDropForgedIds` is what separates
+	// them, and this is the narrower net behind it.
+	allow("a", ["id", /^user-content-fnref-\d+$/]);
+	allow("li", ["id", /^user-content-fn-\d+$/]);
 
 	for (const tag of SVG_TAGS) allow(tag, ...SVG_ATTRS);
 
@@ -159,6 +163,37 @@ export function buildSchema(): SanitizeSchema {
 		attributes: attributes as SanitizeSchema["attributes"],
 		tagNames: unique([...(schema.tagNames ?? []), ...SVG_TAGS, "figure", "figcaption"]),
 	};
+}
+
+/**
+ * Refuse a schema that would disable the allowlist.
+ *
+ * `hast-util-sanitize` spreads the given schema over its default and then tests
+ * `!schema.tagNames || schema.tagNames.includes(name)` — so an own key set to
+ * `undefined` both overrides the default *and* passes the falsy check, allowing
+ * every tag. A host returning `{ ...schema, tagNames: undefined }` gets a live
+ * `<script>` in the output, and the documented `extendSchema: (schema) => ({…})`
+ * shape is exactly the object literal that drops the argument.
+ *
+ * The one value a host hands the sanitizer was the only unchecked input to it,
+ * which rather undercut the point of running the sanitizer last.
+ */
+function validateSchema(schema: unknown): SanitizeSchema {
+	const candidate = schema as SanitizeSchema | null | undefined;
+	if (!candidate || typeof candidate !== "object") {
+		throw new TypeError("weft: extendSchema must return a sanitize schema, got " + typeof schema);
+	}
+	if (!Array.isArray(candidate.tagNames)) {
+		throw new TypeError(
+			"weft: extendSchema returned a schema with no `tagNames` array — that disables the allowlist entirely. Extend the schema you were given rather than replacing it."
+		);
+	}
+	if (!candidate.attributes || typeof candidate.attributes !== "object") {
+		throw new TypeError(
+			"weft: extendSchema returned a schema with no `attributes` — that strips every attribute, including href."
+		);
+	}
+	return candidate;
 }
 
 export interface RenderOptions {
@@ -213,7 +248,9 @@ export async function renderMarkdown(
 	markdown: string,
 	options: RenderOptions = {}
 ): Promise<string> {
-	const schema = (options.extendSchema ?? ((value: SanitizeSchema) => value))(buildSchema());
+	const schema = validateSchema(
+		(options.extendSchema ?? ((value: SanitizeSchema) => value))(buildSchema())
+	);
 
 	// Stage 1 — everything a host can reach. Its output is untrusted.
 	const contributed = unified()
@@ -236,6 +273,9 @@ export async function renderMarkdown(
 	const trusted = unified()
 		.use(rehypeDropHeadingIds)
 		.use(rehypeSlug)
+		// After the slugger, so a heading that slugs onto an id the generator
+		// already used is caught as the duplicate it is.
+		.use(rehypeDropForgedIds)
 		.use(rehypeHeadingPermalinks)
 		.use(rehypeHighlight, { detect: false })
 		.use(rehypeCodeLanguage)
