@@ -55,10 +55,17 @@ load();
 {#if loadError}
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
-	<WeftApp {manifest} {currentNodeId} navigate={(path) => {
-		const nodeId = pathToNode(path.split("#")[0], manifest!.nodes)?.id;
-		if (nodeId) currentNodeId = nodeId;
-	}} />
+	<WeftApp
+		{manifest}
+		{currentNodeId}
+		remarkPlugins={config.remarkPlugins}
+		rehypePlugins={config.rehypePlugins}
+		extendSchema={config.extendSchema}
+		navigate={(path) => {
+			const nodeId = pathToNode(path.split("#")[0], manifest!.nodes)?.id;
+			if (nodeId) currentNodeId = nodeId;
+		}}
+	/>
 {:else}
 	<p class="weft-loading">Loading…</p>
 {/if}

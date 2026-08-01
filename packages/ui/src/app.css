@@ -22,6 +22,19 @@
 	--color-link-hover: #e8ddff;
 	--color-accent: #cebdff;
 	--color-accent-subtle: #2d2543;
+	/*
+	 * Syntax highlighting tokens. Named by role rather than by highlight.js
+	 * class so a host can retheme code without learning the `hljs-*` taxonomy,
+	 * and so one set of names covers both schemes.
+	 */
+	--code-keyword: #cebdff;
+	--code-string: #a5d6a7;
+	--code-number: #ffcc80;
+	--code-comment: #8b8595;
+	--code-function: #8ab4f8;
+	--code-variable: #f48fb1;
+	--code-type: #80cbc4;
+	--code-meta: #948e9f;
 	color-scheme: dark;
 }
 
@@ -37,6 +50,14 @@
 	--color-link-hover: #4f378a;
 	--color-accent: #6750a4;
 	--color-accent-subtle: #eaddff;
+	--code-keyword: #6750a4;
+	--code-string: #2e7d32;
+	--code-number: #b45309;
+	--code-comment: #6b6b74;
+	--code-function: #1565c0;
+	--code-variable: #ad1457;
+	--code-type: #00695c;
+	--code-meta: #49454f;
 	color-scheme: light;
 }
 

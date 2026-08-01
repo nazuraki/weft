@@ -1,18 +1,20 @@
 <script lang="ts">
 import type { WeftClient } from "$lib/client.js";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
+import type { RenderOptions } from "$lib/markdown.js";
 import { getContext } from "svelte";
 import MarkdownRenderer from "./MarkdownRenderer.svelte";
 import OpenApiRenderer from "./OpenApiRenderer.svelte";
 
-interface Props {
+interface Props extends RenderOptions {
 	nodeId: string;
 	anchor?: string;
 	nodeType?: "markdown" | "openapi" | "artifact";
 	onnavigate: (nodeId: string, anchor?: string) => void;
 }
 
-let { nodeId, anchor, nodeType, onnavigate }: Props = $props();
+let { nodeId, anchor, nodeType, onnavigate, remarkPlugins, rehypePlugins, extendSchema }: Props =
+	$props();
 
 const client = getContext<WeftClient>(WEFT_CLIENT_KEY);
 
@@ -61,7 +63,7 @@ $effect(() => {
 	{:else if error}
 		<p class="error">{error}</p>
 	{:else}
-		<MarkdownRenderer {content} {onnavigate} />
+		<MarkdownRenderer {content} {onnavigate} {remarkPlugins} {rehypePlugins} {extendSchema} />
 	{/if}
 </div>
 

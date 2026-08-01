@@ -1,3 +1,4 @@
+import type { RenderOptions } from "$lib/markdown.js";
 import { mount, unmount } from "svelte";
 import App from "./App.svelte";
 
@@ -19,6 +20,17 @@ export interface EmbedConfig {
 	 * Example: "https://example.com/docs"
 	 */
 	baseUrl?: string;
+	/**
+	 * Render passes this host contributes, for conventions Weft should not know.
+	 *
+	 * A corpus with a house vocabulary — findings, severities, status ledgers —
+	 * expresses it as a plugin it owns and versions, rather than forking the
+	 * renderer or going without. Whatever they emit is sanitized like everything
+	 * else, so `extendSchema` has to widen the allowlist to match.
+	 */
+	remarkPlugins?: RenderOptions["remarkPlugins"];
+	rehypePlugins?: RenderOptions["rehypePlugins"];
+	extendSchema?: RenderOptions["extendSchema"];
 }
 
 /**

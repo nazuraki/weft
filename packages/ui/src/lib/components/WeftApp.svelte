@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { RenderOptions } from "$lib/markdown.js";
 import { theme } from "$lib/stores/theme.svelte.js";
 import { nodeIdToPath } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core";
@@ -7,7 +8,7 @@ import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";
 import SearchPalette from "./SearchPalette.svelte";
 
-interface Props {
+interface Props extends RenderOptions {
 	manifest: Manifest;
 	layout?: "reader" | "default";
 	currentNodeId: string;
@@ -15,7 +16,16 @@ interface Props {
 	navigate: (path: string) => void;
 }
 
-let { manifest, layout = "default", currentNodeId, anchor, navigate }: Props = $props();
+let {
+	manifest,
+	layout = "default",
+	currentNodeId,
+	anchor,
+	navigate,
+	remarkPlugins,
+	rehypePlugins,
+	extendSchema,
+}: Props = $props();
 
 let showSearch = $state(false);
 
@@ -98,6 +108,9 @@ function handleKeydown(e: KeyboardEvent) {
 				nodeType={currentNode.type}
 				{anchor}
 				onnavigate={handleNavigate}
+				{remarkPlugins}
+				{rehypePlugins}
+				{extendSchema}
 			/>
 		{:else}
 			<p class="empty">No documents found.</p>

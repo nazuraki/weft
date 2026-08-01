@@ -43,6 +43,187 @@ describe("renderMarkdown", () => {
 	});
 });
 
+describe("renderMarkdown (sanitization)", () => {
+	// The sink is innerHTML, so the failure mode needs stating precisely: a bare
+	// <script> inserted that way is inert, and these are the vectors that fire.
+	it("strips an inline event handler, which does execute on insertion", async () => {
+		const html = await renderMarkdown('<img src=x onerror="alert(1)">\n');
+
+		expect(html).not.toContain("onerror");
+		expect(html).not.toContain("alert(1)");
+	});
+
+	it("strips an svg onload handler", async () => {
+		const html = await renderMarkdown('<svg onload="alert(1)"></svg>\n');
+
+		expect(html).not.toContain("onload");
+	});
+
+	it("removes an iframe outright", async () => {
+		const html = await renderMarkdown('<iframe src="https://evil.example"></iframe>\n');
+
+		expect(html).not.toContain("<iframe");
+	});
+
+	it("drops a javascript: href written as ordinary Markdown", async () => {
+		// This one never depended on allowDangerousHtml — remark produces it from
+		// plain link syntax, so turning raw HTML off would not have closed it.
+		const html = await renderMarkdown("[click](javascript:alert(1))\n");
+
+		expect(html).not.toContain("javascript:");
+	});
+
+	it("drops a javascript: href written as raw HTML", async () => {
+		const html = await renderMarkdown('<a href="javascript:alert(1)">click</a>\n');
+
+		expect(html).not.toContain("javascript:");
+	});
+
+	it("removes a script element", async () => {
+		const html = await renderMarkdown("<script>alert(1)</script>\n");
+
+		expect(html).not.toContain("<script");
+	});
+
+	it("keeps a legitimate inline svg figure", async () => {
+		// Removing allowDangerousHtml would delete this silently, which is why
+		// sanitizing is the fix rather than switching raw HTML off.
+		const html = await renderMarkdown(
+			'<svg viewBox="0 0 10 10"><rect x="0" y="0" width="5" height="5" fill="red"/></svg>\n'
+		);
+
+		expect(html).toContain("<svg");
+		expect(html).toContain("<rect");
+		expect(html).toContain('viewBox="0 0 10 10"');
+	});
+
+	it("keeps ordinary links and http protocols working", async () => {
+		const html = await renderMarkdown("[a](https://example.com) and [b](guide.md)\n");
+
+		expect(html).toContain('href="https://example.com"');
+		expect(html).toContain('href="guide.md"');
+	});
+
+	// The trap this schema exists to avoid: defaultSchema renames every id to
+	// user-content-*, which would break every anchor the graph points at.
+	it("leaves heading ids unprefixed, so graph anchors still resolve", async () => {
+		const html = await renderMarkdown("## Data Flow\n");
+
+		expect(html).toContain('id="data-flow"');
+		expect(html).not.toContain("user-content");
+	});
+});
+
+describe("renderMarkdown (rendering affordances)", () => {
+	it("highlights a fenced block with a known language", async () => {
+		const html = await renderMarkdown("```lua\nlocal x = 1\n```\n");
+
+		// Lua is 78% of the target corpus's code blocks, and an unhighlighted
+		// block looks identical to a working one — so this asserts the grammar
+		// is actually present rather than merely requested.
+		expect(html).toContain("hljs");
+		expect(html).toContain("hljs-keyword");
+	});
+
+	it("survives sanitization with its highlight classes intact", async () => {
+		const html = await renderMarkdown('```json\n{"a": 1}\n```\n');
+
+		expect(html).toMatch(/class="[^"]*hljs-/);
+	});
+
+	it("records the language on the pre for the chip", async () => {
+		const html = await renderMarkdown("```bash\necho hi\n```\n");
+
+		expect(html).toContain('data-lang="bash"');
+	});
+
+	it("leaves a fence with no language without a chip", async () => {
+		const html = await renderMarkdown("```\nplain\n```\n");
+
+		expect(html).not.toContain("data-lang");
+	});
+
+	it("wraps a table so it can scroll on its own", async () => {
+		const html = await renderMarkdown("| a | b |\n| - | - |\n| 1 | 2 |\n");
+
+		expect(html).toContain('<div class="table-wrap">');
+		expect(html.indexOf("table-wrap")).toBeLessThan(html.indexOf("<table>"));
+	});
+
+	it("gives every heading a permalink pointing at its own id", async () => {
+		const html = await renderMarkdown("## Data Flow\n");
+
+		expect(html).toContain('class="heading-anchor"');
+		expect(html).toContain('href="#data-flow"');
+	});
+});
+
+describe("renderMarkdown (contributed plugins)", () => {
+	/** A stand-in for a host's house vocabulary — the case the seam exists for. */
+	function markSeverity() {
+		return (tree: import("hast").Root) => {
+			const visit = (node: { children?: unknown[] } & Record<string, unknown>) => {
+				for (const child of (node.children ?? []) as Record<string, unknown>[]) {
+					if (child.tagName === "strong") {
+						child.properties = { ...(child.properties as object), className: ["sev"] };
+					}
+					visit(child as { children?: unknown[] } & Record<string, unknown>);
+				}
+			};
+			visit(tree as unknown as { children?: unknown[] } & Record<string, unknown>);
+		};
+	}
+
+	it("runs a contributed rehype plugin", async () => {
+		const html = await renderMarkdown("**Severity:** High\n", {
+			rehypePlugins: [markSeverity],
+			extendSchema: (schema) => ({
+				...schema,
+				attributes: {
+					...schema.attributes,
+					strong: [...(schema.attributes?.strong ?? []), ["className", "sev"]],
+				},
+			}),
+		});
+
+		expect(html).toContain('class="sev"');
+	});
+
+	it("sanitizes what a contributed plugin emits when the schema does not cover it", async () => {
+		// Sanitization runs last on purpose. A plugin cannot smuggle markup past
+		// the allowlist by emitting it after the document was checked.
+		const html = await renderMarkdown("**Severity:** High\n", {
+			rehypePlugins: [markSeverity],
+		});
+
+		expect(html).not.toContain('class="sev"');
+		expect(html).toContain("<strong>");
+	});
+
+	it("lets a contributed plugin see raw HTML from the document", async () => {
+		// rehype-raw is what makes this possible — while raw HTML stays opaque,
+		// no plugin can inspect or transform anything inside it.
+		let sawRawElement = false;
+		const inspect = () => (tree: import("hast").Root) => {
+			const walk = (node: { children?: unknown[]; tagName?: string }) => {
+				if (node.tagName === "aside") sawRawElement = true;
+				for (const child of (node.children ?? []) as { children?: unknown[] }[]) walk(child);
+			};
+			walk(tree as unknown as { children?: unknown[] });
+		};
+
+		await renderMarkdown("<aside>note</aside>\n", { rehypePlugins: [inspect] });
+
+		expect(sawRawElement).toBe(true);
+	});
+
+	it("renders normally when no plugins are supplied", async () => {
+		const html = await renderMarkdown("# Title\n");
+
+		expect(html).toContain('id="title"');
+	});
+});
+
 describe("rendered ids match the indexed anchors", () => {
 	it("matches for plain headings", async () => {
 		await assertAnchorsReachable("# Title\n\n## Getting Started\n\n### API Reference\n");
