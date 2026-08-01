@@ -41,16 +41,25 @@ async function loadDoc(id: string) {
 	}
 }
 
-// Scroll to anchor after content loads (markdown only; openapi renderer handles its own)
+let root: HTMLDivElement | undefined = $state();
+
+// Scroll to anchor after content loads (markdown only; openapi renderer handles its own).
+//
+// Scoped to this mount rather than the document: an embedded reader must not
+// scroll something on the host's page that happens to share an id with one of
+// its headings — and after slugging, ids are exactly the shape a host's own
+// markup uses (`overview`, `intro`). In the standalone app the global lookup
+// only ever worked by coincidence.
 $effect(() => {
-	if (!loading && anchor && nodeType !== "openapi") {
-		const el = document.getElementById(anchor.replace("#", ""));
-		if (el) el.scrollIntoView({ behavior: "smooth" });
-	}
+	if (loading || !anchor || nodeType === "openapi" || !root) return;
+	// A slug may begin with a digit, which is a legal id and an illegal
+	// selector — `querySelector("#2024-roadmap")` throws rather than missing.
+	const id = anchor.replace(/^#/, "");
+	root.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ behavior: "smooth" });
 });
 </script>
 
-<div class="doc-view">
+<div class="doc-view" bind:this={root}>
 	{#if nodeType === 'artifact'}
 		<p class="artifact">
 			<strong>{nodeId}</strong> is a generated output. Weft tracks it so its sources can be

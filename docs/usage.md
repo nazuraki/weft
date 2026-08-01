@@ -116,7 +116,7 @@ Three things about this mount are deliberate:
 
 **Navigation is an output, not an action.** Following a link inside a document calls `onNavigate` and changes nothing. The host owns its URL and its history, and calls `update` if it decides to show the new document.
 
-**Weft does not touch your page.** Everything it renders sits inside `.weft-scope`, so its box model, fonts and colours reach only its own subtree — your reset and your typography are untouched outside it. It never writes `data-theme` on `documentElement`, either: set it on the container to pick a scheme, or leave it and Weft inherits what you already decided.
+**Weft stays inside its own container.** Everything it renders sits within `.weft-scope`, so its box model, fonts and colours reach only its own subtree — your reset and your typography are untouched outside it. It never writes `data-theme` on `documentElement`: set it on the container to pick a scheme, or leave it and Weft inherits what you already decided. Anchor scrolling is scoped to the mount too, so a link to `#overview` inside a document will not scroll an `#overview` of yours elsewhere on the page.
 
 ### Theming contract
 

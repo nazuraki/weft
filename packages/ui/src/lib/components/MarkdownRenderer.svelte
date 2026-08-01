@@ -8,7 +8,6 @@ interface Props extends RenderOptions {
 
 let { content, onnavigate, remarkPlugins, rehypePlugins, extendSchema }: Props = $props();
 let htmlContent = $state("");
-let container: HTMLDivElement | undefined = $state();
 
 $effect(() => {
 	render(content);
@@ -46,7 +45,7 @@ function handleClick(e: MouseEvent) {
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="markdown-body" bind:this={container} onclick={handleClick}>
+<div class="markdown-body" onclick={handleClick}>
 	{@html htmlContent}
 </div>
 
