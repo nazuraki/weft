@@ -106,8 +106,9 @@ const doc = Weft.mountDoc('#host', {
   onNavigate: (id, anchor) => router.go(id, anchor),
 });
 
-doc.update({ nodeId: 'api.md' });   // re-point it
-doc.destroy();                      // remove it
+doc.update({ nodeId: 'api.md' });                    // re-point it, no anchor
+doc.update({ nodeId: 'api.md', anchor: '#errors' }); // …or to a section
+doc.destroy();                                       // remove it
 ```
 
 Three things about this mount are deliberate:
@@ -115,6 +116,8 @@ Three things about this mount are deliberate:
 **The client is yours.** `WeftClient` is two methods — `fetchDoc(id)` and `search(query)`. A host with its own document endpoints and its own search backend should not have to re-serve files at a URL shape Weft picked, nor ship a second search index to duplicate one it already has.
 
 **Navigation is an output, not an action.** Following a link inside a document calls `onNavigate` and changes nothing. The host owns its URL and its history, and calls `update` if it decides to show the new document.
+
+`update` takes the whole state rather than a patch. That is deliberate: with a patch, an omitted anchor needs a rule, and both answers are wrong somewhere — keep it and re-pointing carries the old anchor into the new document, which scrolls to the wrong place whenever the two share a slug; clear it and a same-document refresh loses the reader's position. Passing both fields every time removes the question.
 
 **Weft stays inside its own container.** Everything it renders sits within `.weft-scope`, so its box model, fonts and colours reach only its own subtree — your reset and your typography are untouched outside it. It never writes `data-theme` on `documentElement`: set it on the container to pick a scheme, or leave it and Weft inherits what you already decided. Anchor scrolling is scoped to the mount too, so a link to `#overview` inside a document will not scroll an `#overview` of yours elsewhere on the page.
 

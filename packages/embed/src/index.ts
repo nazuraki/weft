@@ -107,7 +107,20 @@ export interface DocMountOptions extends DocMountState {
 
 /** A mounted reader. `update` re-points it; `destroy` removes it. */
 export interface DocMount {
-	update(state: Partial<DocMountState>): void;
+	/**
+	 * Show a different document, or a different anchor in this one.
+	 *
+	 * Takes the whole state rather than a patch, deliberately. A partial needs a
+	 * rule for what an omitted `anchor` means, and every answer is wrong
+	 * somewhere: leave it and a re-point carries the old anchor into the new
+	 * document — which silently scrolls to the wrong place whenever both share a
+	 * slug, and `#overview` or `#configuration` appear in several documents of
+	 * any real corpus. Clear it and a refresh loses the reader's position.
+	 *
+	 * Passing the state whole removes the question. Omitting the anchor clears it
+	 * because you did not pass one, which is what the type already says.
+	 */
+	update(state: DocMountState): void;
 	destroy(): void;
 }
 
@@ -172,8 +185,8 @@ export function mountDoc(target: string | HTMLElement, options: DocMountOptions)
 
 	return {
 		update(next) {
-			if (next.nodeId !== undefined) state.nodeId = next.nodeId;
-			if ("anchor" in next) state.anchor = next.anchor;
+			state.nodeId = next.nodeId;
+			state.anchor = next.anchor;
 		},
 		destroy: () => unmount(app),
 	};

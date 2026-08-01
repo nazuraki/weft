@@ -33,6 +33,47 @@ let {
 
 let currentNode = $derived(manifest.nodes.find((node) => node.id === nodeId) ?? null);
 
+let root: HTMLDivElement | undefined = $state();
+let inheritedTheme = $state<string | null>(null);
+
+/**
+ * Mirror the nearest themed ancestor's `data-theme` onto this mount's own root.
+ *
+ * CSS cannot express "nearest ancestor wins". A host page themed `light` with
+ * the mount's container marked `dark` matches BOTH `[data-theme="light"] .weft-scope`
+ * and `[data-theme="dark"] .weft-scope` — same element, both (0,2,0) — so source
+ * order decides, and a mount that asked to be dark renders light.
+ *
+ * The old unqualified rules got this right for free, because they declared the
+ * tokens on the themed element itself and let inheritance carry them down. That
+ * is also exactly why they leaked into the host's markup. Resolving the value
+ * here turns an ancestor question into an own-attribute one, which the cascade
+ * handles unambiguously — and keeps the rules scoped.
+ */
+$effect(() => {
+	if (!root) return;
+
+	const resolve = () => {
+		// From the PARENT, never from `root` itself: this effect writes the
+		// attribute onto `root`, and reading it back would latch the first value
+		// forever.
+		inheritedTheme =
+			root?.parentElement?.closest("[data-theme]")?.getAttribute("data-theme") ?? null;
+	};
+
+	resolve();
+
+	// A host may toggle its own theme at runtime; the filter keeps this cheap
+	// even though the subtree is the whole document.
+	const observer = new MutationObserver(resolve);
+	observer.observe(document.documentElement, {
+		subtree: true,
+		attributes: true,
+		attributeFilter: ["data-theme"],
+	});
+	return () => observer.disconnect();
+});
+
 function handleNavigate(id: string, hash?: string) {
 	onnavigate?.(id, hash);
 }
@@ -47,8 +88,12 @@ function handleNavigate(id: string, hash?: string) {
 	documentElement, which is correct for an app that is the whole page and wrong
 	for one panel inside someone else's — the host sets the attribute on this
 	container if it wants Weft's dark scheme, or leaves it and inherits.
+
+	The `data-theme` below is that inherited value, resolved and mirrored here so
+	the cascade sees it on our own element rather than having to pick between two
+	ancestors it cannot rank.
 -->
-<div class="weft-scope weft-doc">
+<div class="weft-scope weft-doc" data-theme={inheritedTheme ?? undefined} bind:this={root}>
 	{#if currentNode}
 		<div class="doc" class:with-sidebar={linkedItems}>
 			<main class="reader">

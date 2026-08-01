@@ -71,19 +71,21 @@
 }
 
 /*
- * Dark is opt-in, via `data-theme="dark"` on any of three places.
+ * Dark is opt-in, via `data-theme` in one of two places — both of them inside
+ * Weft's own markup, which is what keeps these rules off the host's page.
  *
- * The first selector is deliberately (0,3,0) — the class is repeated to outrank
- * the second, which is (0,2,0). Without that they TIE, and a tie hands the
- * decision to source order: a mount that sets its own `data-theme="dark"` inside
- * a host page carrying `data-theme="light"` silently renders light. Verified in
- * a browser. Do not "tidy" the duplicate away; `styles.test.ts` guards it.
+ * The scope element itself: the standalone app sets it on `<html>`, and an
+ * embedded mount mirrors its nearest themed ancestor onto its own root (see
+ * `DocReader.svelte`). There is no `[data-theme] .weft-scope` ancestor rule on
+ * purpose. It would match a mount inside a themed host — but so would the
+ * opposite scheme's copy, at identical (0,2,0) specificity, so source order
+ * rather than proximity would decide. CSS cannot express "nearest ancestor
+ * wins"; resolving the value in JS can, and does.
  *
- * The third selector is what keeps the per-document override working — the
- * element carrying it sits inside Weft's own scope, never in the host's page.
+ * A descendant carrying it: the per-document override. Safe by construction,
+ * since a host's elements are never inside `.weft-scope`.
  */
-.weft-scope.weft-scope[data-theme="dark"],
-[data-theme="dark"] .weft-scope,
+.weft-scope[data-theme="dark"],
 .weft-scope [data-theme="dark"] {
 	--w-bg: var(--weft-color-bg, #131315);
 	--w-bg-secondary: var(--weft-color-bg-secondary, #1b1b1d);
@@ -108,8 +110,7 @@
 }
 
 /* Light, when something above has already asked for dark. Mirrors the set above. */
-.weft-scope.weft-scope[data-theme="light"],
-[data-theme="light"] .weft-scope,
+.weft-scope[data-theme="light"],
 .weft-scope [data-theme="light"] {
 	--w-bg: var(--weft-color-bg, #fef7ff);
 	--w-bg-secondary: var(--weft-color-bg-secondary, #f4eff4);

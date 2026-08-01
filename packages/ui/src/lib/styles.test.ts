@@ -101,24 +101,22 @@ describe("the theme blocks", () => {
 		expect(tokens).not.toMatch(/(^|\})\s*\[data-theme="(dark|light)"\]\s*[,{]/);
 	});
 
-	it("still lets a mount differ from its host, and a document from its mount", () => {
+	it("keys off Weft's own markup, on the scope or inside it", () => {
+		// On the scope: the standalone app's <html>, or an embedded mount that has
+		// mirrored its host's theme onto itself. Inside it: the per-document
+		// override, which can only ever match markup Weft rendered.
 		expect(tokens).toMatch(/\.weft-scope\[data-theme="dark"\]/);
-		expect(tokens).toMatch(/\[data-theme="dark"\]\s+\.weft-scope/);
-		// The per-document override: the element carrying it is inside Weft's own
-		// scope, so this selector can only ever match markup Weft rendered.
 		expect(tokens).toMatch(/\.weft-scope\s+\[data-theme="dark"\]/);
 	});
 
-	it("outranks the host-ancestor branch rather than tying with it", () => {
-		// `.weft-scope[data-theme]` and `[data-theme] .weft-scope` are both (0,2,0).
-		// A tie hands the decision to source order, and a mount that sets its own
-		// dark scheme inside a light host silently renders light — verified in a
-		// browser. The repeated class makes the mount's own branch (0,3,0).
-		//
-		// It reads like a copy-paste error, which is exactly why this test exists:
-		// the first person to tidy it away restores the bug with nothing to catch it.
-		expect(tokens).toMatch(/\.weft-scope\.weft-scope\[data-theme="dark"\]/);
-		expect(tokens).toMatch(/\.weft-scope\.weft-scope\[data-theme="light"\]/);
+	it("has no host-ancestor branch, which could not be ranked by proximity", () => {
+		// `[data-theme="dark"] .weft-scope` and its light twin both match a mount
+		// inside a themed host, at identical (0,2,0) — so source order rather than
+		// nearest ancestor would decide, and a mount asking to be dark inside a
+		// light page rendered light. CSS cannot express "nearest wins";
+		// `DocReader` resolves the value in JS instead, which is why this shape
+		// must not come back.
+		expect(tokens).not.toMatch(/\[data-theme="(dark|light)"\]\s+\.weft-scope/);
 	});
 });
 
