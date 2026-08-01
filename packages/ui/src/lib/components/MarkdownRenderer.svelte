@@ -4,17 +4,38 @@ import { type RenderOptions, renderMarkdown } from "$lib/markdown.js";
 interface Props extends RenderOptions {
 	content: string;
 	onnavigate: (nodeId: string, anchor?: string) => void;
+	/**
+	 * Fires once the rendered HTML is in the DOM.
+	 *
+	 * Rendering is async, so "the document finished loading" and "the document is
+	 * on the page" are different moments — anything that needs to find an element
+	 * by id has to wait for the second one.
+	 */
+	onrendered?: () => void;
 }
 
-let { content, onnavigate, remarkPlugins, rehypePlugins, extendSchema }: Props = $props();
+let { content, onnavigate, onrendered, remarkPlugins, rehypePlugins, extendSchema }: Props =
+	$props();
 let htmlContent = $state("");
+let renderError = $state("");
 
 $effect(() => {
 	render(content);
 });
 
 async function render(md: string) {
-	htmlContent = await renderMarkdown(md, { remarkPlugins, rehypePlugins, extendSchema });
+	try {
+		htmlContent = await renderMarkdown(md, { remarkPlugins, rehypePlugins, extendSchema });
+		renderError = "";
+	} catch (e) {
+		// A throwing plugin or a rejected schema would otherwise leave the previous
+		// document on screen and report only to the console.
+		renderError = e instanceof Error ? e.message : "Failed to render document";
+		htmlContent = "";
+		return;
+	}
+	// After the DOM has the new HTML, not merely after the promise resolves.
+	requestAnimationFrame(() => onrendered?.());
 }
 
 // Intercept link clicks for in-app navigation
@@ -46,13 +67,20 @@ function handleClick(e: MouseEvent) {
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="markdown-body" onclick={handleClick}>
-	{@html htmlContent}
+	{#if renderError}
+		<p class="render-error">{renderError}</p>
+	{:else}
+		{@html htmlContent}
+	{/if}
 </div>
 
 <style>
 	.markdown-body {
 		line-height: 1.6;
 		word-wrap: break-word;
+	}
+	.render-error {
+		color: #d1242f;
 	}
 	/* h5 and h6 were omitted here too, so they rendered in the body font. */
 	.markdown-body :global(:is(h1, h2, h3, h4, h5, h6)) {
@@ -82,6 +110,9 @@ function handleClick(e: MouseEvent) {
 		text-decoration: none;
 	}
 	.markdown-body :global(a:hover) {
+		/* `--weft-color-link-hover` is published in the theming contract, and was
+		   declared here but read nowhere — a host setting it got silence. */
+		color: var(--w-link-hover);
 		text-decoration: underline;
 	}
 	.markdown-body :global(code) {

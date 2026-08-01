@@ -43,19 +43,41 @@ async function loadDoc(id: string) {
 
 let root: HTMLDivElement | undefined = $state();
 
-// Scroll to anchor after content loads (markdown only; openapi renderer handles its own).
-//
-// Scoped to this mount rather than the document: an embedded reader must not
-// scroll something on the host's page that happens to share an id with one of
-// its headings — and after slugging, ids are exactly the shape a host's own
-// markup uses (`overview`, `intro`). In the standalone app the global lookup
-// only ever worked by coincidence.
-$effect(() => {
-	if (loading || !anchor || nodeType === "openapi" || !root) return;
+/**
+ * Scroll to the anchor (markdown only; the openapi renderer handles its own).
+ *
+ * Driven by the renderer's `onrendered` rather than by `loading`, because those
+ * are different moments: rendering is async, so when the fetch settles the DOM
+ * still holds the *previous* document — or nothing at all. Keying on `loading`
+ * meant `querySelector` ran against an empty container and silently found
+ * nothing, so an anchor into a document you were navigating *to* never scrolled,
+ * while an anchor inside the document you were already on always did. That is
+ * exactly the flow `mountDoc`'s `onNavigate` feeds.
+ *
+ * Scoped to this mount rather than the document: an embedded reader must not
+ * scroll something on the host's page that happens to share an id with one of
+ * its headings — and after slugging, ids are exactly the shape a host's own
+ * markup uses (`overview`, `intro`).
+ */
+function scrollToAnchor() {
+	if (!anchor || !root) return;
+
+	// `#` alone is a legal href and an illegal selector; without this guard
+	// `querySelector("#")` throws out of the effect.
+	const id = anchor.replace(/^#/, "");
+	if (!id) return;
+
 	// A slug may begin with a digit, which is a legal id and an illegal
 	// selector — `querySelector("#2024-roadmap")` throws rather than missing.
-	const id = anchor.replace(/^#/, "");
 	root.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ behavior: "smooth" });
+}
+
+// The other half: when only the anchor changes, the document does not
+// re-render, so nothing fires `onrendered`. Reading `anchor` here is what
+// tracks it; before the first render this finds nothing and `onrendered`
+// follows up.
+$effect(() => {
+	if (nodeType !== "openapi") scrollToAnchor();
 });
 </script>
 
@@ -72,7 +94,14 @@ $effect(() => {
 	{:else if error}
 		<p class="error">{error}</p>
 	{:else}
-		<MarkdownRenderer {content} {onnavigate} {remarkPlugins} {rehypePlugins} {extendSchema} />
+		<MarkdownRenderer
+			{content}
+			{onnavigate}
+			onrendered={scrollToAnchor}
+			{remarkPlugins}
+			{rehypePlugins}
+			{extendSchema}
+		/>
 	{/if}
 </div>
 

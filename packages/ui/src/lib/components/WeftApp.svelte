@@ -163,7 +163,11 @@ function handleKeydown(e: KeyboardEvent) {
 	.wordmark {
 		font-family: var(--w-font-heading, var(--w-font-sans));
 		font-weight: 600;
-		font-size: 15px;
+		/* 13px, not 15: this was `0.9375rem` against a 14px base that `app-page.css`
+		   already set, so it rendered at 13.125px. Converting it to 15px would have
+		   been a silent 14% size change inside a commit that claimed to be a
+		   mechanical unit swap. */
+		font-size: 13px;
 		letter-spacing: 0.04em;
 		color: var(--w-accent);
 		text-transform: uppercase;

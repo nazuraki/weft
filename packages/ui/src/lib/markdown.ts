@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { type PluggableList, unified } from "unified";
+import { VFile } from "vfile";
 import {
 	rehypeCodeLanguage,
 	rehypeDropForgedIds,
@@ -156,11 +157,21 @@ export function buildSchema(): SanitizeSchema {
 
 	for (const tag of SVG_TAGS) allow(tag, ...SVG_ATTRS);
 
+	// Allowed inside `<svg>` and nowhere else. `tagNames` is a flat list, so
+	// without this every one of them is valid anywhere — and `<title>` is the one
+	// with teeth: `document.title` is the first `title` element in tree order, so
+	// an embedded document could rename the host's browser tab.
+	const ancestors: Record<string, string[]> = { ...(schema.ancestors ?? {}) };
+	for (const tag of SVG_TAGS) {
+		if (tag !== "svg") ancestors[tag] = unique([...(ancestors[tag] ?? []), "svg"]);
+	}
+
 	return {
 		...schema,
 		// Real ids, so an anchor in the graph is an anchor on the page.
 		clobberPrefix: "",
 		attributes: attributes as SanitizeSchema["attributes"],
+		ancestors: ancestors as SanitizeSchema["ancestors"],
 		tagNames: unique([...(schema.tagNames ?? []), ...SVG_TAGS, "figure", "figcaption"]),
 	};
 }
@@ -261,7 +272,13 @@ export async function renderMarkdown(
 		.use(rehypeRaw)
 		.use(options.rehypePlugins ?? []);
 
-	const tree = (await contributed.run(contributed.parse(markdown) as never)) as Root;
+	// The VFile is threaded through explicitly. `parse()` builds one internally
+	// and discards it, and `run()` without one constructs a fresh empty file — so
+	// splitting the processor silently left `file.value` undefined for every
+	// contributed plugin, and anything reading the source text (position
+	// reporting, lint-style checks, include resolution) saw nothing with no error.
+	const file = new VFile(markdown);
+	const tree = (await contributed.run(contributed.parse(file) as never, file)) as Root;
 
 	// Stage 2 — first-party, and a *separate processor* on purpose.
 	//

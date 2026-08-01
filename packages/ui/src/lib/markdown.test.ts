@@ -222,6 +222,28 @@ describe("renderMarkdown (sanitization)", () => {
 		expect(ids).toContain("footnote-label");
 	});
 
+	it("keeps svg elements inside svg, so a document cannot rename the host's tab", async () => {
+		// `document.title` is the first `title` element in tree order, so a bare
+		// `<title>` in a document would retitle the page it is embedded in.
+		const html = await renderMarkdown(
+			"<title>tab title</title>\n\n<path d='M0 0'>p</path>\n\n<circle r='5'>c</circle>\n"
+		);
+
+		expect(html).not.toContain("<title");
+		expect(html).not.toContain("<path");
+		expect(html).not.toContain("<circle");
+		expect(html).toContain("tab title"); // unwrapped, not deleted
+	});
+
+	it("still allows them where they belong", async () => {
+		const html = await renderMarkdown(
+			'<svg viewBox="0 0 10 10"><title>chart</title><path d="M0 0"/></svg>\n'
+		);
+
+		expect(html).toContain("<title>chart</title>");
+		expect(html).toContain("<path");
+	});
+
 	it("refuses a schema that would disable the allowlist", async () => {
 		// `{...schema, tagNames: undefined}` overrides the default AND passes
 		// hast-util-sanitize's falsy check, allowing every tag — a live <script>.
@@ -375,6 +397,19 @@ describe("renderMarkdown (contributed plugins)", () => {
 			expect(html).not.toMatch(/\bon\w+=/i);
 		});
 	}
+
+	it("gives a contributed plugin the source text", async () => {
+		// Splitting the processor in two lost this silently: `parse()` builds a
+		// VFile internally and discards it, and `run()` without one makes a fresh
+		// empty file, so anything reading the source saw undefined and no error.
+		let seen: unknown;
+		const readsSource = () => (_tree: import("hast").Root, file: { value?: unknown }) => {
+			seen = file.value;
+		};
+
+		await renderMarkdown("# Doc\n", { rehypePlugins: [readsSource] });
+		expect(seen).toBe("# Doc\n");
+	});
 
 	it("lets a contributed plugin see raw HTML from the document", async () => {
 		// rehype-raw is what makes this possible — while raw HTML stays opaque,

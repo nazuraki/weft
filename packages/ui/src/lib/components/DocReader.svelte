@@ -57,8 +57,12 @@ $effect(() => {
 		// From the PARENT, never from `root` itself: this effect writes the
 		// attribute onto `root`, and reading it back would latch the first value
 		// forever.
-		inheritedTheme =
-			root?.parentElement?.closest("[data-theme]")?.getAttribute("data-theme") ?? null;
+		const found = root?.parentElement?.closest("[data-theme]")?.getAttribute("data-theme");
+		// Clamped rather than mirrored verbatim. A host themed `solarized-mango`
+		// matches no block and falls through to the light base either way — but
+		// republishing their arbitrary string as Weft's own state is not something
+		// to do on their behalf.
+		inheritedTheme = found === "dark" || found === "light" ? found : null;
 	};
 
 	resolve();
