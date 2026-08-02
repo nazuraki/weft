@@ -131,6 +131,29 @@ describe("edge resolution (link targets that were never nodes)", () => {
 
 		expect((await check(manifest)).diagnostics[0].rule).toBe("edge-target-missing");
 	});
+
+	it("ignores a link to an extension the project has not configured", async () => {
+		const manifest = graph([node("README.md")], [edge("README.md", "notes.qmd")]);
+
+		expect((await check(manifest)).diagnostics).toEqual([]);
+	});
+
+	it("resolves a link to an extension the project configured", async () => {
+		const config: WeftConfig = { ...CONFIG, extensions: { ".qmd": "markdown" } };
+		const manifest = graph(
+			[node("README.md"), node("notes.qmd")],
+			[edge("README.md", "notes.qmd")]
+		);
+
+		expect((await check(manifest, config)).diagnostics).toEqual([]);
+	});
+
+	it("reports a missing target once its extension is configured", async () => {
+		const config: WeftConfig = { ...CONFIG, extensions: { ".qmd": "markdown" } };
+		const manifest = graph([node("README.md")], [edge("README.md", "notes.qmd")]);
+
+		expect((await check(manifest, config)).counts.error).toBe(1);
+	});
 });
 
 describe("edge resolution (rename suggestions)", () => {

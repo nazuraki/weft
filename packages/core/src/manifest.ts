@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { glob } from "glob";
-import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
+import { extractAnchors, extractTitle, getDocType, resolveExtensionMap } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
 import { countLines, hashBytes, hashContent } from "./content.js";
@@ -33,14 +33,29 @@ export const MANIFEST_VERSION = 2;
  *
  * Shared with validation so the two cannot drift: a check that an edge resolves
  * has to know which link targets were ever eligible to become nodes. Note this
- * is narrower than `getDocType`, which also maps `.json`.
+ * is narrower than `getDocType`, which also maps `.json`. A project can extend
+ * this set at runtime via `extensions` (see `resolveIndexedExtensions`), but the
+ * defaults here are deliberate and are never derived from `EXTENSION_MAP` —
+ * indexing `.json` by default, say, would turn today's correctly-ignored links
+ * to a missing `./schema.json` into `edge-target-missing` errors.
  */
 export const INDEXED_EXTENSIONS = ["md", "markdown", "yaml", "yml"] as const;
 
+/** The extensions (no leading dot) the indexer scans for: the defaults plus anything `config.extensions` added. */
+export function resolveIndexedExtensions(config: WeftConfig): string[] {
+	const configured = config.extensions
+		? Object.keys(config.extensions).map((ext) => ext.slice(1).toLowerCase())
+		: [];
+	return [...INDEXED_EXTENSIONS, ...configured];
+}
+
 /** True when a node id names a file the indexer would have turned into a node. */
-export function isIndexedPath(path: string): boolean {
+export function isIndexedPath(
+	path: string,
+	indexedExtensions: readonly string[] = INDEXED_EXTENSIONS
+): boolean {
 	const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
-	return (INDEXED_EXTENSIONS as readonly string[]).includes(ext);
+	return indexedExtensions.includes(ext);
 }
 
 /** The nodes and edges discovered in a single docs root. */
@@ -59,9 +74,11 @@ export async function buildRootGraph(
 	roots: DocsRoot[]
 ): Promise<RootGraph> {
 	const docsDir = root.absDir;
+	const indexedExtensions = resolveIndexedExtensions(config);
+	const extensionMap = resolveExtensionMap(config.extensions);
 
 	// Find all doc files
-	const files = await glob(`**/*.{${INDEXED_EXTENSIONS.join(",")}}`, {
+	const files = await glob(`**/*.{${indexedExtensions.join(",")}}`, {
 		cwd: docsDir,
 		ignore: config.ignore,
 		nodir: true,
@@ -83,7 +100,7 @@ export async function buildRootGraph(
 
 	for (const file of files) {
 		const absPath = resolve(docsDir, file);
-		const docType = getDocType(file);
+		const docType = getDocType(file, extensionMap);
 		if (!docType) continue;
 
 		const raw = readFileSync(absPath, "utf-8");

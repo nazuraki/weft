@@ -56,6 +56,18 @@ export interface WeftConfig {
 	 * instead.
 	 */
 	artifacts?: string[];
+	/**
+	 * Extra file extensions to index, beyond the built-in defaults, mapped to
+	 * the doc type each should parse as. Keys carry the leading dot (`.qmd`),
+	 * matching `EXTENSION_MAP`'s own key style.
+	 *
+	 * Additive only: a key already known to `EXTENSION_MAP` with a *different*
+	 * value is rejected at load time, since silently remapping a built-in
+	 * extension would change how every already-indexed file of that type
+	 * parses. A key that agrees with its built-in mapping (`.json: openapi`) is
+	 * allowed — it only opts an unindexed-by-default type into scanning.
+	 */
+	extensions?: Record<string, "markdown" | "openapi">;
 }
 
 /** How serious a diagnostic is. Only "error" fails `weft check`. */

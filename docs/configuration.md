@@ -43,12 +43,35 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `contributions` | `string[]` | — | Contribution files written by an external build — see [External Tool Integration](#external-tool-integration) |
 | `artifacts` | `string[]` | — | Generated outputs to register as nodes, as globs relative to each docs root — see [Generated Artifacts](#generated-artifacts) |
 | `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
+| `extensions` | `Record<string, "markdown" \| "openapi">` | — | Extra file extensions to index — see [Extensions](#extensions) |
 
 ### Strict Ordering
 
 `docOrderStrict` narrows the left-hand nav, not the graph. A document left out of `docOrder` is marked `hiddenFromNav` in the manifest and skipped by the tree, but it remains a full node: still indexed for search, still reachable by link or URL, and still a valid endpoint for edges pointing at it.
 
 This matters because the two are not interchangeable. Removing those documents from the manifest would leave every edge touching one of them pointing at nothing, so a link from a listed document to an unlisted one would read as broken — including to the validation rules that check whether edges resolve.
+
+---
+
+## Extensions
+
+Weft indexes `.md`, `.markdown`, `.yaml` and `.yml` by default. `extensions` maps additional file extensions to one of Weft's two doc types, so a project can index more without changing what ships by default:
+
+```yaml
+extensions:
+  .qmd: markdown
+```
+
+A `.qmd` file is now scanned, parsed and linked exactly like a `.md` file — same anchor extraction, same frontmatter handling.
+
+`getDocType` has always known how to parse `.json` as OpenAPI; it simply isn't scanned for by default (see [below](#rules) for why). A project keeping a JSON OpenAPI spec in its docs opts in the same way:
+
+```yaml
+extensions:
+  .json: openapi
+```
+
+Additive only: `extensions` can add a new extension, or opt in one `EXTENSION_MAP` already knows how to parse (like `.json` above), but it cannot remap an extension Weft already indexes by default. `extensions: { .yaml: markdown }` would silently change how every existing `.yaml` in the project parses — its anchors, and every link that resolves against them — so it is rejected at load time, naming the extension and its built-in mapping.
 
 ---
 
@@ -190,7 +213,7 @@ A missing document and a missing anchor are separate rules because they usually 
 
 It stays `edge-target-missing` at the same severity — the link does need fixing either way — and the new id is also in `data.renamedTo` for `--json` consumers. A destination that has since been deleted is not suggested, since pointing the link at it would only break it differently.
 
-Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml` — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
+Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml`, and whatever [`extensions`](#extensions) added — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
 
 > **Using a renderer?** Links whose paths still hold template syntax produce no edges at all, so they cannot be reported as broken — see [Templated Links](#templated-links). If your build resolves paths in a form Weft cannot recognise as a placeholder, a [contribution file](#external-tool-integration) can declare the resolved edges instead.
 
@@ -408,7 +431,7 @@ Both read only what reached the manifest, so [`ignore`](#build-output) already a
 
 A documentation set that publishes ships outputs built from its sources, usually PDFs, and those are the copies that reach external readers. They are also the copies nobody looks at again after building them, so an output that has fallen behind its source goes unnoticed by everyone except the audience.
 
-Weft indexes `.md`, `.markdown`, `.yaml` and `.yml`. A PDF is none of those, so it is not a node and an edge has nothing to point at. Register outputs explicitly:
+Weft indexes `.md`, `.markdown`, `.yaml` and `.yml` (plus whatever [`extensions`](#extensions) added). A PDF is none of those, so it is not a node and an edge has nothing to point at. Register outputs explicitly:
 
 ```yaml
 artifacts:
