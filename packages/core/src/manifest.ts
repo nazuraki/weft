@@ -1,11 +1,18 @@
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { glob } from "glob";
-import { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
+import {
+	INDEXED_EXTENSIONS,
+	extractAnchors,
+	extractTitle,
+	getDocType,
+	isIndexedPath,
+} from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
 import { countLines, hashBytes, hashContent } from "./content.js";
 import { type LoadedContribution, applyContributions, loadContributions } from "./contributions.js";
+import { computeInputsHash } from "./freshness.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { lastCommitDates } from "./git.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
@@ -13,12 +20,15 @@ import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
 import type {
 	Manifest,
+	ManifestBuild,
 	ProjectManifest,
 	SiteConfig,
 	WeftConfig,
 	WeftEdge,
 	WeftNode,
 } from "./types.js";
+
+export { INDEXED_EXTENSIONS, isIndexedPath };
 
 /**
  * Manifest schema version.
@@ -27,21 +37,6 @@ import type {
  * and slugs now match GitHub's own slugger, so some anchor values changed.
  */
 export const MANIFEST_VERSION = 2;
-
-/**
- * File extensions the indexer turns into nodes.
- *
- * Shared with validation so the two cannot drift: a check that an edge resolves
- * has to know which link targets were ever eligible to become nodes. Note this
- * is narrower than `getDocType`, which also maps `.json`.
- */
-export const INDEXED_EXTENSIONS = ["md", "markdown", "yaml", "yml"] as const;
-
-/** True when a node id names a file the indexer would have turned into a node. */
-export function isIndexedPath(path: string): boolean {
-	const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
-	return (INDEXED_EXTENSIONS as readonly string[]).includes(ext);
-}
 
 /** The nodes and edges discovered in a single docs root. */
 export interface RootGraph {
@@ -191,12 +186,21 @@ function normalizeDocOrderEntry(entry: string, roots: DocsRoot[]): string {
 	return byDir ? nodeIdFor(byDir, path.slice(byDir.dir.length + 1)) : path;
 }
 
-/** Combine per-root graphs into the merged manifest, applying ordering config. */
+/**
+ * Combine per-root graphs into the merged manifest, applying ordering config.
+ *
+ * `build` is stamped in rather than computed: this function is pure over
+ * already-scanned graphs and touches no filesystem, while computing the
+ * inputs hash requires globbing and reading. The caller runs
+ * `computeInputsHash` and passes the result in, the same way it already does
+ * for contributions.
+ */
 export function mergeGraphs(
 	config: WeftConfig,
 	roots: DocsRoot[],
 	graphs: Map<string, RootGraph>,
-	contributions: LoadedContribution[] = []
+	contributions: LoadedContribution[] = [],
+	build?: ManifestBuild
 ): Manifest {
 	const scanned: WeftNode[] = [];
 	const scannedEdges: WeftEdge[] = [];
@@ -249,6 +253,7 @@ export function mergeGraphs(
 		edges,
 		...(projects.length ? { projects } : {}),
 		...(site ? { site } : {}),
+		...(build ? { build } : {}),
 	};
 }
 
@@ -288,11 +293,23 @@ export function splitManifest(manifest: Manifest, roots: DocsRoot[]): ProjectMan
 /** Scan every configured docs root and build the merged graph manifest. */
 export async function buildManifest(config: WeftConfig): Promise<Manifest> {
 	const roots = resolveDocsRoots(config);
-	const graphs = new Map<string, RootGraph>();
 
+	// Hashed before the scan, not after: a file edited mid-scan would otherwise
+	// land in the hash but not in the graph, and the manifest would be stale
+	// yet report itself fresh. Hashing first inverts that race to the safe
+	// side — a file edited between the hash and the scan makes the manifest
+	// report stale when it is actually current, which costs an extra rebuild
+	// rather than a wrong "fresh" answer. That's the whole point of freshness,
+	// so the window has to fail toward stale.
+	const build: ManifestBuild = {
+		builtAt: new Date().toISOString(),
+		inputsHash: await computeInputsHash(config),
+	};
+
+	const graphs = new Map<string, RootGraph>();
 	for (const root of roots) {
 		graphs.set(root.slug, await buildRootGraph(config, root, roots));
 	}
 
-	return mergeGraphs(config, roots, graphs, await loadContributions(config));
+	return mergeGraphs(config, roots, graphs, await loadContributions(config), build);
 }

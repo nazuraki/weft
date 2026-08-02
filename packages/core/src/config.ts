@@ -4,7 +4,7 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
-const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
+export const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
 const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
 
 /**

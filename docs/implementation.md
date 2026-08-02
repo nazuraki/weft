@@ -120,6 +120,10 @@ watch during `serve`. Never hand-edited.
 ```json
 {
   "version": 2,
+  "build": {
+    "builtAt": "2026-08-01T14:32:07.418Z",
+    "inputsHash": "7f3a1c9e02b4d681"
+  },
   "nodes": [
     {
       "id": "docs/architecture.md",
@@ -154,6 +158,46 @@ watch during `serve`. Never hand-edited.
   ]
 }
 ```
+
+---
+
+## Manifest Freshness
+
+`build` is optional and absent from a manifest written by an older Weft — nothing
+reads it as an error, and `WeftService.freshness()` reports `unknown` rather than
+guessing about provenance that was never recorded.
+
+**`builtAt`** — ISO 8601 timestamp of the build.
+
+**`inputsHash`** — a baseline hash of everything the manifest's own nodes cannot
+already tell you changed: the sorted set of indexed file paths across every docs
+root, plus the content of every input that is not itself a node — sidecar `.weft`
+files, contribution files, the config file. Every node already carries a
+`contentHash`, so an edited document's content is deliberately left out of this
+hash; re-hashing it here would duplicate what the node already records. Excludes
+`.weft/` itself, the same way the chokidar watcher does, so writing the manifest
+never makes it look stale to itself.
+
+**Computed from content, never mtime.** Git does not preserve modification times,
+so a fresh clone or a CI checkout would otherwise make every file look
+simultaneously changed — the same reasoning that already rules mtime out for
+`node.modified` and artifact staleness elsewhere in this document.
+
+`WeftService.freshness(): Promise<Freshness>` compares the current tree against
+the recorded `build` block:
+
+| Status | Meaning |
+|---|---|
+| `fresh` | The inputs hash matches, and every node's re-read content still matches its `contentHash` |
+| `stale` | A document was added, removed, or edited, or a non-node input changed |
+| `unknown` | The manifest has no `build` block to compare against |
+
+Confirming that nothing was edited means reopening and rehashing every document,
+so the result is cached for 2 seconds — long enough that a burst of calls inside
+one agent turn lands within it, short enough that a human edit is visible on the
+next turn rather than the next minute. `rebuild()` invalidates the cache
+immediately and computes a fresh `build` block; it is the only way the manifest
+refreshes outside `weft serve`'s own file watcher.
 
 ---
 

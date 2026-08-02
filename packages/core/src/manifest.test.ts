@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
 import { countLines, hashBytes, hashContent } from "./content.js";
-import { MANIFEST_VERSION, buildManifest, splitManifest } from "./manifest.js";
+import { MANIFEST_VERSION, buildManifest, mergeGraphs, splitManifest } from "./manifest.js";
 import type { WeftConfig } from "./types.js";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
@@ -217,6 +217,42 @@ describe("buildManifest", () => {
 		);
 
 		expect(manifest.nodes.slice(0, 2).map((n) => n.id)).toEqual(["architecture.md", "README.md"]);
+	});
+});
+
+describe("buildManifest (freshness)", () => {
+	it("stamps a build block with an ISO 8601 builtAt and a hex inputsHash", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+
+		expect(manifest.build?.builtAt).toBeDefined();
+		expect(Number.isNaN(Date.parse(manifest.build?.builtAt as string))).toBe(false);
+		expect(manifest.build?.inputsHash).toMatch(/^[0-9a-f]{16}$/);
+	});
+
+	it("round-trips through JSON with the build block intact", async () => {
+		const manifest = await buildManifest(fixtureConfig());
+		const roundTripped = JSON.parse(JSON.stringify(manifest));
+
+		expect(roundTripped.build).toEqual(manifest.build);
+	});
+});
+
+describe("mergeGraphs (freshness)", () => {
+	it("stamps the build block it is passed", () => {
+		const roots = resolveDocsRoots(fixtureConfig());
+		const build = { builtAt: "2026-08-01T00:00:00.000Z", inputsHash: "abc123" };
+
+		const manifest = mergeGraphs(fixtureConfig(), roots, new Map(), [], build);
+
+		expect(manifest.build).toEqual(build);
+	});
+
+	it("omits the build block when none is passed", () => {
+		const roots = resolveDocsRoots(fixtureConfig());
+
+		const manifest = mergeGraphs(fixtureConfig(), roots, new Map());
+
+		expect(manifest.build).toBeUndefined();
 	});
 });
 
