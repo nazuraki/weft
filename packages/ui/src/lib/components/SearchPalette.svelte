@@ -105,8 +105,8 @@ function handleBackdropClick(e: MouseEvent) {
 		z-index: 100;
 	}
 	.palette {
-		background: var(--color-bg);
-		border: 1px solid var(--color-border);
+		background: var(--w-bg);
+		border: 1px solid var(--w-border);
 		border-radius: 12px;
 		width: 560px;
 		max-height: 400px;
@@ -120,7 +120,7 @@ function handleBackdropClick(e: MouseEvent) {
 		width: 100%;
 		padding: 14px 18px;
 		border: none;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--w-border);
 		font-size: 16px;
 		outline: none;
 		background: transparent;
@@ -145,20 +145,20 @@ function handleBackdropClick(e: MouseEvent) {
 	}
 	.result-item:hover,
 	.result-item.selected {
-		background: var(--color-accent-subtle);
+		background: var(--w-accent-subtle);
 	}
 	.result-title {
 		font-weight: 500;
-		color: var(--color-text);
+		color: var(--w-text);
 	}
 	.result-id {
 		font-size: 12px;
-		color: var(--color-text-secondary);
-		font-family: var(--font-mono);
+		color: var(--w-text-secondary);
+		font-family: var(--w-font-mono);
 	}
 	.no-results {
 		padding: 16px;
 		text-align: center;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 	}
 </style>

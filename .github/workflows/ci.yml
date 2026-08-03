@@ -52,5 +52,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The embed bundle's own build step asserts it ships nothing that can
+      # reach a host page. Run on PRs so a regression fails here rather than on
+      # the next Pages deploy.
+      - name: Build the embed bundle
+        run: just build-embed
+
       - name: Test
         run: just test

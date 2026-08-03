@@ -1,5 +1,6 @@
 <script lang="ts">
 import "../app.css";
+import "../app-page.css";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import { ApiClient } from "$lib/clients/api.js";
 import { setContext } from "svelte";

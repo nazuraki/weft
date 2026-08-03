@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { RenderOptions } from "$lib/markdown.js";
 import { theme } from "$lib/stores/theme.svelte.js";
 import { nodeIdToPath } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core";
@@ -7,7 +8,7 @@ import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";
 import SearchPalette from "./SearchPalette.svelte";
 
-interface Props {
+interface Props extends RenderOptions {
 	manifest: Manifest;
 	layout?: "reader" | "default";
 	currentNodeId: string;
@@ -15,7 +16,16 @@ interface Props {
 	navigate: (path: string) => void;
 }
 
-let { manifest, layout = "default", currentNodeId, anchor, navigate }: Props = $props();
+let {
+	manifest,
+	layout = "default",
+	currentNodeId,
+	anchor,
+	navigate,
+	remarkPlugins,
+	rehypePlugins,
+	extendSchema,
+}: Props = $props();
 
 let showSearch = $state(false);
 
@@ -98,6 +108,9 @@ function handleKeydown(e: KeyboardEvent) {
 				nodeType={currentNode.type}
 				{anchor}
 				onnavigate={handleNavigate}
+				{remarkPlugins}
+				{rehypePlugins}
+				{extendSchema}
 			/>
 		{:else}
 			<p class="empty">No documents found.</p>
@@ -127,13 +140,13 @@ function handleKeydown(e: KeyboardEvent) {
 <style>
 	.shell {
 		display: grid;
-		grid-template-columns: var(--lhn-width, 260px) 1fr var(--rhs-width, 300px);
-		grid-template-rows: var(--header-height, 48px) 1fr;
+		grid-template-columns: var(--w-lhn-width, 260px) 1fr var(--w-rhs-width, 300px);
+		grid-template-rows: var(--w-header-height, 48px) 1fr;
 		height: 100%;
 		overflow: hidden;
 	}
 	.shell.reader {
-		grid-template-columns: var(--lhn-width, 260px) 1fr;
+		grid-template-columns: var(--w-lhn-width, 260px) 1fr;
 	}
 
 	.header {
@@ -144,15 +157,19 @@ function handleKeydown(e: KeyboardEvent) {
 		gap: 16px;
 	}
 	.header-left {
-		width: calc(var(--lhn-width, 240px) - 32px);
+		width: calc(var(--w-lhn-width, 240px) - 32px);
 		flex-shrink: 0;
 	}
 	.wordmark {
-		font-family: var(--font-heading, var(--font-sans));
+		font-family: var(--w-font-heading, var(--w-font-sans));
 		font-weight: 600;
-		font-size: 0.9375rem;
+		/* 13px, not 15: this was `0.9375rem` against a 14px base that `app-page.css`
+		   already set, so it rendered at 13.125px. Converting it to 15px would have
+		   been a silent 14% size change inside a commit that claimed to be a
+		   mechanical unit swap. */
+		font-size: 13px;
 		letter-spacing: 0.04em;
-		color: var(--color-accent);
+		color: var(--w-accent);
 		text-transform: uppercase;
 	}
 	.header-center {
@@ -161,7 +178,7 @@ function handleKeydown(e: KeyboardEvent) {
 	}
 	.doc-title {
 		font-size: 13px;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -183,28 +200,28 @@ function handleKeydown(e: KeyboardEvent) {
 		justify-content: center;
 		width: 30px;
 		height: 30px;
-		border: 1px solid var(--color-border);
+		border: 1px solid var(--w-border);
 		border-radius: 6px;
-		background: var(--color-bg-secondary);
+		background: var(--w-bg-secondary);
 		cursor: pointer;
 		font-size: 14px;
 		line-height: 1;
 	}
 	.theme-toggle:hover {
-		border-color: var(--color-text-secondary);
+		border-color: var(--w-text-secondary);
 	}
 	.theme-tooltip {
 		display: none;
 		position: absolute;
 		top: calc(100% + 8px);
 		right: 0;
-		background: var(--color-bg-elevated);
-		border: 1px solid var(--color-border);
+		background: var(--w-bg-elevated);
+		border: 1px solid var(--w-border);
 		border-radius: 6px;
 		padding: 8px 10px;
 		font-size: 11px;
 		line-height: 1.6;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		white-space: nowrap;
 		pointer-events: none;
 		z-index: 100;
@@ -217,23 +234,23 @@ function handleKeydown(e: KeyboardEvent) {
 		align-items: center;
 		gap: 8px;
 		padding: 4px 12px;
-		border: 1px solid var(--color-border);
+		border: 1px solid var(--w-border);
 		border-radius: 6px;
-		background: var(--color-bg-secondary);
-		color: var(--color-text-secondary);
+		background: var(--w-bg-secondary);
+		color: var(--w-text-secondary);
 		cursor: pointer;
 		font-size: 13px;
 	}
 	.search-trigger:hover {
-		border-color: var(--color-text-secondary);
+		border-color: var(--w-text-secondary);
 	}
 	.search-trigger kbd {
-		font-family: var(--font-sans);
+		font-family: var(--w-font-sans);
 		font-size: 11px;
 		padding: 1px 4px;
-		border: 1px solid var(--color-border);
+		border: 1px solid var(--w-border);
 		border-radius: 3px;
-		background: var(--color-bg);
+		background: var(--w-bg);
 	}
 
 	.lhn {
@@ -250,23 +267,23 @@ function handleKeydown(e: KeyboardEvent) {
 		overflow-y: auto;
 		padding: 24px 32px;
 		min-width: 0;
-		background: var(--color-bg);
-		color: var(--color-text);
+		background: var(--w-bg);
+		color: var(--w-text);
 	}
 
 	.rhs {
 		grid-column: 3;
 		grid-row: 2;
-		border-left: 1px solid var(--color-border);
+		border-left: 1px solid var(--w-border);
 		overflow-y: auto;
 		padding: 16px;
-		background: var(--color-bg-secondary, var(--color-bg));
+		background: var(--w-bg-secondary, var(--w-bg));
 		min-width: 0;
 	}
 
 
 	.empty {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		text-align: center;
 		margin-top: 48px;
 	}

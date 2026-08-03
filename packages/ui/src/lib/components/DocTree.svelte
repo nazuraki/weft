@@ -129,7 +129,7 @@ let groups = $derived(grouped ? buildGroups(visible, projects ?? []) : []);
 		border: none;
 		padding: 5px 14px;
 		cursor: pointer;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		border-radius: 0;
 		white-space: nowrap;
 		overflow: hidden;
@@ -138,22 +138,22 @@ let groups = $derived(grouped ? buildGroups(visible, projects ?? []) : []);
 		transition: color 0.1s;
 	}
 	.tree-item:hover {
-		background: var(--color-accent-subtle);
-		color: var(--color-text);
+		background: var(--w-accent-subtle);
+		color: var(--w-text);
 	}
 	.tree-item.active {
-		background: var(--color-accent-subtle);
-		color: var(--color-accent);
+		background: var(--w-accent-subtle);
+		color: var(--w-accent);
 		font-weight: 500;
 	}
 	.project-header {
 		padding: 4px 14px;
 		font-weight: 600;
-		color: var(--color-text);
+		color: var(--w-text);
 		font-size: 12px;
 		letter-spacing: 0.02em;
 		margin-top: 16px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--w-border);
 		padding-bottom: 6px;
 		margin-bottom: 4px;
 	}
@@ -163,7 +163,7 @@ let groups = $derived(grouped ? buildGroups(visible, projects ?? []) : []);
 	.tree-folder {
 		padding: 4px 14px;
 		font-weight: 600;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 11px;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;

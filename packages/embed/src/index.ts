@@ -1,5 +1,12 @@
+import type { WeftClient } from "$lib/client.js";
+import type { RenderOptions } from "$lib/markdown.js";
+import type { Manifest } from "@weft/core/browser";
 import { mount, unmount } from "svelte";
 import App from "./App.svelte";
+import DocMountRoot from "./DocMountRoot.svelte";
+import { createDocState } from "./doc-state.svelte.js";
+
+export type { WeftClient } from "$lib/client.js";
 
 export interface EmbedConfig {
 	/** GitHub repo in "owner/repo" format. Required unless baseUrl is set. */
@@ -19,6 +26,17 @@ export interface EmbedConfig {
 	 * Example: "https://example.com/docs"
 	 */
 	baseUrl?: string;
+	/**
+	 * Render passes this host contributes, for conventions Weft should not know.
+	 *
+	 * A corpus with a house vocabulary — findings, severities, status ledgers —
+	 * expresses it as a plugin it owns and versions, rather than forking the
+	 * renderer or going without. Whatever they emit is sanitized like everything
+	 * else, so `extendSchema` has to widen the allowlist to match.
+	 */
+	remarkPlugins?: RenderOptions["remarkPlugins"];
+	rehypePlugins?: RenderOptions["rehypePlugins"];
+	extendSchema?: RenderOptions["extendSchema"];
 }
 
 /**
@@ -52,4 +70,124 @@ export function mountWeft(target: string | HTMLElement, config: EmbedConfig): ()
 
 	const app = mount(App, { target: container, props: { config } });
 	return () => unmount(app);
+}
+
+/** What a `mountDoc` host may change after mounting. */
+export interface DocMountState {
+	nodeId: string;
+	anchor?: string;
+}
+
+export interface DocMountOptions extends DocMountState {
+	/**
+	 * How documents and search are fetched.
+	 *
+	 * Supplied by the host rather than configured, because a host with its own
+	 * document endpoints and its own search backend should not have to re-serve
+	 * files at a URL shape Weft picked, nor ship a second search index to
+	 * duplicate one it already has. It is two methods:
+	 * `fetchDoc(id)` and `search(query)`.
+	 */
+	client: WeftClient;
+	/** The graph. The host loads it; Weft does not decide where it lives. */
+	manifest: Manifest;
+	/** Show the linked-items sidebar. Off unless asked for. */
+	linkedItems?: boolean;
+	/**
+	 * Called when a link inside the document is followed.
+	 *
+	 * The mount does not navigate itself. The host owns its URL and history, and
+	 * calls `update` if it decides to show the new document.
+	 */
+	onNavigate?: (nodeId: string, anchor?: string) => void;
+	remarkPlugins?: RenderOptions["remarkPlugins"];
+	rehypePlugins?: RenderOptions["rehypePlugins"];
+	extendSchema?: RenderOptions["extendSchema"];
+}
+
+/** A mounted reader. `update` re-points it; `destroy` removes it. */
+export interface DocMount {
+	/**
+	 * Show a different document, or a different anchor in this one.
+	 *
+	 * Takes the whole state rather than a patch, deliberately. A partial needs a
+	 * rule for what an omitted `anchor` means, and every answer is wrong
+	 * somewhere: leave it and a re-point carries the old anchor into the new
+	 * document — which silently scrolls to the wrong place whenever both share a
+	 * slug, and `#overview` or `#configuration` appear in several documents of
+	 * any real corpus. Clear it and a refresh loses the reader's position.
+	 *
+	 * Passing the state whole removes the question. Omitting the anchor clears it
+	 * because you did not pass one, which is what the type already says.
+	 */
+	update(state: DocMountState): void;
+	destroy(): void;
+}
+
+/**
+ * Mount the reader on its own, without Weft's chrome.
+ *
+ * `mountWeft` gives a host the whole product — header, document tree, search,
+ * its own theme handling and a window key handler. A host that already has all
+ * of those wants the part it does not: the rendered document and the graph
+ * around it. This is that part.
+ *
+ * What it deliberately does not do: navigate itself, set a theme on the page,
+ * or apply global styles. Everything it renders sits under `.weft-scope`, so
+ * the tokens resolve from its own container and a host's page keeps its own
+ * box model and fonts. Set `data-theme="dark"` on the container to pick a
+ * scheme, or leave it and Weft inherits whatever the host already decided.
+ *
+ * Theme it by setting `--weft-*` custom properties on the container or any
+ * ancestor; Weft reads those and never declares them, so a host value always
+ * wins. The full list lives in `docs/usage.md`'s theming contract rather than
+ * here — two hand-maintained copies of twenty-odd names had already drifted
+ * apart by the time this comment was first written.
+ *
+ * @example
+ * const doc = Weft.mountDoc('#host', {
+ *   client, manifest,
+ *   nodeId: 'guide.md',
+ *   linkedItems: true,
+ *   onNavigate: (id, anchor) => router.go(id, anchor),
+ * });
+ * doc.update({ nodeId: 'api.md' });
+ */
+export function mountDoc(target: string | HTMLElement, options: DocMountOptions): DocMount {
+	const container =
+		typeof target === "string" ? (document.querySelector(target) as HTMLElement | null) : target;
+
+	if (!container) {
+		throw new Error(`Weft: container not found: ${target}`);
+	}
+	if (!options.client) {
+		throw new Error("Weft: mountDoc needs a `client` — see WeftClient");
+	}
+	if (!options.manifest) {
+		throw new Error("Weft: mountDoc needs a `manifest`");
+	}
+
+	const state = createDocState({ nodeId: options.nodeId, anchor: options.anchor });
+
+	const app = mount(DocMountRoot, {
+		target: container,
+		props: {
+			client: options.client,
+			manifest: options.manifest,
+			linkedItems: options.linkedItems,
+			onnavigate: options.onNavigate,
+			remarkPlugins: options.remarkPlugins,
+			rehypePlugins: options.rehypePlugins,
+			extendSchema: options.extendSchema,
+			state,
+		},
+	});
+
+	return {
+		update(next) {
+			state.nodeId = next.nodeId;
+			state.anchor = next.anchor;
+		},
+		destroy: () => unmount(app),
+	};
 }
