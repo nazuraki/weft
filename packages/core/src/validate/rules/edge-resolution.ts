@@ -1,4 +1,4 @@
-import { isIndexedPath } from "../../manifest.js";
+import { isIndexedPath, resolveIndexedExtensions } from "../../manifest.js";
 import type { Anchor, WeftEdge, WeftNode } from "../../types.js";
 import type { Finding, Rule, Validator } from "../types.js";
 
@@ -97,8 +97,9 @@ export const edgeResolutionValidator: Validator = {
 	// Only to explain a broken link, never to decide there is one.
 	needsHistory: true,
 
-	run({ manifest, nodes, history }) {
+	run({ manifest, nodes, history, config }) {
 		const findings: Finding[] = [];
+		const indexedExtensions = resolveIndexedExtensions(config);
 
 		for (const edge of manifest.edges) {
 			// A declared source anchor is a claim about the document making the
@@ -125,7 +126,7 @@ export const edgeResolutionValidator: Validator = {
 			// Weft only makes nodes from documents it indexes, so a link to an
 			// image or a PDF was never going to resolve to one. That is not a
 			// broken reference, and reporting it would bury the real ones.
-			if (!isIndexedPath(edge.to.node)) continue;
+			if (!isIndexedPath(edge.to.node, indexedExtensions)) continue;
 
 			const target = nodes.get(edge.to.node);
 

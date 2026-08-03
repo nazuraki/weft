@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
+import { EXTENSION_MAP } from "./anchors/index.js";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
 const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
@@ -37,7 +38,10 @@ const KNOWN_KEYS = new Set<string>([
 	"docOrderStrict",
 	"projects",
 	"rules",
+	"extensions",
 ]);
+
+const DOC_TYPES = ["markdown", "openapi"];
 
 const RULE_SEVERITIES = ["error", "warn", "info", "off"];
 
@@ -81,6 +85,30 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 		for (const [id, severity] of Object.entries(rules)) {
 			if (!RULE_SEVERITIES.includes(severity as string)) {
 				throw fail(`rules.${id}`, RULE_SEVERITIES.map((v) => `"${v}"`).join(", "));
+			}
+		}
+	}
+	if ("extensions" in config) {
+		const extensions = config.extensions;
+		if (typeof extensions !== "object" || extensions === null || Array.isArray(extensions)) {
+			throw fail("extensions", "a mapping of extension to doc type");
+		}
+		for (const [ext, docType] of Object.entries(extensions)) {
+			if (!ext.startsWith(".")) {
+				throw fail(`extensions["${ext}"]`, 'a key starting with "."');
+			}
+			if (!DOC_TYPES.includes(docType as string)) {
+				throw fail(`extensions["${ext}"]`, DOC_TYPES.map((v) => `"${v}"`).join(" or "));
+			}
+			// Additive only: remapping a built-in extension would silently change
+			// how every already-indexed file of that type parses. A value that
+			// agrees with the built-in mapping is fine — it only opts an
+			// unindexed-by-default type (e.g. .json) into scanning.
+			const builtin = EXTENSION_MAP[ext];
+			if (builtin && builtin !== docType) {
+				throw new Error(
+					`weft config: "extensions[${ext}]" cannot remap ${ext} — it is a built-in extension parsed as "${builtin}" and built-in mappings cannot be overridden (in ${file})`
+				);
 			}
 		}
 	}

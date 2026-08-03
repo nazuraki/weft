@@ -188,6 +188,49 @@ describe("loadConfig", () => {
 		);
 	});
 
+	it("loads a valid extensions map", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  .qmd: markdown" });
+
+		expect((await loadConfig(root)).extensions).toEqual({ ".qmd": "markdown" });
+	});
+
+	it("rejects a non-object extensions value", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  - .qmd" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/"extensions" must be a mapping of extension to doc type/
+		);
+	});
+
+	it("rejects an extensions key that does not start with a dot", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  qmd: markdown" });
+		await expect(loadConfig(root)).rejects.toThrow(/extensions\["qmd"\]" must be a key starting/);
+	});
+
+	it("rejects an extensions value outside markdown/openapi", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  .qmd: html" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/extensions\[".qmd"\]" must be "markdown" or "openapi"/
+		);
+	});
+
+	it("rejects remapping a built-in extension that contradicts EXTENSION_MAP", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  .yaml: markdown" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/cannot remap \.yaml.*built-in extension parsed as "openapi"/
+		);
+	});
+
+	it("rejects remapping .json to markdown", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  .json: markdown" });
+		await expect(loadConfig(root)).rejects.toThrow(/cannot remap \.json/);
+	});
+
+	it("allows a key that agrees with its built-in mapping, only opting it into scanning", async () => {
+		const root = tempRoot({ "weft.config.yaml": "extensions:\n  .json: openapi" });
+
+		expect((await loadConfig(root)).extensions).toEqual({ ".json": "openapi" });
+	});
+
 	it("rejects a legacy JS/TS config with a migration message", async () => {
 		const root = tempRoot({ "weft.config.ts": "export default {};" });
 		await expect(loadConfig(root)).rejects.toThrow(

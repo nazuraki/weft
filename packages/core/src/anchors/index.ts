@@ -4,7 +4,8 @@ import { extractOpenApiAnchors, extractOpenApiTitle } from "./openapi.js";
 
 export type DocType = "markdown" | "openapi";
 
-const EXTENSION_MAP: Record<string, DocType> = {
+/** Built-in extension-to-doc-type mapping. Answers "how do I parse this if handed it" — see `INDEXED_EXTENSIONS` in `manifest.ts` for "which files do I go looking for," a narrower, separate question. */
+export const EXTENSION_MAP: Record<string, DocType> = {
 	".md": "markdown",
 	".markdown": "markdown",
 	".yaml": "openapi",
@@ -12,9 +13,22 @@ const EXTENSION_MAP: Record<string, DocType> = {
 	".json": "openapi",
 };
 
-export function getDocType(filePath: string): DocType | undefined {
+/**
+ * Merge the built-in map with a project's `extensions` config. Takes the
+ * config's extensions as plain data rather than a `WeftConfig`, so this module
+ * stays free of any config-loading dependency; callers resolve `config.extensions`
+ * themselves.
+ */
+export function resolveExtensionMap(extensions?: Record<string, DocType>): Record<string, DocType> {
+	return { ...EXTENSION_MAP, ...extensions };
+}
+
+export function getDocType(
+	filePath: string,
+	extensionMap: Record<string, DocType> = EXTENSION_MAP
+): DocType | undefined {
 	const ext = filePath.slice(filePath.lastIndexOf(".")).toLowerCase();
-	return EXTENSION_MAP[ext];
+	return extensionMap[ext];
 }
 
 export function extractAnchors(content: string, docType: DocType): Anchor[] {
