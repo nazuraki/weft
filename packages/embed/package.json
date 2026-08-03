@@ -9,7 +9,7 @@
 		"./style.css": "./dist/weft.css"
 	},
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && node scripts/check-scoping.mjs",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit"
 	},

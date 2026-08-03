@@ -37,11 +37,15 @@ typecheck:
 test:
     pnpm -r run test
 
-# Build the GitHub Pages site into _site/
-pages:
+# Build the embeddable bundle. Its own build step asserts the bundle ships no
+# rule that can reach a host page — the check that source-level tests cannot do.
+build-embed:
     pnpm --filter @weft/core build
     pnpm --filter @weft/ui exec svelte-kit sync
     pnpm --filter @weft/embed build
+
+# Build the GitHub Pages site into _site/
+pages: build-embed
     node scripts/gen-manifest.mjs
     mkdir -p _site/docs
     cp site/index.html _site/index.html

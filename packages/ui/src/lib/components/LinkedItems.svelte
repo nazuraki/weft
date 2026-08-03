@@ -79,7 +79,7 @@ let incoming = $derived(items.incoming);
 		font-size: 11px;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 12px 0 6px;
 		font-weight: 600;
 	}
@@ -101,10 +101,10 @@ let incoming = $derived(items.incoming);
 		gap: 2px;
 	}
 	.edge-link:hover {
-		background: var(--color-accent-subtle);
+		background: var(--w-accent-subtle);
 	}
 	.edge-target {
-		color: var(--color-link);
+		color: var(--w-link);
 		font-weight: 500;
 	}
 	.unresolved, .artifact {
@@ -114,37 +114,37 @@ let incoming = $derived(items.incoming);
 		background: none;
 	}
 	.artifact .edge-target {
-		color: var(--color-text-secondary);
-		font-family: var(--font-mono);
+		color: var(--w-text-secondary);
+		font-family: var(--w-font-mono);
 		font-size: 12px;
 	}
 	.edge-note {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 11px;
 		font-style: italic;
 	}
 	.unresolved .edge-target {
-		color: var(--color-text-secondary);
-		font-family: var(--font-mono);
+		color: var(--w-text-secondary);
+		font-family: var(--w-font-mono);
 		font-size: 12px;
 		text-decoration: line-through;
 	}
 	.edge-missing {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 11px;
 		font-style: italic;
 	}
 	.edge-anchor {
-		color: var(--color-text-secondary);
-		font-family: var(--font-mono);
+		color: var(--w-text-secondary);
+		font-family: var(--w-font-mono);
 		font-size: 11px;
 	}
 	.edge-label {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 12px;
 	}
 	.empty {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-style: italic;
 		padding: 8px;
 	}
