@@ -87,6 +87,7 @@ describe("defaultRegistry", () => {
 			"artifact-source-unrecorded",
 			"node-duplicate",
 			"node-diverged",
+			"include-cycle",
 		]);
 	});
 
