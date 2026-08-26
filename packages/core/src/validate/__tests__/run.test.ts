@@ -287,6 +287,23 @@ describe("validateManifest (git history)", () => {
 		expect(seen[0].blobs.size).toBe(0);
 	});
 
+	it("hands a validator a precomputed history instead of walking git", async () => {
+		const { validator, seen } = watching([RULE_A], true);
+		const precomputed = {
+			blobs: new Map([["README.md", new Set(["a".repeat(40)])]]),
+			renames: new Map([["old.md", "README.md"]]),
+		};
+
+		await validateManifest(
+			MANIFEST,
+			config(),
+			new ValidatorRegistry().register(validator),
+			precomputed
+		);
+
+		expect(seen[0]).toBe(precomputed);
+	});
+
 	it("does not gather history when every rule that wants it is off", async () => {
 		// Reading git is the only IO validation does, so a project running without
 		// the history-based checks should pay for no subprocess at all.

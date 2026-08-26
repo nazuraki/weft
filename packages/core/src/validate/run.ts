@@ -1,11 +1,32 @@
 import type { Manifest, RuleSeverity, Severity, WeftConfig, WeftNode } from "../types.js";
 import { NO_HISTORY, graphHistory } from "./history.js";
 import { VALIDATOR_ERROR_RULE, type ValidatorRegistry, defaultRegistry } from "./registry.js";
-import type { Diagnostic, Finding, Rule, ValidationContext, ValidationResult } from "./types.js";
+import type {
+	Diagnostic,
+	Finding,
+	GraphHistory,
+	Rule,
+	ValidationContext,
+	ValidationResult,
+} from "./types.js";
 
 /** Resolve a rule's severity: the user's config wins over the rule's own default. */
 function severityFor(rule: Rule, config: WeftConfig): RuleSeverity {
 	return config.rules?.[rule.id] ?? rule.defaultSeverity;
+}
+
+/**
+ * Whether running this registry under this config will read git history.
+ *
+ * Exported so a caller that builds the graph itself — the service — can pay
+ * for one full history walk up front and hand the result to both the indexer
+ * and {@link validateManifest}, instead of each walking on its own.
+ */
+export function registryWantsHistory(registry: ValidatorRegistry, config: WeftConfig): boolean {
+	return registry.validators.some(
+		(validator) =>
+			validator.needsHistory && validator.rules.some((rule) => severityFor(rule, config) !== "off")
+	);
 }
 
 /**
@@ -18,7 +39,8 @@ function severityFor(rule: Rule, config: WeftConfig): RuleSeverity {
 export async function validateManifest(
 	manifest: Manifest,
 	config: WeftConfig,
-	registry: ValidatorRegistry = defaultRegistry()
+	registry: ValidatorRegistry = defaultRegistry(),
+	precomputedHistory?: GraphHistory
 ): Promise<ValidationResult> {
 	const nodes = new Map<string, WeftNode>(manifest.nodes.map((node) => [node.id, node]));
 	const enabled = new Map<string, Severity>();
@@ -39,10 +61,9 @@ export async function validateManifest(
 
 	// Gathered once for every check that wants it, and skipped outright when
 	// none is enabled — reading git history is the only IO validation does.
-	const wantsHistory = registry.validators.some(
-		(validator) => validator.needsHistory && validator.rules.some((rule) => enabled.has(rule.id))
-	);
-	const history = wantsHistory ? await graphHistory(config) : NO_HISTORY;
+	// A caller who already walked history passes it in instead.
+	const wantsHistory = registryWantsHistory(registry, config);
+	const history = wantsHistory ? (precomputedHistory ?? (await graphHistory(config))) : NO_HISTORY;
 
 	const context: ValidationContext = {
 		manifest,

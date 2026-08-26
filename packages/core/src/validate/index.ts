@@ -7,7 +7,7 @@ export {
 } from "./rules/artifacts.js";
 export { NODE_DIVERGED, NODE_DUPLICATE, duplicateValidator } from "./rules/duplicates.js";
 export { INCLUDE_CYCLE, includeValidator } from "./rules/includes.js";
-export { NO_HISTORY, graphHistory } from "./history.js";
+export { NO_HISTORY, graphHistory, graphHistoryFrom } from "./history.js";
 export {
 	ASSERT_LINE_COUNT_MISMATCH,
 	ASSERT_MODIFIED_MISMATCH,
@@ -23,7 +23,7 @@ export {
 	EDGE_TARGET_MISSING,
 	edgeResolutionValidator,
 } from "./rules/edge-resolution.js";
-export { validateManifest } from "./run.js";
+export { registryWantsHistory, validateManifest } from "./run.js";
 export type {
 	Diagnostic,
 	DiagnosticTarget,

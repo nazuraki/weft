@@ -51,11 +51,16 @@ export interface RootGraph {
 /**
  * Scan one docs root. `roots` is the full set, so links leaving this root into
  * another project still resolve to a node id.
+ *
+ * Pass `dates` when a history walk has already been paid for — the service
+ * shares one walk between indexing and validation — and the scan will not run
+ * its own.
  */
 export async function buildRootGraph(
 	config: WeftConfig,
 	root: DocsRoot,
-	roots: DocsRoot[]
+	roots: DocsRoot[],
+	dates?: Map<string, string>
 ): Promise<RootGraph> {
 	const docsDir = root.absDir;
 	const indexedExtensions = resolveIndexedExtensions(config);
@@ -78,7 +83,7 @@ export async function buildRootGraph(
 
 	// One history walk for the whole root, since every file read below wants a
 	// date. Empty outside a git work tree, which is not an error.
-	const modifiedDates = await lastCommitDates(docsDir);
+	const modifiedDates = dates ?? (await lastCommitDates(docsDir));
 
 	const nodes: WeftNode[] = [];
 	const edges: WeftEdge[] = [];

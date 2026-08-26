@@ -111,6 +111,18 @@ export function parseGitLog(output: string): FileHistory {
 }
 
 /**
+ * How much of a walk to pay for.
+ *
+ * Rename detection compares file content across every commit, and dates do not
+ * need it: a rename names its destination path whether or not git pairs it with
+ * the source, so the newest commit touching a path is the same commit either
+ * way. `"dates"` skips `-M` and leaves {@link FileHistory.renames} empty;
+ * `"full"` pays it for the renames and cross-rename blob attribution that
+ * validation wants.
+ */
+export type HistoryDepth = "dates" | "full";
+
+/**
  * What git knows about the files under `dir`, keyed by path relative to it.
  *
  * One history walk rather than a command per file or per question: the indexer
@@ -119,7 +131,7 @@ export function parseGitLog(output: string): FileHistory {
  * on PATH, a directory outside the work tree — yields an empty history rather
  * than an error, since none of this is worth failing an index over.
  */
-export async function fileHistory(dir: string): Promise<FileHistory> {
+export async function fileHistory(dir: string, depth: HistoryDepth = "full"): Promise<FileHistory> {
 	try {
 		const { stdout } = await run(
 			"git",
@@ -133,11 +145,14 @@ export async function fileHistory(dir: string): Promise<FileHistory> {
 				// rewrites the latter to the moment it ran, which would report every
 				// document on the branch as having changed today.
 				"--format=%x00%aI",
-				// Blob ids and rename detection, in full rather than abbreviated so
-				// two paths that held one blob compare equal.
+				// Blob ids in full rather than abbreviated so two paths that held
+				// one blob compare equal.
 				"--raw",
 				"--no-abbrev",
-				"-M",
+				// `--no-renames` rather than merely omitting `-M`: `diff.renames`
+				// defaults on, so a dates walk has to opt out explicitly to skip
+				// the content comparison it is trying not to pay for.
+				...(depth === "full" ? ["-M"] : ["--no-renames"]),
 				// Paths relative to this directory, and only the ones under it.
 				"--relative",
 				"--",
@@ -153,5 +168,5 @@ export async function fileHistory(dir: string): Promise<FileHistory> {
 
 /** When each file under `dir` was last committed. A view of {@link fileHistory}. */
 export async function lastCommitDates(dir: string): Promise<Map<string, string>> {
-	return (await fileHistory(dir)).dates;
+	return (await fileHistory(dir, "dates")).dates;
 }
