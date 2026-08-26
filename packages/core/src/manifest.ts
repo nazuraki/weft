@@ -8,6 +8,7 @@ import { countLines, hashBytes, hashContent } from "./content.js";
 import { type LoadedContribution, applyContributions, loadContributions } from "./contributions.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { lastCommitDates } from "./git.js";
+import { applyIncludeDefaults } from "./includes.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
@@ -236,8 +237,12 @@ export function mergeGraphs(
 	const merged = applyContributions({ nodes: scanned, edges: scannedEdges }, contributions);
 	let nodes: WeftNode[] = merged.nodes;
 	// After contributions, so a node the build declared can be what a published
-	// link resolves to.
-	const edges: WeftEdge[] = resolvePublishedLinks(merged.nodes, merged.edges);
+	// link resolves to. Include defaults are stamped last, over the full edge
+	// set, so a contributed include edge resolves the same way a sidecar's does.
+	const edges: WeftEdge[] = applyIncludeDefaults(
+		resolvePublishedLinks(merged.nodes, merged.edges),
+		config.includes
+	);
 
 	nodes.sort((a, b) => a.id.localeCompare(b.id));
 

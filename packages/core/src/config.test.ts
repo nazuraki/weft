@@ -231,6 +231,34 @@ describe("loadConfig", () => {
 		expect((await loadConfig(root)).extensions).toEqual({ ".json": "openapi" });
 	});
 
+	it("loads a valid includes block", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "includes:\n  headingShift: none\n  contributes: inline",
+		});
+
+		expect((await loadConfig(root)).includes).toEqual({
+			headingShift: "none",
+			contributes: "inline",
+		});
+	});
+
+	it("rejects a non-mapping includes value", async () => {
+		const root = tempRoot({ "weft.config.yaml": "includes:\n  - headingShift" });
+		await expect(loadConfig(root)).rejects.toThrow(/"includes" must be a mapping/);
+	});
+
+	it("rejects an unknown include option", async () => {
+		const root = tempRoot({ "weft.config.yaml": "includes:\n  depth: 3" });
+		await expect(loadConfig(root)).rejects.toThrow(/includes\.depth/);
+	});
+
+	it("rejects an include option value outside its enum", async () => {
+		const root = tempRoot({ "weft.config.yaml": "includes:\n  headingShift: sideways" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/"includes\.headingShift" must be "auto" or "none"/
+		);
+	});
+
 	it("rejects a legacy JS/TS config with a migration message", async () => {
 		const root = tempRoot({ "weft.config.ts": "export default {};" });
 		await expect(loadConfig(root)).rejects.toThrow(

@@ -101,6 +101,37 @@ export interface WeftConfig {
 	 * allowed — it only opts an unindexed-by-default type into scanning.
 	 */
 	extensions?: Record<string, "markdown" | "openapi">;
+	/**
+	 * Global defaults for `includes` edges. Each option can be overridden per
+	 * edge in the sidecar that declares it. Resolved values are stamped onto the
+	 * edges at build time, so the manifest is self-contained.
+	 */
+	includes?: IncludeDefaults;
+}
+
+/**
+ * How an included section's heading levels relate to the document they land in.
+ *
+ * `auto` demotes the included headings beneath the heading level at the point
+ * of inclusion, so the composed document reads as one outline. `none` preserves
+ * the source levels, for sources already authored at the right depth — an FAQ
+ * whose answers are all written as `##` sections, say.
+ */
+export type IncludeHeadingShift = "auto" | "none";
+
+/**
+ * Where included content counts for search and navigation.
+ *
+ * `source` attributes it only to the node it came from, so a search never
+ * returns duplicate hits. `inline` also attributes it to the including
+ * document — a reader searching the FAQ finds the FAQ.
+ */
+export type IncludeContributes = "source" | "inline";
+
+/** Global defaults for include edges, overridable per edge in the sidecar. */
+export interface IncludeDefaults {
+	headingShift?: IncludeHeadingShift;
+	contributes?: IncludeContributes;
 }
 
 /** How serious a diagnostic is. Only "error" fails `weft check`. */
@@ -245,6 +276,18 @@ export interface WeftEdge {
 	 * link can declare them — an inline Markdown link has nowhere to put them.
 	 */
 	asserts?: Assertions;
+	/**
+	 * On an `includes` edge: how the included headings are levelled into the
+	 * including document. Stamped from config defaults at build time, so a
+	 * manifest consumer never has to know what the defaults were.
+	 */
+	headingShift?: IncludeHeadingShift;
+	/**
+	 * On an `includes` edge: whether the included content is searchable only
+	 * under its source node or also under the including document. Stamped from
+	 * config defaults at build time, like `headingShift`.
+	 */
+	contributes?: IncludeContributes;
 	/**
 	 * On a `derives-from` edge: the source's content hash at the moment the
 	 * artifact was generated. An artifact is stale when this no longer equals the

@@ -20,6 +20,15 @@ export type { Contribution, LoadedContribution, NodePatch } from "./contribution
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { fileHistory, lastCommitDates, parseGitLog } from "./git.js";
+export {
+	CONTRIBUTES_MODES,
+	HEADING_SHIFTS,
+	INCLUDES,
+	INCLUDE_DEFAULTS,
+	applyIncludeDefaults,
+	extractSection,
+} from "./includes.js";
+export type { SectionRange } from "./includes.js";
 export type { FileHistory } from "./git.js";
 export { WeftService } from "./service.js";
 export {
@@ -51,6 +60,7 @@ export {
 	ASSERT_UNVERIFIABLE,
 	ASSERT_VERSION_MISMATCH,
 	DERIVES_FROM,
+	INCLUDE_CYCLE,
 	NODE_DIVERGED,
 	NODE_DUPLICATE,
 	VALIDATOR_ERROR_RULE,
@@ -59,6 +69,7 @@ export {
 	assertionValidator,
 	defaultRegistry,
 	duplicateValidator,
+	includeValidator,
 	graphHistory,
 	validateManifest,
 } from "./validate/index.js";
@@ -75,6 +86,9 @@ export type {
 export type {
 	Anchor,
 	Assertions,
+	IncludeContributes,
+	IncludeDefaults,
+	IncludeHeadingShift,
 	WeftConfig,
 	WeftNode,
 	WeftEdge,
