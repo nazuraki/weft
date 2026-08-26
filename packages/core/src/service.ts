@@ -5,6 +5,7 @@ import { getDocType } from "./anchors/index.js";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
 import { loadContributions } from "./contributions.js";
 import { checkFreshness, computeInputsHash } from "./freshness.js";
+import { type FileHistory, type HistoryDepth, fileHistory } from "./git.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
 import type {
@@ -20,6 +21,8 @@ import {
 	type ValidationResult,
 	type ValidatorRegistry,
 	defaultRegistry,
+	graphHistoryFrom,
+	registryWantsHistory,
 	validateManifest,
 } from "./validate/index.js";
 
@@ -38,6 +41,14 @@ export class WeftService {
 	private config: WeftConfig;
 	private roots: DocsRoot[];
 	private graphs = new Map<string, RootGraph>();
+	/**
+	 * The last history walk per root, tagged with how deep it went. A rebuild
+	 * replaces its targets' entries, so an entry is always as fresh as the
+	 * graph built beside it. `validate` upgrades a `"dates"` entry to `"full"`
+	 * on demand; the reverse never happens implicitly — a full walk answers a
+	 * dates question, not the other way round.
+	 */
+	private histories = new Map<string, { depth: HistoryDepth; history: FileHistory }>();
 	private manifest: Manifest | null = null;
 	private searchIndex: SearchIndex;
 	private freshnessCache: { checkedAt: number; result: Freshness } | null = null;
@@ -116,16 +127,29 @@ export class WeftService {
 		return filePath;
 	}
 
+	/** Walk one root's git history at the given depth and remember the result. */
+	private async walkHistory(root: DocsRoot, depth: HistoryDepth): Promise<FileHistory> {
+		const history = await fileHistory(root.absDir, depth);
+		this.histories.set(root.slug, { depth, history });
+		return history;
+	}
+
 	/**
 	 * Build or rebuild the manifest from the filesystem. Pass a project slug to
 	 * rescan only that project — the rest of the graph is reused.
+	 *
+	 * The history walk each root pays here is shared with `validate`: at the
+	 * default `"dates"` depth it skips rename detection, since indexing only
+	 * wants commit dates. `validate` builds at `"full"` depth instead when a
+	 * history-reading rule is enabled, so `weft check` walks git exactly once
+	 * per root rather than once for indexing and again for validation.
 	 *
 	 * The inputs hash always spans every root, even for a single-project
 	 * rescan: it is the baseline for the whole merged manifest, not just the
 	 * project that changed, so a partial rebuild that skipped roots outside
 	 * `slug` would leave the hash wrong specifically in multi-project mode.
 	 */
-	async rebuild(slug?: string): Promise<Manifest> {
+	async rebuild(slug?: string, historyDepth: HistoryDepth = "dates"): Promise<Manifest> {
 		const targets =
 			slug === undefined ? this.roots : this.roots.filter((root) => root.slug === slug);
 
@@ -142,7 +166,11 @@ export class WeftService {
 		};
 
 		for (const root of targets) {
-			this.graphs.set(root.slug, await buildRootGraph(this.config, root, this.roots));
+			const history = await this.walkHistory(root, historyDepth);
+			this.graphs.set(
+				root.slug,
+				await buildRootGraph(this.config, root, this.roots, history.dates)
+			);
 		}
 
 		// Reloaded every rebuild: a build running alongside `weft serve` rewrites
@@ -277,9 +305,31 @@ export class WeftService {
 	 * Run the validation stage over the current manifest, building it first if
 	 * necessary. Pass a registry to run a different set of checks than the
 	 * built-in ones.
+	 *
+	 * History is shared with the build rather than walked again: a graph built
+	 * here is built at `"full"` depth when a history-reading rule is enabled,
+	 * and a graph built earlier at `"dates"` depth has each root upgraded once
+	 * and remembered until its next rebuild.
 	 */
 	async validate(registry: ValidatorRegistry = defaultRegistry()): Promise<ValidationResult> {
-		return validateManifest(await this.getManifest(), this.config, registry);
+		const wantsHistory = registryWantsHistory(registry, this.config);
+		if (!this.manifest) {
+			await this.rebuild(undefined, wantsHistory ? "full" : "dates");
+		}
+		const manifest = await this.getManifest();
+		if (!wantsHistory) {
+			return validateManifest(manifest, this.config, registry);
+		}
+
+		const walks: [DocsRoot, FileHistory][] = [];
+		for (const root of this.roots) {
+			const cached = this.histories.get(root.slug);
+			walks.push([
+				root,
+				cached?.depth === "full" ? cached.history : await this.walkHistory(root, "full"),
+			]);
+		}
+		return validateManifest(manifest, this.config, registry, graphHistoryFrom(walks));
 	}
 
 	/** Search the index. */

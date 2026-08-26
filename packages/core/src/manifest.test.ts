@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveDocsRoots } from "./config.js";
 import { countLines, hashBytes, hashContent } from "./content.js";
-import { MANIFEST_VERSION, buildManifest, mergeGraphs, splitManifest } from "./manifest.js";
+import {
+	MANIFEST_VERSION,
+	buildManifest,
+	buildRootGraph,
+	mergeGraphs,
+	splitManifest,
+} from "./manifest.js";
 import type { WeftConfig } from "./types.js";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
@@ -35,6 +41,23 @@ function monorepoConfig(overrides: Partial<WeftConfig> = {}): WeftConfig {
 		...overrides,
 	};
 }
+
+describe("buildRootGraph (shared history)", () => {
+	it("stamps modified dates from a caller-provided walk instead of its own", async () => {
+		const config = fixtureConfig();
+		const roots = resolveDocsRoots(config);
+		const date = "2026-02-03T04:05:06+00:00";
+
+		const graph = await buildRootGraph(config, roots[0], roots, new Map([["README.md", date]]));
+
+		const readme = graph.nodes.find((node) => node.id === "README.md");
+		expect(readme?.modified).toBe(date);
+		// A path the provided walk did not date stays undated — the scan must not
+		// fall back to a walk of its own once one has been handed in.
+		const arch = graph.nodes.find((node) => node.id === "architecture.md");
+		expect(arch?.modified).toBeUndefined();
+	});
+});
 
 describe("buildManifest", () => {
 	const tempDirs: string[] = [];
