@@ -83,7 +83,7 @@ Both commands currently run four families of check. The **edge-resolution** rule
 
 See [Rules](configuration.md#rules) for the full list, [Assertions](configuration.md#assertions) for how a link states a claim, [Generated Artifacts](configuration.md#generated-artifacts) for registering outputs, [Duplicate and Diverged Copies](configuration.md#duplicate-and-diverged-copies) for the copy checks, and [Pending References](configuration.md#pending-references) for marking a link at something you have not written yet.
 
-Two of these read git history, so `weft check` runs `git log` once when they are enabled. Outside a repository they have nothing to say and the rest of the checks are unaffected.
+Two of these read git history. Indexing already walks `git log` once per docs root for commit dates, and when the history-reading rules are enabled `weft check` deepens that same walk (adding rename detection) rather than running a second one — one `git log` per root either way. Outside a repository the walk finds nothing, the history rules have nothing to say, and the rest of the checks are unaffected.
 
 ## Embedding
 
