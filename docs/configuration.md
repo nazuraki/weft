@@ -44,6 +44,7 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `contributions` | `string[]` | — | Contribution files written by an external build — see [External Tool Integration](#external-tool-integration) |
 | `artifacts` | `string[]` | — | Generated outputs to register as nodes, as globs relative to each docs root — see [Generated Artifacts](#generated-artifacts) |
 | `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
+| `includes` | `{ headingShift?, contributes? }` | see [Composed Documents](#composed-documents-include-edges) | Global defaults for include edges, overridable per edge |
 | `extensions` | `Record<string, "markdown" \| "openapi">` | — | Extra file extensions to index — see [Extensions](#extensions) |
 
 ### Strict Ordering
@@ -200,6 +201,7 @@ Run `weft analyze --list-rules` to see the available rule ids and their defaults
 | `artifact-source-unrecorded` | `info` | A `derives-from` edge records no source hash, so staleness cannot be checked |
 | `node-duplicate` | `info` | Several documents hold identical content at different paths |
 | `node-diverged` | `warn` | Documents that once held identical content no longer match |
+| `include-cycle` | `error` | Documents include each other in a cycle, so no composed form of them exists |
 | `validator-error` | `error` | A rule threw while running |
 
 A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
@@ -441,6 +443,8 @@ links:
 | `label` | no | Human-readable label for the edge, shown in linked-items sidebar |
 | `pending` | no | The target is known not to exist yet — see [Pending References](#pending-references) |
 | `asserts` | no | Claims this link makes about its target — see [Assertions](#assertions) |
+| `headingShift` | no | On an `includes` edge: `auto` (default) or `none` — see [Composed Documents](#composed-documents-include-edges) |
+| `contributes` | no | On an `includes` edge: `source` (default) or `inline` — see [Composed Documents](#composed-documents-include-edges) |
 
 ### Edge Types
 
@@ -454,6 +458,48 @@ Any string is valid as an edge type. Conventional types:
 | `see-also` | Related reading, no formal dependency |
 | `annotates` | This doc adds context to a specific part of the target |
 | `derives-from` | This was generated from the target — see [Generated Artifacts](#generated-artifacts) |
+| `includes` | This doc renders the target (or one section of it) inline — see [Composed Documents](#composed-documents-include-edges) |
+
+---
+
+## Composed Documents (include edges)
+
+A document can be composed from sections of others: an FAQ whose every answer lives in the document that owns it, or an org-level overview assembled from the architecture summaries of several repositories. Instead of copying content in — and watching the copies drift — the composing document links to its sources as usual, and a sidecar marks which of those links are includes:
+
+```yaml
+# faq.md.weft
+links:
+  - target: runbook.md#deploys
+    type: includes
+  - target: pricing.md#how-billing-works
+    type: includes
+```
+
+The document stays a plain link list on GitHub, where it renders as exactly that. In Weft's UI each include link that stands alone as a block — the sole content of a paragraph or list item — expands inline at render time: the target's anchor range renders in place, inside a visibly attributed frame linking back to the source. A link woven into a sentence never expands.
+
+**Anchor ranges.** `target: doc.md#some-heading` includes from that heading to the next heading of the same or shallower level. A target with no anchor includes the whole document.
+
+**Heading levels and search attribution** have global defaults with a per-edge override:
+
+```yaml
+# weft.config.yaml
+includes:
+  headingShift: auto    # auto | none
+  contributes: source   # source | inline
+```
+
+| Option | Values | Meaning |
+|--------|--------|---------|
+| `headingShift` | `auto` (default) | Included headings demote beneath the heading level at the point of inclusion, so the composed page reads as one outline |
+| | `none` | Source levels are preserved — for sources already authored at the right depth |
+| `contributes` | `source` (default) | Included content is searchable only under its source node, so search never returns duplicate hits |
+| | `inline` | Also attributed to the including document. Declared and recorded on the edge; search does not honour it yet |
+
+Resolved values are stamped onto each `includes` edge at build time, so a manifest consumer never needs the config.
+
+**Cycles.** The [`include-cycle`](#rules) rule (`error`) reports documents that include each other, at document granularity, once per cycle. The renderer keeps its own independent visited set and depth cap, so a manifest that predates the rule cannot hang the page — the cycle point renders as an ordinary link with a notice.
+
+**Drift detection for free.** An include edge is a sidecar link, so it can carry [`asserts`](#assertions): assert `lineCount` or `modified` on the included section's document and `weft check` reports when a source changed after the composition was last reviewed.
 
 ---
 

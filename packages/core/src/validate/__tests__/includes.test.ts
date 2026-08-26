@@ -86,10 +86,7 @@ describe("include-cycle", () => {
 	});
 
 	it("ignores pending include edges", async () => {
-		const manifest = graph([
-			includes("a.md", "b.md"),
-			includes("b.md", "a.md", { pending: true }),
-		]);
+		const manifest = graph([includes("a.md", "b.md"), includes("b.md", "a.md", { pending: true })]);
 
 		expect((await check(manifest)).diagnostics).toEqual([]);
 	});
