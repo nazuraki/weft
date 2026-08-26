@@ -2,17 +2,36 @@
 export interface WeftProject {
 	/** Display name, shown as a group header in the left-hand nav. */
 	name: string;
-	/** Directory to scan for this project's documents, relative to project root. */
+	/**
+	 * Directory to scan for this project's documents. Relative to the project
+	 * root, or — when `repo` is set — to that repo's mapped checkout.
+	 */
 	docsDir: string;
 	/** Id/URL namespace for this project's documents. Defaults to a kebab-cased `name`. */
 	slug?: string;
+	/**
+	 * Repo identity (`org/repo`) whose checkout holds this project's docs. The
+	 * identity must appear in the `repos` map; where the checkout lives is the
+	 * map's business, so the committed config never embeds a machine's layout.
+	 */
+	repo?: string;
+	/**
+	 * Write this project's manifest into its own checkout even when the checkout
+	 * lives outside the project root. Off by default, because `weft index`
+	 * dirtying the git status of a repo it does not own is a surprise; opt in
+	 * for a co-owned repo that wants its manifest alongside its docs.
+	 */
+	manifestInRepo?: boolean;
 }
 
 /** A project as recorded in a manifest — always has its slug resolved. */
 export interface WeftProjectRef {
 	name: string;
 	slug: string;
+	/** Relative to the project root, or to `repo`'s checkout when `repo` is set. */
 	docsDir: string;
+	/** Repo identity (`org/repo`) the docs live in, for roots outside the project's own repo. */
+	repo?: string;
 }
 
 export interface WeftConfig {
@@ -25,6 +44,20 @@ export interface WeftConfig {
 	 * project slug (`alpha/api.md`) and `docsDir` is ignored.
 	 */
 	projects?: WeftProject[];
+	/**
+	 * Local checkouts of other repos, keyed by repo identity (`org/repo`).
+	 *
+	 * The map does two jobs: a `projects` entry may name a `repo` instead of
+	 * embedding a relative path, and a GitHub blob URL to a mapped repo resolves
+	 * against its checkout — becoming a graph edge when the file falls inside a
+	 * configured docs root.
+	 *
+	 * Values are paths — relative to the project root, absolute, or `~`-prefixed.
+	 * Because they describe one machine's layout, they belong in
+	 * `weft.config.local.yaml` (gitignored) rather than the committed config;
+	 * local entries override committed ones per identity.
+	 */
+	repos?: Record<string, string>;
 	/** Default theme when no user preference is saved. Falls back to system preference if unset. */
 	defaultTheme?: "light" | "dark";
 	/** Site name used in og:site_name and title fallbacks. */

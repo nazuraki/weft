@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import chokidar from "chokidar";
 import { getDocType } from "./anchors/index.js";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
@@ -46,17 +46,26 @@ export class WeftService {
 		return this.roots[0].absDir;
 	}
 
-	/** Path of the merged manifest. */
+	/** Path of the merged manifest. Always under `rootDir` when the docs root is not. */
 	get manifestPath(): string {
-		return this.namespaced
+		return this.namespaced || this.roots[0].external
 			? resolve(this.config.rootDir, ".weft", "manifest.json")
 			: resolve(this.docsDir, ".weft", "manifest.json");
 	}
 
-	/** Path of a single project's manifest. */
+	/**
+	 * Path of a single project's manifest.
+	 *
+	 * A root living in another checkout gets its manifest under this project's
+	 * own `.weft/` — writing into a repo we do not own would dirty its git
+	 * status on every index. `manifestInRepo` opts a co-owned repo back in.
+	 */
 	projectManifestPath(slug: string): string {
 		const root = this.roots.find((r) => r.slug === slug);
 		if (!root) throw new Error(`Unknown project: ${slug}`);
+		if (root.external && !root.manifestInRepo) {
+			return resolve(this.config.rootDir, ".weft", "projects", slug, "manifest.json");
+		}
 		return resolve(root.absDir, ".weft", "manifest.json");
 	}
 
@@ -134,7 +143,10 @@ export class WeftService {
 					name: root.name ?? root.slug,
 					slug: root.slug,
 					docsDir: root.dir,
-					manifest: `${root.dir}/.weft/manifest.json`,
+					...(root.repo !== undefined ? { repo: root.repo } : {}),
+					manifest: relative(this.config.rootDir, this.projectManifestPath(root.slug))
+						.split(sep)
+						.join("/"),
 				})),
 				manifest: ".weft/manifest.json",
 			};

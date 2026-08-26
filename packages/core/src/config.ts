@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import { EXTENSION_MAP } from "./anchors/index.js";
+import { REPO_IDENTITY, resolveRepos } from "./repos.js";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
 const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
 const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
+const LOCAL_CONFIG_FILES = ["weft.config.local.yaml", "weft.config.local.yml"];
 
 /**
  * Directories excluded from indexing by default.
@@ -37,6 +39,7 @@ const KNOWN_KEYS = new Set<string>([
 	...Object.keys(ENUM_KEYS),
 	"docOrderStrict",
 	"projects",
+	"repos",
 	"rules",
 	"extensions",
 ]);
@@ -75,6 +78,7 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 	if ("projects" in config && !Array.isArray(config.projects)) {
 		throw fail("projects", "an array");
 	}
+	if ("repos" in config) validateRepos(config.repos, file);
 	if ("rules" in config) {
 		const rules = config.rules;
 		if (typeof rules !== "object" || rules === null || Array.isArray(rules)) {
@@ -122,8 +126,66 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 	return config as UserConfig;
 }
 
+function validateRepos(repos: unknown, file: string): asserts repos is Record<string, string> {
+	if (typeof repos !== "object" || repos === null || Array.isArray(repos)) {
+		throw new Error(`weft config: "repos" must be a mapping of org/repo to a path (in ${file})`);
+	}
+	for (const [identity, path] of Object.entries(repos)) {
+		if (!REPO_IDENTITY.test(identity)) {
+			throw new Error(
+				`weft config: repos key "${identity}" must be a repo identity of the form "org/repo" (in ${file})`
+			);
+		}
+		if (typeof path !== "string" || path.length === 0) {
+			throw new Error(`weft config: "repos[${identity}]" must be a path (in ${file})`);
+		}
+	}
+}
+
+/**
+ * Read `weft.config.local.yaml`, which may set only `repos`.
+ *
+ * The local file exists to hold what varies per machine — where checkouts live —
+ * and nothing else, so an option quietly diverging from the committed config
+ * cannot hide there. Its entries override committed `repos` per identity.
+ */
+async function loadLocalRepos(absRoot: string): Promise<Record<string, string> | undefined> {
+	for (const file of LOCAL_CONFIG_FILES) {
+		const path = resolve(absRoot, file);
+		if (!existsSync(path)) continue;
+
+		let raw: unknown;
+		try {
+			raw = parse(await readFile(path, "utf8"));
+		} catch (err) {
+			throw new Error(`weft config: failed to parse ${file}: ${(err as Error).message}`);
+		}
+		if (raw === null || raw === undefined) return undefined;
+		if (typeof raw !== "object" || Array.isArray(raw)) {
+			throw new Error(`weft config: ${file} must contain a top-level mapping`);
+		}
+
+		const local = raw as Record<string, unknown>;
+		for (const key of Object.keys(local)) {
+			if (key !== "repos") {
+				throw new Error(
+					`weft config: ${file} may only set "repos" — move "${key}" to the committed config`
+				);
+			}
+		}
+		if ("repos" in local) validateRepos(local.repos, file);
+		return local.repos as Record<string, string> | undefined;
+	}
+	return undefined;
+}
+
 export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 	const absRoot = resolve(rootDir);
+	const localRepos = await loadLocalRepos(absRoot);
+	const withLocalRepos = (config: WeftConfig): WeftConfig => {
+		if (!localRepos) return config;
+		return { ...config, repos: { ...config.repos, ...localRepos } };
+	};
 
 	for (const file of CONFIG_FILES) {
 		const configPath = resolve(absRoot, file);
@@ -137,7 +199,11 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 			throw new Error(`weft config: failed to parse ${file}: ${(err as Error).message}`);
 		}
 
-		return { ...DEFAULTS, ...validateUserConfig(raw ?? {}, file), rootDir: absRoot };
+		return withLocalRepos({
+			...DEFAULTS,
+			...validateUserConfig(raw ?? {}, file),
+			rootDir: absRoot,
+		});
 	}
 
 	const legacy = LEGACY_CONFIG_FILES.find((file) => existsSync(resolve(absRoot, file)));
@@ -156,7 +222,7 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 		);
 	}
 
-	return { ...DEFAULTS, rootDir: absRoot };
+	return withLocalRepos({ ...DEFAULTS, rootDir: absRoot });
 }
 
 /** A resolved docs root — one per configured project, or one implicit root for `docsDir`. */
@@ -165,10 +231,20 @@ export interface DocsRoot {
 	name?: string;
 	/** Id namespace. Empty string for the implicit single root. */
 	slug: string;
-	/** Directory relative to `rootDir`, POSIX separators, no trailing slash. */
+	/**
+	 * Directory as configured, POSIX separators, no trailing slash. Relative to
+	 * `rootDir` — or to `repo`'s checkout for a repo-backed root, so nothing
+	 * derived from it embeds one machine's layout.
+	 */
 	dir: string;
 	/** Absolute directory path. */
 	absDir: string;
+	/** Repo identity (`org/repo`) the root was resolved through, when it was. */
+	repo?: string;
+	/** True when `absDir` lies outside `rootDir` — a docs root in another checkout. */
+	external: boolean;
+	/** Opt-in: write this root's manifest into its checkout even though it is external. */
+	manifestInRepo?: boolean;
 }
 
 /** Normalize a configured directory to a POSIX, trailing-slash-free relative path. */
@@ -192,13 +268,20 @@ export function slugify(name: string): string {
  */
 export function resolveDocsRoots(config: WeftConfig): DocsRoot[] {
 	const { projects } = config;
+	const repos = resolveRepos(config.repos, config.rootDir);
+	const isExternal = (absDir: string): boolean => {
+		const rel = relative(config.rootDir, absDir);
+		return rel.startsWith("..") || isAbsolute(rel);
+	};
 
 	if (projects === undefined) {
+		const absDir = resolve(config.rootDir, config.docsDir);
 		return [
 			{
 				slug: "",
 				dir: normalizeDir(config.docsDir),
-				absDir: resolve(config.rootDir, config.docsDir),
+				absDir,
+				external: isExternal(absDir),
 			},
 		];
 	}
@@ -213,6 +296,14 @@ export function resolveDocsRoots(config: WeftConfig): DocsRoot[] {
 		if (!project.docsDir) {
 			throw new Error(`weft config: project "${project.name}" is missing "docsDir"`);
 		}
+		if (project.repo !== undefined && !REPO_IDENTITY.test(project.repo)) {
+			throw new Error(
+				`weft config: project "${project.name}" has a "repo" that is not an "org/repo" identity`
+			);
+		}
+		if (project.manifestInRepo !== undefined && typeof project.manifestInRepo !== "boolean") {
+			throw new Error(`weft config: project "${project.name}": "manifestInRepo" must be a boolean`);
+		}
 
 		const slug = slugify(project.slug ?? project.name);
 		if (!slug) {
@@ -225,11 +316,26 @@ export function resolveDocsRoots(config: WeftConfig): DocsRoot[] {
 		}
 		seen.add(slug);
 
+		let baseDir = config.rootDir;
+		if (project.repo !== undefined) {
+			const checkout = repos.get(project.repo);
+			if (!checkout) {
+				throw new Error(
+					`weft config: project "${project.name}" names repo "${project.repo}", which is not in the "repos" map — add it there, or to weft.config.local.yaml`
+				);
+			}
+			baseDir = checkout;
+		}
+
+		const absDir = resolve(baseDir, project.docsDir);
 		return {
 			name: project.name,
 			slug,
 			dir: normalizeDir(project.docsDir),
-			absDir: resolve(config.rootDir, project.docsDir),
+			absDir,
+			external: isExternal(absDir),
+			...(project.repo !== undefined ? { repo: project.repo } : {}),
+			...(project.manifestInRepo === true ? { manifestInRepo: true } : {}),
 		};
 	});
 }
@@ -246,6 +352,7 @@ export function projectRefs(roots: DocsRoot[]): WeftProjectRef[] {
 		name: root.name ?? root.slug,
 		slug: root.slug,
 		docsDir: root.dir,
+		...(root.repo !== undefined ? { repo: root.repo } : {}),
 	}));
 }
 
