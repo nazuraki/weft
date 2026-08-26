@@ -7,9 +7,9 @@ import { CONTRIBUTES_MODES, HEADING_SHIFTS } from "./includes.js";
 import { REPO_IDENTITY, resolveRepos } from "./repos.js";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
-const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
+export const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
 const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
-const LOCAL_CONFIG_FILES = ["weft.config.local.yaml", "weft.config.local.yml"];
+export const LOCAL_CONFIG_FILES = ["weft.config.local.yaml", "weft.config.local.yml"];
 
 /**
  * Directories excluded from indexing by default.

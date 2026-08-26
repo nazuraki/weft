@@ -313,6 +313,32 @@ export interface SiteConfig {
 	ogImage?: string;
 }
 
+/**
+ * Provenance for a manifest — when it was built, and a baseline of what it
+ * was built from.
+ *
+ * Lives on the manifest itself rather than beside it: every consumer that
+ * reads `manifest.json` directly (SSR, a static build script) gets one read
+ * with no way to end up with a graph and no idea how stale it is.
+ */
+export interface ManifestBuild {
+	/** When the manifest was built, as an ISO 8601 UTC timestamp (`toISOString()` form). */
+	builtAt: string;
+	/**
+	 * Baseline hash of the state the manifest was built from: the sorted set
+	 * of indexed file and artifact paths, plus the content of every input
+	 * that is not itself a node — sidecar files, contribution files, and the
+	 * config files (including the machine-local overlay).
+	 *
+	 * Comparing it against a fresh computation catches a node added or
+	 * removed — document or artifact — or a change to one of those non-node
+	 * inputs. It does not cover an edited node's content — every node already
+	 * carries its own `contentHash` for that, so re-hashing it here would be
+	 * redundant.
+	 */
+	inputsHash: string;
+}
+
 export interface Manifest {
 	version: number;
 	nodes: WeftNode[];
@@ -321,6 +347,8 @@ export interface Manifest {
 	projects?: WeftProjectRef[];
 	/** Presentation config for the UI. Absent when nothing is configured. */
 	site?: SiteConfig;
+	/** When and from what this manifest was built. Absent from a pre-freshness manifest. */
+	build?: ManifestBuild;
 }
 
 /** A manifest scoped to one project, written to `<project docsDir>/.weft/manifest.json`. */
@@ -341,6 +369,24 @@ export interface ProjectsIndex {
 	})[];
 	/** Path to the merged manifest, relative to the project root. */
 	manifest: string;
+}
+
+/** Whether a manifest still reflects the docs tree it was built from. */
+export type FreshnessStatus = "fresh" | "stale" | "unknown";
+
+/**
+ * Result of comparing a manifest's recorded provenance against its docs tree.
+ *
+ * `unknown` is not a hedge — it is the honest answer for a manifest built by
+ * an older Weft that carries no `build` block to compare at all. Collapsing
+ * it into `fresh` would claim confidence about provenance that was never
+ * recorded; collapsing it into `stale` would make every pre-upgrade manifest
+ * look broken.
+ */
+export interface Freshness {
+	status: FreshnessStatus;
+	/** When the manifest was built. Absent when `status` is "unknown". */
+	builtAt?: string;
 }
 
 export interface SearchResult {

@@ -19,6 +19,7 @@ export {
 export type { Contribution, LoadedContribution, NodePatch } from "./contributions.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
+export { checkFreshness, computeInputsHash } from "./freshness.js";
 export { fileHistory, lastCommitDates, parseGitLog } from "./git.js";
 export {
 	CONTRIBUTES_MODES,
@@ -94,8 +95,11 @@ export type {
 	WeftEdge,
 	WeftProject,
 	WeftProjectRef,
+	Freshness,
+	FreshnessStatus,
 	LinkRef,
 	Manifest,
+	ManifestBuild,
 	ProjectManifest,
 	ProjectsIndex,
 	RuleSeverity,

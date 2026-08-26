@@ -4,9 +4,18 @@ import chokidar from "chokidar";
 import { getDocType } from "./anchors/index.js";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
 import { loadContributions } from "./contributions.js";
+import { checkFreshness, computeInputsHash } from "./freshness.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
 import { SearchIndex } from "./search.js";
-import type { Manifest, ProjectsIndex, SearchResult, WeftConfig, WeftEdge } from "./types.js";
+import type {
+	Freshness,
+	Manifest,
+	ManifestBuild,
+	ProjectsIndex,
+	SearchResult,
+	WeftConfig,
+	WeftEdge,
+} from "./types.js";
 import {
 	type ValidationResult,
 	type ValidatorRegistry,
@@ -14,12 +23,34 @@ import {
 	validateManifest,
 } from "./validate/index.js";
 
+/**
+ * How long a `freshness()` answer is served from cache before the docs tree
+ * is re-read.
+ *
+ * A burst of tool calls inside one agent turn lands well within this window;
+ * a human edit is picked up on the next turn rather than the next minute.
+ * `rebuild` invalidates the cache immediately regardless, since the cached
+ * answer is then known wrong.
+ */
+const FRESHNESS_CACHE_MS = 2000;
+
 export class WeftService {
 	private config: WeftConfig;
 	private roots: DocsRoot[];
 	private graphs = new Map<string, RootGraph>();
 	private manifest: Manifest | null = null;
 	private searchIndex: SearchIndex;
+	private freshnessCache: { checkedAt: number; result: Freshness } | null = null;
+	/**
+	 * Bumped by every rebuild. A `freshness()` check spans an `await` over a
+	 * full tree re-read, so a rebuild can complete underneath it — clearing
+	 * the cache is not enough, because the in-flight check would then resume
+	 * and write its pre-rebuild answer back. The check records the generation
+	 * it started under and only caches if no rebuild happened in between.
+	 */
+	private freshnessGeneration = 0;
+	/** In-flight check, so concurrent cache misses share one tree re-read. */
+	private freshnessInFlight: { generation: number; promise: Promise<Freshness> } | null = null;
 
 	constructor(config: WeftConfig) {
 		this.config = config;
@@ -88,10 +119,27 @@ export class WeftService {
 	/**
 	 * Build or rebuild the manifest from the filesystem. Pass a project slug to
 	 * rescan only that project — the rest of the graph is reused.
+	 *
+	 * The inputs hash always spans every root, even for a single-project
+	 * rescan: it is the baseline for the whole merged manifest, not just the
+	 * project that changed, so a partial rebuild that skipped roots outside
+	 * `slug` would leave the hash wrong specifically in multi-project mode.
 	 */
 	async rebuild(slug?: string): Promise<Manifest> {
 		const targets =
 			slug === undefined ? this.roots : this.roots.filter((root) => root.slug === slug);
+
+		// Hashed before the scan, not after: a file edited mid-scan would
+		// otherwise land in the hash but not in the graph, and the manifest
+		// would be stale yet report itself fresh. Hashing first inverts that
+		// race to the safe side — a file edited between the hash and the scan
+		// makes the manifest report stale when it is actually current, which
+		// costs an extra rebuild rather than a wrong "fresh" answer. That's the
+		// whole point of freshness, so the window has to fail toward stale.
+		const build: ManifestBuild = {
+			builtAt: new Date().toISOString(),
+			inputsHash: await computeInputsHash(this.config),
+		};
 
 		for (const root of targets) {
 			this.graphs.set(root.slug, await buildRootGraph(this.config, root, this.roots));
@@ -103,8 +151,11 @@ export class WeftService {
 			this.config,
 			this.roots,
 			this.graphs,
-			await loadContributions(this.config)
+			await loadContributions(this.config),
+			build
 		);
+		this.freshnessCache = null;
+		this.freshnessGeneration++;
 		this.searchIndex.build(this.manifest, (nodeId) => this.resolveNodePath(nodeId));
 		return this.manifest;
 	}
@@ -115,6 +166,50 @@ export class WeftService {
 			this.manifest = await this.rebuild();
 		}
 		return this.manifest;
+	}
+
+	/**
+	 * Whether the manifest still reflects its docs tree.
+	 *
+	 * Answering honestly costs a full re-read of the docs tree, so the result
+	 * is cached for {@link FRESHNESS_CACHE_MS} — see that constant for why.
+	 * `rebuild` clears the cache immediately.
+	 */
+	async freshness(): Promise<Freshness> {
+		const now = Date.now();
+		if (this.freshnessCache && now - this.freshnessCache.checkedAt < FRESHNESS_CACHE_MS) {
+			return this.freshnessCache.result;
+		}
+
+		// Concurrent misses share one re-read — but only within a generation.
+		// A caller arriving after a rebuild must not join a check that started
+		// against the pre-rebuild manifest.
+		const generation = this.freshnessGeneration;
+		if (this.freshnessInFlight?.generation === generation) {
+			return this.freshnessInFlight.promise;
+		}
+
+		const promise = (async () => {
+			try {
+				const result = await checkFreshness(await this.getManifest(), this.config);
+				// A rebuild that completed while this check was reading the tree
+				// makes the answer obsolete before it lands: return it to the
+				// caller who asked, but never cache it over the rebuild's state.
+				if (generation === this.freshnessGeneration) {
+					this.freshnessCache = { checkedAt: now, result };
+				}
+				return result;
+			} finally {
+				// Only one check runs per generation (later callers join it), so
+				// matching the generation is matching this very check — while a
+				// successor started after a rebuild is left alone.
+				if (this.freshnessInFlight?.generation === generation) {
+					this.freshnessInFlight = null;
+				}
+			}
+		})();
+		this.freshnessInFlight = { generation, promise };
+		return promise;
 	}
 
 	/**

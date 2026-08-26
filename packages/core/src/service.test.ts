@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MANIFEST_VERSION } from "./manifest.js";
 import { WeftService } from "./service.js";
 import type { ProjectManifest, ProjectsIndex, WeftConfig } from "./types.js";
@@ -263,6 +263,22 @@ describe("WeftService (multi-project)", () => {
 		expect((await service.rebuild()).nodes.map((n) => n.id)).toContain("beta/ignored.md");
 	});
 
+	it("computes the inputs hash across every root even for a partial rebuild", async () => {
+		const dir = copyMonorepo();
+		const service = createMonorepoService(dir);
+		const before = (await service.getManifest()).build?.inputsHash;
+
+		writeFileSync(resolve(dir, "products/beta/docs/extra.md"), "# Extra\n");
+		const after = await service.rebuild("alpha");
+
+		// Beta was not rescanned into the graph, but the hash is the baseline for
+		// the whole merged manifest, not just the rescanned project — a partial
+		// rebuild that skipped it would disagree with a full one about what
+		// counts as fresh.
+		expect(after.build?.inputsHash).not.toBe(before);
+		expect(after.nodes.map((n) => n.id)).not.toContain("beta/extra.md");
+	});
+
 	it("writes a manifest per project, an index, and the merged manifest", async () => {
 		const dir = copyMonorepo();
 		const service = createMonorepoService(dir);
@@ -298,6 +314,83 @@ describe("WeftService (multi-project)", () => {
 		// Every path in the index resolves to a file that was actually written.
 		for (const path of [index.manifest, ...index.projects.map((p) => p.manifest)]) {
 			expect(() => readFileSync(resolve(dir, path), "utf-8")).not.toThrow();
+		}
+	});
+});
+
+describe("WeftService (freshness)", () => {
+	function createWritableService(): { dir: string; service: WeftService } {
+		const dir = mkdtempSync(resolve(tmpdir(), "weft-freshness-service-"));
+		tempDirs.push(dir);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(dir, "docs"), { recursive: true });
+		const service = new WeftService({
+			rootDir: dir,
+			docsDir: "docs",
+			entryPoint: "docs/README.md",
+			ignore: [],
+		});
+		return { dir, service };
+	}
+
+	it("reports fresh immediately after building", async () => {
+		const { service } = createWritableService();
+		await service.getManifest();
+
+		expect((await service.freshness()).status).toBe("fresh");
+	});
+
+	it("reports stale after an edit, without a rebuild", async () => {
+		const { dir, service } = createWritableService();
+		await service.getManifest();
+
+		writeFileSync(resolve(dir, "docs", "architecture.md"), "# Changed\n");
+
+		expect((await service.freshness()).status).toBe("stale");
+	});
+
+	it("serves a cached answer within the window, even as the tree changes underneath it", async () => {
+		const { dir, service } = createWritableService();
+		await service.getManifest();
+		expect((await service.freshness()).status).toBe("fresh");
+
+		writeFileSync(resolve(dir, "docs", "architecture.md"), "# Changed\n");
+
+		// Within the cache window, the edit made a moment ago is not yet visible.
+		expect((await service.freshness()).status).toBe("fresh");
+	});
+
+	it("flips back to fresh immediately after rebuild, without waiting out the cache", async () => {
+		const { dir, service } = createWritableService();
+		await service.getManifest();
+
+		writeFileSync(resolve(dir, "docs", "architecture.md"), "# Changed\n");
+		expect((await service.freshness()).status).toBe("stale");
+
+		await service.rebuild();
+
+		expect((await service.freshness()).status).toBe("fresh");
+	});
+
+	it("expires the cache after the window, picking up an edit made during it", async () => {
+		const { dir, service } = createWritableService();
+		await service.getManifest();
+		expect((await service.freshness()).status).toBe("fresh");
+
+		writeFileSync(resolve(dir, "docs", "architecture.md"), "# Changed\n");
+
+		try {
+			// Faking the clock rather than exporting the cache window as a
+			// constant just to serve this test: freshness() reads Date.now(), so
+			// jumping it forward controls the window directly without adding to
+			// the public surface. The exact jump does not matter beyond
+			// outlasting the window itself, so no cache-duration constant needs
+			// to be shared between the implementation and the test.
+			vi.useFakeTimers();
+			vi.setSystemTime(Date.now() + 60_000);
+
+			expect((await service.freshness()).status).toBe("stale");
+		} finally {
+			vi.useRealTimers();
 		}
 	});
 });
