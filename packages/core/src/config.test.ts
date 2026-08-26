@@ -400,3 +400,138 @@ describe("node id helpers", () => {
 		expect(rootForNodeId(roots, "gamma/api.yaml")).toBeUndefined();
 	});
 });
+
+describe("loadConfig (repos and local override)", () => {
+	const dirs: string[] = [];
+
+	function tempRoot(files: Record<string, string> = {}): string {
+		const dir = mkdtempSync(join(tmpdir(), "weft-config-"));
+		dirs.push(dir);
+		for (const [name, content] of Object.entries(files)) {
+			writeFileSync(join(dir, name), content);
+		}
+		return dir;
+	}
+
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("loads a repos map from the committed config", async () => {
+		const config = await loadConfig(
+			tempRoot({ "weft.config.yaml": "repos:\n  acme/alpha: ../alpha\n" })
+		);
+		expect(config.repos).toEqual({ "acme/alpha": "../alpha" });
+	});
+
+	it("rejects a repos key that is not an org/repo identity", async () => {
+		const root = tempRoot({ "weft.config.yaml": "repos:\n  alpha: ../alpha\n" });
+		await expect(loadConfig(root)).rejects.toThrow(/org\/repo/);
+	});
+
+	it("rejects a non-string repos value", async () => {
+		const root = tempRoot({ "weft.config.yaml": "repos:\n  acme/alpha: 3\n" });
+		await expect(loadConfig(root)).rejects.toThrow(/must be a path/);
+	});
+
+	it("merges local repos over committed ones, per identity", async () => {
+		const config = await loadConfig(
+			tempRoot({
+				"weft.config.yaml": "repos:\n  acme/alpha: ../alpha\n  acme/beta: ../beta\n",
+				"weft.config.local.yaml": "repos:\n  acme/alpha: /checkouts/alpha\n",
+			})
+		);
+		expect(config.repos).toEqual({ "acme/alpha": "/checkouts/alpha", "acme/beta": "../beta" });
+	});
+
+	it("applies local repos when no committed config exists", async () => {
+		const config = await loadConfig(
+			tempRoot({ "weft.config.local.yaml": "repos:\n  acme/alpha: ../alpha\n" })
+		);
+		expect(config.repos).toEqual({ "acme/alpha": "../alpha" });
+	});
+
+	it("rejects any key other than repos in the local config", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "docsDir: docs\n",
+			"weft.config.local.yaml": "docsDir: elsewhere\n",
+		});
+		await expect(loadConfig(root)).rejects.toThrow(/may only set "repos"/);
+	});
+
+	it("tolerates an empty local config file", async () => {
+		const config = await loadConfig(tempRoot({ "weft.config.local.yaml": "" }));
+		expect(config.repos).toBeUndefined();
+	});
+});
+
+describe("resolveDocsRoots (repo-backed roots)", () => {
+	it("resolves a repo-backed root against the mapped checkout", () => {
+		const roots = resolveDocsRoots(
+			config({
+				repos: { "acme/alpha": "../alpha" },
+				projects: [
+					{ name: "Meta", docsDir: "docs" },
+					{ name: "Alpha", docsDir: "docs", repo: "acme/alpha" },
+				],
+			})
+		);
+
+		expect(roots[0]).toMatchObject({ slug: "meta", external: false });
+		expect(roots[0].repo).toBeUndefined();
+		expect(roots[1]).toMatchObject({
+			slug: "alpha",
+			dir: "docs",
+			absDir: resolve(ROOT, "../alpha/docs"),
+			repo: "acme/alpha",
+			external: true,
+		});
+	});
+
+	it("marks a plain relative root that escapes rootDir as external", () => {
+		const roots = resolveDocsRoots(
+			config({ projects: [{ name: "Sibling", docsDir: "../repo-a/docs" }] })
+		);
+		expect(roots[0].external).toBe(true);
+		expect(roots[0].repo).toBeUndefined();
+	});
+
+	it("marks the implicit single root external when docsDir escapes rootDir", () => {
+		expect(resolveDocsRoots(config({ docsDir: "../elsewhere/docs" }))[0].external).toBe(true);
+		expect(resolveDocsRoots(config())[0].external).toBe(false);
+	});
+
+	it("throws when a project names an unmapped repo, pointing at the local config", () => {
+		expect(() =>
+			resolveDocsRoots(config({ projects: [{ name: "Alpha", docsDir: "docs", repo: "acme/alpha" }] }))
+		).toThrow(/weft\.config\.local\.yaml/);
+	});
+
+	it("throws on a repo that is not an org/repo identity", () => {
+		expect(() =>
+			resolveDocsRoots(config({ projects: [{ name: "Alpha", docsDir: "docs", repo: "alpha" }] }))
+		).toThrow(/org\/repo/);
+	});
+
+	it("carries manifestInRepo through to the root", () => {
+		const roots = resolveDocsRoots(
+			config({
+				repos: { "acme/alpha": "../alpha" },
+				projects: [{ name: "Alpha", docsDir: "docs", repo: "acme/alpha", manifestInRepo: true }],
+			})
+		);
+		expect(roots[0].manifestInRepo).toBe(true);
+	});
+
+	it("records the repo identity in the project refs, keeping docsDir checkout-relative", () => {
+		const roots = resolveDocsRoots(
+			config({
+				repos: { "acme/alpha": "../alpha" },
+				projects: [{ name: "Alpha", docsDir: "docs", repo: "acme/alpha" }],
+			})
+		);
+		expect(projectRefs(roots)).toEqual([
+			{ name: "Alpha", slug: "alpha", docsDir: "docs", repo: "acme/alpha" },
+		]);
+	});
+});

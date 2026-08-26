@@ -137,3 +137,85 @@ describe("extractMarkdownLinks", () => {
 		expect(edges).toHaveLength(0);
 	});
 });
+
+describe("extractMarkdownLinks (GitHub blob URLs)", () => {
+	const REPOS = new Map([["acme/alpha", "/checkouts/alpha"]]);
+	const ROOTS: DocsRoot[] = [
+		{ slug: "", dir: "docs", absDir: "/project/docs", external: false },
+		{
+			name: "Alpha",
+			slug: "alpha",
+			dir: "docs",
+			absDir: "/checkouts/alpha/docs",
+			repo: "acme/alpha",
+			external: true,
+		},
+	];
+
+	it("resolves a blob URL into a mapped repo's docs root, recording the URL", () => {
+		const edges = extractMarkdownLinks(
+			"[API](https://github.com/acme/alpha/blob/main/docs/api.md#endpoints)",
+			"/project/docs/README.md",
+			ROOTS,
+			REPOS
+		);
+
+		expect(edges).toEqual([
+			{
+				from: { node: "README.md" },
+				to: { node: "alpha/api.md", anchor: "#endpoints" },
+				type: "references",
+				label: "API",
+				resolvedFrom: "https://github.com/acme/alpha/blob/main/docs/api.md#endpoints",
+			},
+		]);
+	});
+
+	it("accepts any ref segment", () => {
+		const edges = extractMarkdownLinks(
+			"[API](https://github.com/acme/alpha/blob/v2.1/docs/api.md)",
+			"/project/docs/README.md",
+			ROOTS,
+			REPOS
+		);
+		expect(edges[0]?.to.node).toBe("alpha/api.md");
+	});
+
+	it("leaves a blob URL into an unmapped repo as an external link", () => {
+		const edges = extractMarkdownLinks(
+			"[Other](https://github.com/acme/other/blob/main/docs/api.md)",
+			"/project/docs/README.md",
+			ROOTS,
+			REPOS
+		);
+		expect(edges).toEqual([]);
+	});
+
+	it("leaves a blob URL whose path lands outside every docs root as external", () => {
+		const edges = extractMarkdownLinks(
+			"[Source](https://github.com/acme/alpha/blob/main/src/main.ts)",
+			"/project/docs/README.md",
+			ROOTS,
+			REPOS
+		);
+		expect(edges).toEqual([]);
+	});
+
+	it("ignores non-blob GitHub URLs and other hosts", () => {
+		const content = [
+			"[Tree](https://github.com/acme/alpha/tree/main/docs)",
+			"[Issue](https://github.com/acme/alpha/issues/12)",
+			"[GitLab](https://gitlab.com/acme/alpha/blob/main/docs/api.md)",
+		].join("\n");
+		expect(extractMarkdownLinks(content, "/project/docs/README.md", ROOTS, REPOS)).toEqual([]);
+	});
+
+	it("ignores every http link when no repo map is passed", () => {
+		const edges = extractMarkdownLinks(
+			"[API](https://github.com/acme/alpha/blob/main/docs/api.md)",
+			"/project/docs/README.md",
+			ROOTS
+		);
+		expect(edges).toEqual([]);
+	});
+});
