@@ -108,3 +108,13 @@ existed at that release — no need to check out old branches or dig through git
 A non-technical stakeholder receives a `docs/` folder export. They open a hosted static site
 (published via `weft build`) or run `weft serve` locally and can navigate the design documents,
 wireframes, and functional specs without access to the codebase.
+
+## UC-16: Composed documents — an FAQ assembled from its sources
+A team maintains an FAQ page that is really a collection of answers owned by other documents:
+deployment questions answered in the ops runbook, API questions answered in the spec, pricing
+questions answered in the product doc. Instead of copying answers in (and watching them drift),
+the FAQ declares anchor-range include edges — each entry pulls the owning document's section
+inline at render time. Readers see one cohesive page; every answer has exactly one source of
+truth, and `weft check` reports when an included section changes after the composition was last
+reviewed. The same mechanism composes an org-level overview from sections of documents in other
+repositories, served by a single local Weft over several checkouts.

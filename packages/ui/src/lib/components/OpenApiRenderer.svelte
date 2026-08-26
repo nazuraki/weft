@@ -359,11 +359,11 @@ function responseColor(code: string): string {
 
 <style>
 	.openapi {
-		font-family: var(--font-sans);
+		font-family: var(--w-font-sans);
 	}
 
 	.loading, .error {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 	}
 	.error { color: #d1242f; }
 
@@ -380,14 +380,14 @@ function responseColor(code: string): string {
 		display: inline-block;
 		padding: 2px 8px;
 		border-radius: 12px;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
+		background: var(--w-bg-secondary);
+		border: 1px solid var(--w-border);
 		font-size: 12px;
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		margin-bottom: 12px;
 	}
 	.spec-description {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 8px 0 0;
 		line-height: 1.6;
 	}
@@ -401,7 +401,7 @@ function responseColor(code: string): string {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 0 0 8px;
 	}
 	.server-list {
@@ -414,7 +414,7 @@ function responseColor(code: string): string {
 		margin: 4px 0;
 	}
 	.server-url {
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 13px;
 	}
 
@@ -427,17 +427,17 @@ function responseColor(code: string): string {
 		font-weight: 600;
 		margin: 0 0 4px;
 		padding-bottom: 8px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--w-border);
 	}
 	.tag-description {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 14px;
 		margin: 4px 0 12px;
 	}
 
 	/* Operations */
 	.operation {
-		border: 1px solid var(--color-border);
+		border: 1px solid var(--w-border);
 		border-radius: 6px;
 		margin-bottom: 8px;
 		overflow: hidden;
@@ -448,40 +448,40 @@ function responseColor(code: string): string {
 		align-items: center;
 		gap: 10px;
 		padding: 10px 12px;
-		background: var(--color-bg-secondary);
+		background: var(--w-bg-secondary);
 		border: none;
 		cursor: pointer;
 		text-align: left;
 		font-size: 14px;
-		color: var(--color-text);
+		color: var(--w-text);
 	}
 	.op-header:hover {
-		background: var(--color-border);
+		background: var(--w-border);
 	}
 	.op-path {
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 13px;
 		font-weight: 500;
 	}
 	.op-summary {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 13px;
 		flex: 1;
 	}
 	.toggle-icon {
 		margin-left: auto;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 10px;
 		flex-shrink: 0;
 	}
 	.op-body {
 		padding: 16px;
-		border-top: 1px solid var(--color-border);
-		background: var(--color-bg);
+		border-top: 1px solid var(--w-border);
+		background: var(--w-bg);
 	}
 	.op-description {
 		font-size: 14px;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 0 0 12px;
 		line-height: 1.6;
 	}
@@ -493,7 +493,7 @@ function responseColor(code: string): string {
 		border-radius: 4px;
 		font-size: 11px;
 		font-weight: 700;
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		flex-shrink: 0;
 		min-width: 56px;
 		text-align: center;
@@ -504,8 +504,8 @@ function responseColor(code: string): string {
 	.method-patch  { background: #ede0ff; color: #5c2d9a; }
 	.method-delete { background: #ffd0d0; color: #9a2323; }
 	.method-head, .method-options, .method-trace {
-		background: var(--color-bg-secondary);
-		color: var(--color-text-secondary);
+		background: var(--w-bg-secondary);
+		color: var(--w-text-secondary);
 	}
 
 	/* Parameters / responses table */
@@ -514,7 +514,7 @@ function responseColor(code: string): string {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 16px 0 8px;
 	}
 	.params-table {
@@ -526,14 +526,14 @@ function responseColor(code: string): string {
 	.params-table th {
 		text-align: left;
 		padding: 6px 8px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--w-border);
 		font-weight: 500;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		font-size: 12px;
 	}
 	.params-table td {
 		padding: 6px 8px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--w-border);
 		vertical-align: top;
 	}
 	.params-table tr:last-child td {
@@ -544,15 +544,15 @@ function responseColor(code: string): string {
 		display: inline-block;
 		padding: 1px 6px;
 		border-radius: 3px;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
+		background: var(--w-bg-secondary);
+		border: 1px solid var(--w-border);
 		font-size: 11px;
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 	}
 	.type-label {
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 12px;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 	}
 
 	/* Status codes */
@@ -560,7 +560,7 @@ function responseColor(code: string): string {
 		display: inline-block;
 		padding: 1px 6px;
 		border-radius: 3px;
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 12px;
 		font-weight: 600;
 	}
@@ -572,17 +572,17 @@ function responseColor(code: string): string {
 	/* Media type label */
 	.media-type-label {
 		font-size: 12px;
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 		margin: 8px 0 4px;
 	}
 
 	/* Schema preview */
 	.schema-preview {
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
+		background: var(--w-bg-secondary);
+		border: 1px solid var(--w-border);
 		border-radius: 4px;
 		padding: 12px;
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 12px;
 		overflow-x: auto;
 		white-space: pre;
@@ -594,13 +594,13 @@ function responseColor(code: string): string {
 		margin-bottom: 32px;
 	}
 	.schema-item {
-		border: 1px solid var(--color-border);
+		border: 1px solid var(--w-border);
 		border-radius: 6px;
 		margin-bottom: 8px;
 		overflow: hidden;
 	}
 	.schema-name {
-		font-family: var(--font-mono);
+		font-family: var(--w-font-mono);
 		font-size: 14px;
 		font-weight: 600;
 	}

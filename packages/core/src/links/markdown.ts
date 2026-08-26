@@ -4,6 +4,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { type DocsRoot, nodeIdFor, rootForPath } from "../config.js";
+import { type RepoMap, parseGitHubBlobUrl } from "../repos.js";
 import type { LinkRef, WeftEdge } from "../types.js";
 
 interface MdLink {
@@ -30,25 +31,22 @@ function toPosix(path: string): string {
  * Extract graph edges from Markdown content.
  * A link is a graph edge if it targets a file within any configured docs root —
  * a link that leaves its own root but lands in another project's root becomes a
- * cross-project edge rather than being dropped.
+ * cross-project edge rather than being dropped. A GitHub blob URL into a repo
+ * the `repos` map knows resolves against that checkout the same way, so the
+ * same Markdown works on GitHub and in weft; unmapped URLs stay external links.
  */
 export function extractMarkdownLinks(
 	content: string,
 	filePath: string,
-	roots: DocsRoot[]
+	roots: DocsRoot[],
+	repos?: RepoMap
 ): WeftEdge[] {
 	const tree = unified().use(remarkParse).parse(content);
 	const links: MdLink[] = [];
 
 	visit(tree, "link", (node: Link) => {
-		// Skip external links and anchors-only
-		if (
-			node.url.startsWith("http://") ||
-			node.url.startsWith("https://") ||
-			node.url.startsWith("#")
-		) {
-			return;
-		}
+		// Skip anchor-only links
+		if (node.url.startsWith("#")) return;
 		const label = node.children
 			.map((c) => ("value" in c ? (c.value as string) : ""))
 			.join("")
@@ -64,16 +62,33 @@ export function extractMarkdownLinks(
 	const fromNode = nodeIdFor(sourceRoot, relative(sourceRoot.absDir, filePath));
 
 	for (const link of links) {
-		const [pathPart, anchor] = link.url.split("#");
-		if (!pathPart) continue;
+		let absTarget: string;
+		let anchor: string | undefined;
+		let resolvedFrom: string | undefined;
 
-		// A path still holding template syntax has not been resolved yet — the
-		// renderer decides what it points at. Recording an edge to the literal
-		// text would invent a node that never exists and report correct source
-		// as broken.
-		if (TEMPLATE_SYNTAX.test(pathPart)) continue;
+		if (link.url.startsWith("http://") || link.url.startsWith("https://")) {
+			const blob = parseGitHubBlobUrl(link.url);
+			const checkout = blob && repos?.get(blob.repo);
+			// Any other URL — or a blob URL into a repo with no mapped checkout —
+			// is an ordinary external link, not an edge.
+			if (!blob || !checkout) continue;
+			absTarget = resolve(checkout, blob.path);
+			anchor = blob.anchor?.slice(1);
+			resolvedFrom = link.url;
+		} else {
+			const [pathPart, fragment] = link.url.split("#");
+			if (!pathPart) continue;
 
-		const absTarget = resolve(fileDir, pathPart);
+			// A path still holding template syntax has not been resolved yet — the
+			// renderer decides what it points at. Recording an edge to the literal
+			// text would invent a node that never exists and report correct source
+			// as broken.
+			if (TEMPLATE_SYNTAX.test(pathPart)) continue;
+
+			absTarget = resolve(fileDir, pathPart);
+			anchor = fragment;
+		}
+
 		const targetRoot = rootForPath(roots, absTarget);
 
 		// Only treat as graph edge if the target lands inside a configured docs root
@@ -88,6 +103,7 @@ export function extractMarkdownLinks(
 			to,
 			type: "references",
 			label: link.label || undefined,
+			...(resolvedFrom ? { resolvedFrom } : {}),
 		});
 	}
 

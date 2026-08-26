@@ -96,6 +96,43 @@ describe("computeInputsHash", () => {
 		expect(await computeInputsHash(config)).not.toBe(before);
 	});
 
+	it("changes when weft.config.local.yaml changes", async () => {
+		const dir = copyDocsFixture();
+		const config = fixtureConfig({ rootDir: dir });
+		const before = await computeInputsHash(config);
+
+		// The local overlay only carries `repos`, but a changed `repos` re-points
+		// every GitHub blob URL edge — it is as much a graph input as the
+		// committed config.
+		writeFileSync(resolve(dir, "weft.config.local.yaml"), "repos:\n  acme/docs: ../docs\n");
+
+		expect(await computeInputsHash(config)).not.toBe(before);
+	});
+
+	it("covers a file whose extension the project opted in via `extensions` config", async () => {
+		const dir = copyDocsFixture();
+		const config = fixtureConfig({ rootDir: dir, extensions: { ".adoc": "markdown" } });
+		const before = await computeInputsHash(config);
+
+		writeFileSync(resolve(dir, "docs", "extra.adoc"), "# Extra\n");
+
+		// The baseline globs what the indexer globs — including configured
+		// extensions. A static default list here would miss this file.
+		expect(await computeInputsHash(config)).not.toBe(before);
+	});
+
+	it("ignores a file whose extension is not indexed", async () => {
+		const dir = copyDocsFixture();
+		const config = fixtureConfig({ rootDir: dir });
+		const before = await computeInputsHash(config);
+
+		writeFileSync(resolve(dir, "docs", "extra.adoc"), "# Extra\n");
+
+		// Without the `extensions` opt-in the indexer never sees this file, so
+		// the baseline must not either.
+		expect(await computeInputsHash(config)).toBe(before);
+	});
+
 	it("changes when an artifact is added", async () => {
 		const dir = copyDocsFixture();
 		const config = fixtureConfig({ rootDir: dir, artifacts: ["**/*.pdf"] });

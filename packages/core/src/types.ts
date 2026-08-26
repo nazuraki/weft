@@ -2,17 +2,36 @@
 export interface WeftProject {
 	/** Display name, shown as a group header in the left-hand nav. */
 	name: string;
-	/** Directory to scan for this project's documents, relative to project root. */
+	/**
+	 * Directory to scan for this project's documents. Relative to the project
+	 * root, or — when `repo` is set — to that repo's mapped checkout.
+	 */
 	docsDir: string;
 	/** Id/URL namespace for this project's documents. Defaults to a kebab-cased `name`. */
 	slug?: string;
+	/**
+	 * Repo identity (`org/repo`) whose checkout holds this project's docs. The
+	 * identity must appear in the `repos` map; where the checkout lives is the
+	 * map's business, so the committed config never embeds a machine's layout.
+	 */
+	repo?: string;
+	/**
+	 * Write this project's manifest into its own checkout even when the checkout
+	 * lives outside the project root. Off by default, because `weft index`
+	 * dirtying the git status of a repo it does not own is a surprise; opt in
+	 * for a co-owned repo that wants its manifest alongside its docs.
+	 */
+	manifestInRepo?: boolean;
 }
 
 /** A project as recorded in a manifest — always has its slug resolved. */
 export interface WeftProjectRef {
 	name: string;
 	slug: string;
+	/** Relative to the project root, or to `repo`'s checkout when `repo` is set. */
 	docsDir: string;
+	/** Repo identity (`org/repo`) the docs live in, for roots outside the project's own repo. */
+	repo?: string;
 }
 
 export interface WeftConfig {
@@ -25,6 +44,20 @@ export interface WeftConfig {
 	 * project slug (`alpha/api.md`) and `docsDir` is ignored.
 	 */
 	projects?: WeftProject[];
+	/**
+	 * Local checkouts of other repos, keyed by repo identity (`org/repo`).
+	 *
+	 * The map does two jobs: a `projects` entry may name a `repo` instead of
+	 * embedding a relative path, and a GitHub blob URL to a mapped repo resolves
+	 * against its checkout — becoming a graph edge when the file falls inside a
+	 * configured docs root.
+	 *
+	 * Values are paths — relative to the project root, absolute, or `~`-prefixed.
+	 * Because they describe one machine's layout, they belong in
+	 * `weft.config.local.yaml` (gitignored) rather than the committed config;
+	 * local entries override committed ones per identity.
+	 */
+	repos?: Record<string, string>;
 	/** Default theme when no user preference is saved. Falls back to system preference if unset. */
 	defaultTheme?: "light" | "dark";
 	/** Site name used in og:site_name and title fallbacks. */
@@ -56,6 +89,49 @@ export interface WeftConfig {
 	 * instead.
 	 */
 	artifacts?: string[];
+	/**
+	 * Extra file extensions to index, beyond the built-in defaults, mapped to
+	 * the doc type each should parse as. Keys carry the leading dot (`.qmd`),
+	 * matching `EXTENSION_MAP`'s own key style.
+	 *
+	 * Additive only: a key already known to `EXTENSION_MAP` with a *different*
+	 * value is rejected at load time, since silently remapping a built-in
+	 * extension would change how every already-indexed file of that type
+	 * parses. A key that agrees with its built-in mapping (`.json: openapi`) is
+	 * allowed — it only opts an unindexed-by-default type into scanning.
+	 */
+	extensions?: Record<string, "markdown" | "openapi">;
+	/**
+	 * Global defaults for `includes` edges. Each option can be overridden per
+	 * edge in the sidecar that declares it. Resolved values are stamped onto the
+	 * edges at build time, so the manifest is self-contained.
+	 */
+	includes?: IncludeDefaults;
+}
+
+/**
+ * How an included section's heading levels relate to the document they land in.
+ *
+ * `auto` demotes the included headings beneath the heading level at the point
+ * of inclusion, so the composed document reads as one outline. `none` preserves
+ * the source levels, for sources already authored at the right depth — an FAQ
+ * whose answers are all written as `##` sections, say.
+ */
+export type IncludeHeadingShift = "auto" | "none";
+
+/**
+ * Where included content counts for search and navigation.
+ *
+ * `source` attributes it only to the node it came from, so a search never
+ * returns duplicate hits. `inline` also attributes it to the including
+ * document — a reader searching the FAQ finds the FAQ.
+ */
+export type IncludeContributes = "source" | "inline";
+
+/** Global defaults for include edges, overridable per edge in the sidecar. */
+export interface IncludeDefaults {
+	headingShift?: IncludeHeadingShift;
+	contributes?: IncludeContributes;
 }
 
 /** How serious a diagnostic is. Only "error" fails `weft check`. */
@@ -200,6 +276,18 @@ export interface WeftEdge {
 	 * link can declare them — an inline Markdown link has nowhere to put them.
 	 */
 	asserts?: Assertions;
+	/**
+	 * On an `includes` edge: how the included headings are levelled into the
+	 * including document. Stamped from config defaults at build time, so a
+	 * manifest consumer never has to know what the defaults were.
+	 */
+	headingShift?: IncludeHeadingShift;
+	/**
+	 * On an `includes` edge: whether the included content is searchable only
+	 * under its source node or also under the including document. Stamped from
+	 * config defaults at build time, like `headingShift`.
+	 */
+	contributes?: IncludeContributes;
 	/**
 	 * On a `derives-from` edge: the source's content hash at the moment the
 	 * artifact was generated. An artifact is stale when this no longer equals the

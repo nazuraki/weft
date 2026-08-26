@@ -7,6 +7,8 @@ import {
 	extractTitle,
 	getDocType,
 	isIndexedPath,
+	resolveExtensionMap,
+	resolveIndexedExtensions,
 } from "./anchors/index.js";
 import { extractMarkdownDescription } from "./anchors/markdown.js";
 import { type DocsRoot, isNamespaced, nodeIdFor, projectRefs, resolveDocsRoots } from "./config.js";
@@ -15,9 +17,11 @@ import { type LoadedContribution, applyContributions, loadContributions } from "
 import { computeInputsHash } from "./freshness.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { lastCommitDates } from "./git.js";
+import { applyIncludeDefaults } from "./includes.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
+import { resolveRepos } from "./repos.js";
 import type {
 	Manifest,
 	ManifestBuild,
@@ -28,7 +32,7 @@ import type {
 	WeftNode,
 } from "./types.js";
 
-export { INDEXED_EXTENSIONS, isIndexedPath };
+export { INDEXED_EXTENSIONS, isIndexedPath, resolveIndexedExtensions };
 
 /**
  * Manifest schema version.
@@ -54,9 +58,12 @@ export async function buildRootGraph(
 	roots: DocsRoot[]
 ): Promise<RootGraph> {
 	const docsDir = root.absDir;
+	const indexedExtensions = resolveIndexedExtensions(config);
+	const extensionMap = resolveExtensionMap(config.extensions);
+	const repoMap = resolveRepos(config.repos, config.rootDir);
 
 	// Find all doc files
-	const files = await glob(`**/*.{${INDEXED_EXTENSIONS.join(",")}}`, {
+	const files = await glob(`**/*.{${indexedExtensions.join(",")}}`, {
 		cwd: docsDir,
 		ignore: config.ignore,
 		nodir: true,
@@ -78,7 +85,7 @@ export async function buildRootGraph(
 
 	for (const file of files) {
 		const absPath = resolve(docsDir, file);
-		const docType = getDocType(file);
+		const docType = getDocType(file, extensionMap);
 		if (!docType) continue;
 
 		const raw = readFileSync(absPath, "utf-8");
@@ -114,7 +121,7 @@ export async function buildRootGraph(
 
 		// Extract links from markdown files
 		if (docType === "markdown") {
-			edges.push(...extractMarkdownLinks(body, absPath, roots));
+			edges.push(...extractMarkdownLinks(body, absPath, roots, repoMap));
 		}
 	}
 
@@ -180,7 +187,11 @@ async function findArtifacts(
  */
 function normalizeDocOrderEntry(entry: string, roots: DocsRoot[]): string {
 	const path = entry.replace(/\\/g, "/").replace(/^\.\//, "");
-	const byDir = [...roots]
+	// A repo-backed root's `dir` is relative to its checkout, not the project
+	// root, so matching it here would collide with a sibling root that really
+	// does live at that path. Order a repo-backed root's docs by node id instead.
+	const byDir = roots
+		.filter((root) => root.repo === undefined)
 		.sort((a, b) => b.dir.length - a.dir.length)
 		.find((root) => root.dir && path.startsWith(`${root.dir}/`));
 	return byDir ? nodeIdFor(byDir, path.slice(byDir.dir.length + 1)) : path;
@@ -217,8 +228,12 @@ export function mergeGraphs(
 	const merged = applyContributions({ nodes: scanned, edges: scannedEdges }, contributions);
 	let nodes: WeftNode[] = merged.nodes;
 	// After contributions, so a node the build declared can be what a published
-	// link resolves to.
-	const edges: WeftEdge[] = resolvePublishedLinks(merged.nodes, merged.edges);
+	// link resolves to. Include defaults are stamped last, over the full edge
+	// set, so a contributed include edge resolves the same way a sidecar's does.
+	const edges: WeftEdge[] = applyIncludeDefaults(
+		resolvePublishedLinks(merged.nodes, merged.edges),
+		config.includes
+	);
 
 	nodes.sort((a, b) => a.id.localeCompare(b.id));
 

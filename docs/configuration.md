@@ -31,6 +31,7 @@ The file is validated at load time: wrong types and bad enum values fail with th
 |--------|------|---------|-------------|
 | `docsDir` | `string` | `"docs"` | Directory to scan for documents, relative to project root. Ignored when `projects` is set |
 | `projects` | `WeftProject[]` | — | Multiple docs roots, one per product — see [Multiple Projects](#multiple-projects) |
+| `repos` | `Record<string, string>` | — | Local checkouts of other repos, keyed by `org/repo` — see [Multiple Repositories](#multiple-repositories) |
 | `entryPoint` | `string` | `"docs/README.md"` | Default document opened when no path is specified |
 | `siteTitle` | `string` | — | Site name used in `og:site_name` and page title (`Doc — Site`) |
 | `siteUrl` | `string` | — | Canonical base URL (e.g. `https://docs.example.com`). Required for absolute `og:image` URLs |
@@ -43,12 +44,36 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `contributions` | `string[]` | — | Contribution files written by an external build — see [External Tool Integration](#external-tool-integration) |
 | `artifacts` | `string[]` | — | Generated outputs to register as nodes, as globs relative to each docs root — see [Generated Artifacts](#generated-artifacts) |
 | `rules` | `Record<string, severity>` | — | Per-rule severity for the validation stage — see [Validation](#validation) |
+| `includes` | `{ headingShift?, contributes? }` | see [Composed Documents](#composed-documents-include-edges) | Global defaults for include edges, overridable per edge |
+| `extensions` | `Record<string, "markdown" \| "openapi">` | — | Extra file extensions to index — see [Extensions](#extensions) |
 
 ### Strict Ordering
 
 `docOrderStrict` narrows the left-hand nav, not the graph. A document left out of `docOrder` is marked `hiddenFromNav` in the manifest and skipped by the tree, but it remains a full node: still indexed for search, still reachable by link or URL, and still a valid endpoint for edges pointing at it.
 
 This matters because the two are not interchangeable. Removing those documents from the manifest would leave every edge touching one of them pointing at nothing, so a link from a listed document to an unlisted one would read as broken — including to the validation rules that check whether edges resolve.
+
+---
+
+## Extensions
+
+Weft indexes `.md`, `.markdown`, `.yaml` and `.yml` by default. `extensions` maps additional file extensions to one of Weft's two doc types, so a project can index more without changing what ships by default:
+
+```yaml
+extensions:
+  .qmd: markdown
+```
+
+A `.qmd` file is now scanned, parsed and linked exactly like a `.md` file — same anchor extraction, same frontmatter handling.
+
+`getDocType` has always known how to parse `.json` as OpenAPI; it simply isn't scanned for by default (see [below](#rules) for why). A project keeping a JSON OpenAPI spec in its docs opts in the same way:
+
+```yaml
+extensions:
+  .json: openapi
+```
+
+Additive only: `extensions` can add a new extension, or opt in one `EXTENSION_MAP` already knows how to parse (like `.json` above), but it cannot remap an extension Weft already indexes by default. `extensions: { .yaml: markdown }` would silently change how every existing `.yaml` in the project parses — its anchors, and every link that resolves against them — so it is rejected at load time, naming the extension and its built-in mapping.
 
 ---
 
@@ -176,6 +201,7 @@ Run `weft analyze --list-rules` to see the available rule ids and their defaults
 | `artifact-source-unrecorded` | `info` | A `derives-from` edge records no source hash, so staleness cannot be checked |
 | `node-duplicate` | `info` | Several documents hold identical content at different paths |
 | `node-diverged` | `warn` | Documents that once held identical content no longer match |
+| `include-cycle` | `error` | Documents include each other in a cycle, so no composed form of them exists |
 | `validator-error` | `error` | A rule threw while running |
 
 A missing document and a missing anchor are separate rules because they usually have different causes and different fixes: the first means the path is wrong or the document was never written, the second means the section moved or was renamed. When a heading was reworded rather than deleted, `edge-anchor-missing` names the anchor it most likely became.
@@ -190,7 +216,7 @@ A missing document and a missing anchor are separate rules because they usually 
 
 It stays `edge-target-missing` at the same severity — the link does need fixing either way — and the new id is also in `data.renamedTo` for `--json` consumers. A destination that has since been deleted is not suggested, since pointing the link at it would only break it differently.
 
-Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml` — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
+Links to files Weft does not index — images, PDFs, anything outside `.md`, `.markdown`, `.yaml`, `.yml`, and whatever [`extensions`](#extensions) added — are not checked. They were never going to become nodes, so reporting them would bury the real breakage.
 
 > **Using a renderer?** Links whose paths still hold template syntax produce no edges at all, so they cannot be reported as broken — see [Templated Links](#templated-links). If your build resolves paths in a form Weft cannot recognise as a placeholder, a [contribution file](#external-tool-integration) can declare the resolved edges instead.
 
@@ -261,8 +287,10 @@ projects:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Display name, shown as a group header in the left-hand nav |
-| `docsDir` | yes | Directory to scan for this project's documents, relative to project root |
+| `docsDir` | yes | Directory to scan for this project's documents, relative to project root — or to the mapped checkout when `repo` is set |
 | `slug` | no | Id/URL namespace. Defaults to a kebab-cased `name` (`"Design System"` → `design-system`) |
+| `repo` | no | Repo identity (`org/repo`) whose checkout holds this project's docs — see [Multiple Repositories](#multiple-repositories) |
+| `manifestInRepo` | no | Write this project's manifest into its own checkout even when it lives outside the project root. Default `false` |
 
 ### Node IDs
 
@@ -301,7 +329,58 @@ docOrder:
   - alpha/features.md
 ```
 
-Ordering is global, so `docOrder` can interleave documents from different products.
+Ordering is global, so `docOrder` can interleave documents from different products. A repo-backed project's documents are ordered by namespaced ID only — its `docsDir` is relative to another checkout, so a project-root-relative path cannot name them.
+
+---
+
+## Multiple Repositories
+
+A docs root does not have to live in the repo weft runs from. A `projects` entry may name a `repo` — an `org/repo` identity — and the `repos` map says where that repo is checked out on this machine:
+
+```yaml
+# weft.config.yaml (committed)
+repos:
+  acme/alpha: ../alpha
+
+projects:
+  - name: Meta
+    docsDir: docs
+  - name: Alpha
+    repo: acme/alpha
+    docsDir: docs        # relative to the mapped checkout
+```
+
+Everything then works as in any multi-project setup: nodes from every repo land in one namespaced graph, links crossing repos resolve to edges, and each root's git history comes from its own repository, so every node carries its own repo's dates.
+
+`repos` values are paths — relative to the project root, absolute, or `~`-prefixed.
+
+### Local Overrides
+
+Where a checkout lives is one machine's business, so the mapping belongs in `weft.config.local.yaml`, which should be gitignored:
+
+```yaml
+# weft.config.local.yaml (gitignored)
+repos:
+  acme/alpha: ~/src/alpha
+```
+
+Local entries override committed ones per identity. The local file may set **only** `repos` — any other option there is an error, so committed and local config cannot quietly diverge. A project naming a `repo` that no map supplies fails at load with an error pointing at the local file.
+
+### GitHub Blob URLs
+
+A link to `https://github.com/acme/alpha/blob/main/docs/api.md` in any indexed document normally stays an external link. With `acme/alpha` mapped, the URL resolves against the checkout, and when the file falls inside a configured docs root it becomes a normal graph edge — same node, same validation, same sidebar presence as a relative link. The same Markdown is fully functional on GitHub *and* in weft.
+
+```markdown
+See the [Alpha API](https://github.com/acme/alpha/blob/main/docs/api.md#endpoints).
+```
+
+The edge records the URL as written in `resolvedFrom`. Any `blob/<ref>/` segment is accepted — weft serves the working tree, so which ref the URL claims does not affect resolution. A URL into an unmapped repo, a non-`blob` URL (`tree/`, issues, other hosts), or a path landing outside every docs root stays an ordinary external link. Nothing is ever fetched over the network.
+
+### Manifest Placement
+
+`weft index` never writes into a checkout it does not own. A root living outside the project root gets its per-project manifest under the meta repo instead — `.weft/projects/<slug>/manifest.json` — and `.weft/projects.json` records where each manifest actually is. When the single implicit `docsDir` points outside the project root, the merged manifest likewise lands under the project root's `.weft/` rather than in the external tree.
+
+Set `manifestInRepo: true` on a project to opt a co-owned checkout back into `<docsDir>/.weft/manifest.json` alongside its docs.
 
 ---
 
@@ -364,6 +443,8 @@ links:
 | `label` | no | Human-readable label for the edge, shown in linked-items sidebar |
 | `pending` | no | The target is known not to exist yet — see [Pending References](#pending-references) |
 | `asserts` | no | Claims this link makes about its target — see [Assertions](#assertions) |
+| `headingShift` | no | On an `includes` edge: `auto` (default) or `none` — see [Composed Documents](#composed-documents-include-edges) |
+| `contributes` | no | On an `includes` edge: `source` (default) or `inline` — see [Composed Documents](#composed-documents-include-edges) |
 
 ### Edge Types
 
@@ -377,6 +458,48 @@ Any string is valid as an edge type. Conventional types:
 | `see-also` | Related reading, no formal dependency |
 | `annotates` | This doc adds context to a specific part of the target |
 | `derives-from` | This was generated from the target — see [Generated Artifacts](#generated-artifacts) |
+| `includes` | This doc renders the target (or one section of it) inline — see [Composed Documents](#composed-documents-include-edges) |
+
+---
+
+## Composed Documents (include edges)
+
+A document can be composed from sections of others: an FAQ whose every answer lives in the document that owns it, or an org-level overview assembled from the architecture summaries of several repositories. Instead of copying content in — and watching the copies drift — the composing document links to its sources as usual, and a sidecar marks which of those links are includes:
+
+```yaml
+# faq.md.weft
+links:
+  - target: runbook.md#deploys
+    type: includes
+  - target: pricing.md#how-billing-works
+    type: includes
+```
+
+The document stays a plain link list on GitHub, where it renders as exactly that. In Weft's UI each include link that stands alone as a block — the sole content of a paragraph or list item — expands inline at render time: the target's anchor range renders in place, inside a visibly attributed frame linking back to the source. A link woven into a sentence never expands.
+
+**Anchor ranges.** `target: doc.md#some-heading` includes from that heading to the next heading of the same or shallower level. A target with no anchor includes the whole document.
+
+**Heading levels and search attribution** have global defaults with a per-edge override:
+
+```yaml
+# weft.config.yaml
+includes:
+  headingShift: auto    # auto | none
+  contributes: source   # source | inline
+```
+
+| Option | Values | Meaning |
+|--------|--------|---------|
+| `headingShift` | `auto` (default) | Included headings demote beneath the heading level at the point of inclusion, so the composed page reads as one outline |
+| | `none` | Source levels are preserved — for sources already authored at the right depth |
+| `contributes` | `source` (default) | Included content is searchable only under its source node, so search never returns duplicate hits |
+| | `inline` | Also attributed to the including document. Declared and recorded on the edge; search does not honour it yet |
+
+Resolved values are stamped onto each `includes` edge at build time, so a manifest consumer never needs the config.
+
+**Cycles.** The [`include-cycle`](#rules) rule (`error`) reports documents that include each other, at document granularity, once per cycle. The renderer keeps its own independent visited set and depth cap, so a manifest that predates the rule cannot hang the page — the cycle point renders as an ordinary link with a notice.
+
+**Drift detection for free.** An include edge is a sidecar link, so it can carry [`asserts`](#assertions): assert `lineCount` or `modified` on the included section's document and `weft check` reports when a source changed after the composition was last reviewed.
 
 ---
 
@@ -408,7 +531,7 @@ Both read only what reached the manifest, so [`ignore`](#build-output) already a
 
 A documentation set that publishes ships outputs built from its sources, usually PDFs, and those are the copies that reach external readers. They are also the copies nobody looks at again after building them, so an output that has fallen behind its source goes unnoticed by everyone except the audience.
 
-Weft indexes `.md`, `.markdown`, `.yaml` and `.yml`. A PDF is none of those, so it is not a node and an edge has nothing to point at. Register outputs explicitly:
+Weft indexes `.md`, `.markdown`, `.yaml` and `.yml` (plus whatever [`extensions`](#extensions) added). A PDF is none of those, so it is not a node and an edge has nothing to point at. Register outputs explicitly:
 
 ```yaml
 artifacts:

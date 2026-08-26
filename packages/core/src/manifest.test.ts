@@ -256,6 +256,51 @@ describe("mergeGraphs (freshness)", () => {
 	});
 });
 
+describe("buildManifest (includes)", () => {
+	const tempDirs: string[] = [];
+
+	afterEach(() => {
+		for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	function includeFixture(): string {
+		const dir = mkdtempSync(resolve(tmpdir(), "weft-includes-"));
+		tempDirs.push(dir);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(dir, "docs"), { recursive: true });
+		writeFileSync(
+			resolve(dir, "docs/README.md.weft"),
+			["links:", "  - target: architecture.md#overview", "    type: includes"].join("\n")
+		);
+		return dir;
+	}
+
+	it("stamps resolved defaults onto an includes edge", async () => {
+		const manifest = await buildManifest(fixtureConfig({ rootDir: includeFixture() }));
+		const edge = manifest.edges.find((e) => e.type === "includes");
+
+		expect(edge?.headingShift).toBe("auto");
+		expect(edge?.contributes).toBe("source");
+	});
+
+	it("stamps configured defaults over built-in ones", async () => {
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: includeFixture(), includes: { headingShift: "none" } })
+		);
+		const edge = manifest.edges.find((e) => e.type === "includes");
+
+		expect(edge?.headingShift).toBe("none");
+		expect(edge?.contributes).toBe("source");
+	});
+
+	it("leaves other edge types unstamped", async () => {
+		const manifest = await buildManifest(fixtureConfig({ rootDir: includeFixture() }));
+
+		for (const edge of manifest.edges.filter((e) => e.type !== "includes")) {
+			expect("headingShift" in edge).toBe(false);
+		}
+	});
+});
+
 describe("buildManifest (artifacts)", () => {
 	const ARTIFACTS_DIR = resolve(FIXTURES_DIR, "artifacts");
 
@@ -693,5 +738,71 @@ describe("splitManifest", () => {
 		// The cross-product edge lives with its source, not its target.
 		const alpha = split.find((p) => p.project.slug === "alpha");
 		expect(alpha?.edges.some((e) => e.to.node.startsWith("beta/"))).toBe(true);
+	});
+});
+
+describe("buildManifest (extensions)", () => {
+	const dirs: string[] = [];
+
+	/** A copy of the docs fixture in a writable temp dir, plus extra files. */
+	function projectWith(files: Record<string, string>): string {
+		const dir = mkdtempSync(resolve(tmpdir(), "weft-extensions-"));
+		dirs.push(dir);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(dir, "docs"), { recursive: true });
+		for (const [name, content] of Object.entries(files)) {
+			writeFileSync(resolve(dir, "docs", name), content);
+		}
+		return dir;
+	}
+
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("indexes a configured extension exactly as a built-in one", async () => {
+		const dir = projectWith({
+			"notes.qmd": "---\ntitle: Field Notes\n---\n\n# Field Notes\n\nBody.\n",
+		});
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: dir, extensions: { ".qmd": "markdown" } })
+		);
+
+		const node = manifest.nodes.find((n) => n.id === "notes.qmd");
+		expect(node?.type).toBe("markdown");
+		expect(node?.title).toBe("Field Notes");
+		expect(node?.anchors.map((a) => a.slug)).toContain("#field-notes");
+	});
+
+	it("leaves an extension neither built in nor configured un-indexed", async () => {
+		const dir = projectWith({ "notes.txt": "plain text, not a doc type Weft knows" });
+		const manifest = await buildManifest(fixtureConfig({ rootDir: dir }));
+
+		expect(manifest.nodes.map((n) => n.id)).not.toContain("notes.txt");
+	});
+
+	it("does not index .json by default", async () => {
+		const dir = projectWith({
+			"spec.json": JSON.stringify({ openapi: "3.0.0", info: { title: "Spec" }, paths: {} }),
+		});
+		const manifest = await buildManifest(fixtureConfig({ rootDir: dir }));
+
+		expect(manifest.nodes.map((n) => n.id)).not.toContain("spec.json");
+	});
+
+	it("indexes .json as openapi when explicitly configured", async () => {
+		const dir = projectWith({
+			"spec.json": JSON.stringify({
+				openapi: "3.0.0",
+				info: { title: "Spec" },
+				paths: { "/users": { get: { operationId: "listUsers" } } },
+			}),
+		});
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: dir, extensions: { ".json": "openapi" } })
+		);
+
+		const node = manifest.nodes.find((n) => n.id === "spec.json");
+		expect(node?.type).toBe("openapi");
+		expect(node?.anchors.map((a) => a.slug)).toContain("#listUsers");
 	});
 });

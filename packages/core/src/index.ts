@@ -21,6 +21,15 @@ export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { checkFreshness, computeInputsHash } from "./freshness.js";
 export { fileHistory, lastCommitDates, parseGitLog } from "./git.js";
+export {
+	CONTRIBUTES_MODES,
+	HEADING_SHIFTS,
+	INCLUDES,
+	INCLUDE_DEFAULTS,
+	applyIncludeDefaults,
+	extractSection,
+} from "./includes.js";
+export type { SectionRange } from "./includes.js";
 export type { FileHistory } from "./git.js";
 export { WeftService } from "./service.js";
 export {
@@ -32,6 +41,8 @@ export {
 } from "./manifest.js";
 export type { RootGraph } from "./manifest.js";
 export { nodeIdToDocPath } from "./node-path.js";
+export { parseGitHubBlobUrl, resolveRepos } from "./repos.js";
+export type { BlobUrl, RepoMap } from "./repos.js";
 export { resolvePublishedLinks } from "./published-links.js";
 export { SearchIndex } from "./search.js";
 export { extractAnchors, extractTitle, getDocType } from "./anchors/index.js";
@@ -50,6 +61,7 @@ export {
 	ASSERT_UNVERIFIABLE,
 	ASSERT_VERSION_MISMATCH,
 	DERIVES_FROM,
+	INCLUDE_CYCLE,
 	NODE_DIVERGED,
 	NODE_DUPLICATE,
 	VALIDATOR_ERROR_RULE,
@@ -58,6 +70,7 @@ export {
 	assertionValidator,
 	defaultRegistry,
 	duplicateValidator,
+	includeValidator,
 	graphHistory,
 	validateManifest,
 } from "./validate/index.js";
@@ -74,6 +87,9 @@ export type {
 export type {
 	Anchor,
 	Assertions,
+	IncludeContributes,
+	IncludeDefaults,
+	IncludeHeadingShift,
 	WeftConfig,
 	WeftNode,
 	WeftEdge,

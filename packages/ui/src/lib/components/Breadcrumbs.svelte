@@ -33,21 +33,21 @@ let { onnavigate }: Props = $props();
 		white-space: nowrap;
 	}
 	.separator {
-		color: var(--color-text-secondary);
+		color: var(--w-text-secondary);
 	}
 	.crumb {
 		background: none;
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		color: var(--color-link);
+		color: var(--w-link);
 		font-size: 13px;
 	}
 	.crumb:hover {
 		text-decoration: underline;
 	}
 	.crumb.current {
-		color: var(--color-text);
+		color: var(--w-text);
 		cursor: default;
 		font-weight: 500;
 	}

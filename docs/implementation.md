@@ -172,7 +172,10 @@ guessing about provenance that was never recorded.
 **`inputsHash`** — a baseline hash of everything the manifest's own nodes cannot
 already tell you changed: the sorted set of indexed file paths across every docs
 root, plus the content of every input that is not itself a node — sidecar `.weft`
-files, contribution files, the config file. Every node already carries a
+files, contribution files, and the config files, including the
+`weft.config.local.yaml` overlay. The indexed path set honours the `extensions`
+config, so a project that opted extra extensions in has those files in the
+baseline too. Every node already carries a
 `contentHash`, so an edited document's content is deliberately left out of this
 hash; re-hashing it here would duplicate what the node already records. Excludes
 `.weft/` itself, the same way the chokidar watcher does, so writing the manifest
@@ -195,7 +198,9 @@ the recorded `build` block:
 Confirming that nothing was edited means reopening and rehashing every document,
 so the result is cached for 2 seconds — long enough that a burst of calls inside
 one agent turn lands within it, short enough that a human edit is visible on the
-next turn rather than the next minute. `rebuild()` invalidates the cache
+next turn rather than the next minute. Concurrent cache misses coalesce onto a
+single re-read, and a check overtaken by a `rebuild()` is returned to its caller
+but never cached over the rebuild's state. `rebuild()` invalidates the cache
 immediately and computes a fresh `build` block; it is the only way the manifest
 refreshes outside `weft serve`'s own file watcher.
 

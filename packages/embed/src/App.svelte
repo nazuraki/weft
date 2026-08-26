@@ -52,23 +52,40 @@ async function load() {
 load();
 </script>
 
+<!--
+	Scoped for the same reason `mountDoc` is: this bundle no longer ships a
+	global reset, so the box model and tokens have to reach the app from its own
+	container rather than from the host's document.
+-->
+<div class="weft-scope weft-app">
 {#if loadError}
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
-	<WeftApp {manifest} {currentNodeId} navigate={(path) => {
-		const nodeId = pathToNode(path.split("#")[0], manifest!.nodes)?.id;
-		if (nodeId) currentNodeId = nodeId;
-	}} />
+	<WeftApp
+		{manifest}
+		{currentNodeId}
+		remarkPlugins={config.remarkPlugins}
+		rehypePlugins={config.rehypePlugins}
+		extendSchema={config.extendSchema}
+		navigate={(path) => {
+			const nodeId = pathToNode(path.split("#")[0], manifest!.nodes)?.id;
+			if (nodeId) currentNodeId = nodeId;
+		}}
+	/>
 {:else}
 	<p class="weft-loading">Loading…</p>
 {/if}
+</div>
 
 <style>
+	.weft-app {
+		height: 100%;
+	}
 	.weft-loading,
 	.weft-load-error {
 		padding: 16px;
-		font-family: var(--font-sans, sans-serif);
-		color: var(--color-text-secondary, #656d76);
+		font-family: var(--w-font-sans, sans-serif);
+		color: var(--w-text-secondary, #656d76);
 	}
 	.weft-load-error {
 		color: #d1242f;
