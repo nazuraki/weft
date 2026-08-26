@@ -322,13 +322,13 @@ export interface SiteConfig {
  * with no way to end up with a graph and no idea how stale it is.
  */
 export interface ManifestBuild {
-	/** When the manifest was built, as an ISO 8601 timestamp with offset. */
+	/** When the manifest was built, as an ISO 8601 UTC timestamp (`toISOString()` form). */
 	builtAt: string;
 	/**
 	 * Baseline hash of the state the manifest was built from: the sorted set
 	 * of indexed file and artifact paths, plus the content of every input
-	 * that is not itself a node — sidecar files, contribution files, the
-	 * config file.
+	 * that is not itself a node — sidecar files, contribution files, and the
+	 * config files (including the machine-local overlay).
 	 *
 	 * Comparing it against a fresh computation catches a node added or
 	 * removed — document or artifact — or a change to one of those non-node

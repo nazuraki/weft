@@ -41,6 +41,16 @@ export class WeftService {
 	private manifest: Manifest | null = null;
 	private searchIndex: SearchIndex;
 	private freshnessCache: { checkedAt: number; result: Freshness } | null = null;
+	/**
+	 * Bumped by every rebuild. A `freshness()` check spans an `await` over a
+	 * full tree re-read, so a rebuild can complete underneath it — clearing
+	 * the cache is not enough, because the in-flight check would then resume
+	 * and write its pre-rebuild answer back. The check records the generation
+	 * it started under and only caches if no rebuild happened in between.
+	 */
+	private freshnessGeneration = 0;
+	/** In-flight check, so concurrent cache misses share one tree re-read. */
+	private freshnessInFlight: { generation: number; promise: Promise<Freshness> } | null = null;
 
 	constructor(config: WeftConfig) {
 		this.config = config;
@@ -145,6 +155,7 @@ export class WeftService {
 			build
 		);
 		this.freshnessCache = null;
+		this.freshnessGeneration++;
 		this.searchIndex.build(this.manifest, (nodeId) => this.resolveNodePath(nodeId));
 		return this.manifest;
 	}
@@ -170,9 +181,35 @@ export class WeftService {
 			return this.freshnessCache.result;
 		}
 
-		const result = await checkFreshness(await this.getManifest(), this.config);
-		this.freshnessCache = { checkedAt: now, result };
-		return result;
+		// Concurrent misses share one re-read — but only within a generation.
+		// A caller arriving after a rebuild must not join a check that started
+		// against the pre-rebuild manifest.
+		const generation = this.freshnessGeneration;
+		if (this.freshnessInFlight?.generation === generation) {
+			return this.freshnessInFlight.promise;
+		}
+
+		const promise = (async () => {
+			try {
+				const result = await checkFreshness(await this.getManifest(), this.config);
+				// A rebuild that completed while this check was reading the tree
+				// makes the answer obsolete before it lands: return it to the
+				// caller who asked, but never cache it over the rebuild's state.
+				if (generation === this.freshnessGeneration) {
+					this.freshnessCache = { checkedAt: now, result };
+				}
+				return result;
+			} finally {
+				// Only one check runs per generation (later callers join it), so
+				// matching the generation is matching this very check — while a
+				// successor started after a rebuild is left alone.
+				if (this.freshnessInFlight?.generation === generation) {
+					this.freshnessInFlight = null;
+				}
+			}
+		})();
+		this.freshnessInFlight = { generation, promise };
+		return promise;
 	}
 
 	/**
