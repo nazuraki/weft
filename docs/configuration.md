@@ -31,6 +31,7 @@ The file is validated at load time: wrong types and bad enum values fail with th
 |--------|------|---------|-------------|
 | `docsDir` | `string` | `"docs"` | Directory to scan for documents, relative to project root. Ignored when `projects` is set |
 | `projects` | `WeftProject[]` | — | Multiple docs roots, one per product — see [Multiple Projects](#multiple-projects) |
+| `repos` | `Record<string, string>` | — | Local checkouts of other repos, keyed by `org/repo` — see [Multiple Repositories](#multiple-repositories) |
 | `entryPoint` | `string` | `"docs/README.md"` | Default document opened when no path is specified |
 | `siteTitle` | `string` | — | Site name used in `og:site_name` and page title (`Doc — Site`) |
 | `siteUrl` | `string` | — | Canonical base URL (e.g. `https://docs.example.com`). Required for absolute `og:image` URLs |
@@ -284,8 +285,10 @@ projects:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Display name, shown as a group header in the left-hand nav |
-| `docsDir` | yes | Directory to scan for this project's documents, relative to project root |
+| `docsDir` | yes | Directory to scan for this project's documents, relative to project root — or to the mapped checkout when `repo` is set |
 | `slug` | no | Id/URL namespace. Defaults to a kebab-cased `name` (`"Design System"` → `design-system`) |
+| `repo` | no | Repo identity (`org/repo`) whose checkout holds this project's docs — see [Multiple Repositories](#multiple-repositories) |
+| `manifestInRepo` | no | Write this project's manifest into its own checkout even when it lives outside the project root. Default `false` |
 
 ### Node IDs
 
@@ -324,7 +327,58 @@ docOrder:
   - alpha/features.md
 ```
 
-Ordering is global, so `docOrder` can interleave documents from different products.
+Ordering is global, so `docOrder` can interleave documents from different products. A repo-backed project's documents are ordered by namespaced ID only — its `docsDir` is relative to another checkout, so a project-root-relative path cannot name them.
+
+---
+
+## Multiple Repositories
+
+A docs root does not have to live in the repo weft runs from. A `projects` entry may name a `repo` — an `org/repo` identity — and the `repos` map says where that repo is checked out on this machine:
+
+```yaml
+# weft.config.yaml (committed)
+repos:
+  acme/alpha: ../alpha
+
+projects:
+  - name: Meta
+    docsDir: docs
+  - name: Alpha
+    repo: acme/alpha
+    docsDir: docs        # relative to the mapped checkout
+```
+
+Everything then works as in any multi-project setup: nodes from every repo land in one namespaced graph, links crossing repos resolve to edges, and each root's git history comes from its own repository, so every node carries its own repo's dates.
+
+`repos` values are paths — relative to the project root, absolute, or `~`-prefixed.
+
+### Local Overrides
+
+Where a checkout lives is one machine's business, so the mapping belongs in `weft.config.local.yaml`, which should be gitignored:
+
+```yaml
+# weft.config.local.yaml (gitignored)
+repos:
+  acme/alpha: ~/src/alpha
+```
+
+Local entries override committed ones per identity. The local file may set **only** `repos` — any other option there is an error, so committed and local config cannot quietly diverge. A project naming a `repo` that no map supplies fails at load with an error pointing at the local file.
+
+### GitHub Blob URLs
+
+A link to `https://github.com/acme/alpha/blob/main/docs/api.md` in any indexed document normally stays an external link. With `acme/alpha` mapped, the URL resolves against the checkout, and when the file falls inside a configured docs root it becomes a normal graph edge — same node, same validation, same sidebar presence as a relative link. The same Markdown is fully functional on GitHub *and* in weft.
+
+```markdown
+See the [Alpha API](https://github.com/acme/alpha/blob/main/docs/api.md#endpoints).
+```
+
+The edge records the URL as written in `resolvedFrom`. Any `blob/<ref>/` segment is accepted — weft serves the working tree, so which ref the URL claims does not affect resolution. A URL into an unmapped repo, a non-`blob` URL (`tree/`, issues, other hosts), or a path landing outside every docs root stays an ordinary external link. Nothing is ever fetched over the network.
+
+### Manifest Placement
+
+`weft index` never writes into a checkout it does not own. A root living outside the project root gets its per-project manifest under the meta repo instead — `.weft/projects/<slug>/manifest.json` — and `.weft/projects.json` records where each manifest actually is. When the single implicit `docsDir` points outside the project root, the merged manifest likewise lands under the project root's `.weft/` rather than in the external tree.
+
+Set `manifestInRepo: true` on a project to opt a co-owned checkout back into `<docsDir>/.weft/manifest.json` alongside its docs.
 
 ---
 
