@@ -263,6 +263,22 @@ describe("fileHistory", () => {
 		expect(blobs.get("handbook.md")?.size).toBeGreaterThan(0);
 	});
 
+	it("dates a renamed file identically at either depth", async () => {
+		// A rename commit names its destination path whether or not git pairs it
+		// with the source, so skipping rename detection must not change a date.
+		const shallow = await fileHistory(repo, "dates");
+		const full = await fileHistory(repo, "full");
+
+		expect(shallow.dates.get("handbook.md")).toBe(full.dates.get("handbook.md"));
+		expect(shallow.dates.get("spec.md")).toBe(full.dates.get("spec.md"));
+	});
+
+	it("reports no renames at dates depth", async () => {
+		const { renames } = await fileHistory(repo, "dates");
+
+		expect(renames.size).toBe(0);
+	});
+
 	it("returns an empty history outside a repository rather than failing", async () => {
 		// A modification date is metadata worth having, never a reason to fail an
 		// index — a docs set unpacked from a tarball still has to build.

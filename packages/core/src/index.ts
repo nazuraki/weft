@@ -30,7 +30,7 @@ export {
 	extractSection,
 } from "./includes.js";
 export type { SectionRange } from "./includes.js";
-export type { FileHistory } from "./git.js";
+export type { FileHistory, HistoryDepth } from "./git.js";
 export { WeftService } from "./service.js";
 export {
 	MANIFEST_VERSION,
@@ -72,6 +72,8 @@ export {
 	duplicateValidator,
 	includeValidator,
 	graphHistory,
+	graphHistoryFrom,
+	registryWantsHistory,
 	validateManifest,
 } from "./validate/index.js";
 export type {
