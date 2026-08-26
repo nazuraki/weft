@@ -14,8 +14,15 @@ interface Props extends RenderOptions {
 	onrendered?: () => void;
 }
 
-let { content, onnavigate, onrendered, remarkPlugins, rehypePlugins, extendSchema }: Props =
-	$props();
+let {
+	content,
+	onnavigate,
+	onrendered,
+	remarkPlugins,
+	rehypePlugins,
+	extendSchema,
+	includes,
+}: Props = $props();
 let htmlContent = $state("");
 let renderError = $state("");
 
@@ -25,7 +32,12 @@ $effect(() => {
 
 async function render(md: string) {
 	try {
-		htmlContent = await renderMarkdown(md, { remarkPlugins, rehypePlugins, extendSchema });
+		htmlContent = await renderMarkdown(md, {
+			remarkPlugins,
+			rehypePlugins,
+			extendSchema,
+			includes,
+		});
 		renderError = "";
 	} catch (e) {
 		// A throwing plugin or a rejected schema would otherwise leave the previous
@@ -215,6 +227,37 @@ function handleClick(e: MouseEvent) {
 	.markdown-body :global(:target) {
 		background: var(--w-accent-subtle);
 		border-radius: 4px;
+	}
+
+	/*
+	 * Included content is visibly attributed: a subtle frame with a margin
+	 * marker linking to the source node, so a reader knows what they are inside
+	 * of and can jump to the origin.
+	 */
+	.markdown-body :global(.weft-include) {
+		margin: 1em 0;
+		padding: 0 16px 4px;
+		border-left: 3px solid var(--w-accent-subtle, var(--w-border));
+		border-radius: 0 6px 6px 0;
+		background: var(--w-bg-secondary);
+	}
+	.markdown-body :global(.weft-include-source) {
+		font-size: 12px;
+		padding: 6px 0 2px;
+		color: var(--w-text-secondary);
+	}
+	.markdown-body :global(.weft-include-source::before) {
+		content: "⇱ included from ";
+	}
+	.markdown-body :global(.weft-include-origin) {
+		color: var(--w-text-secondary);
+		font-family: var(--w-font-mono);
+		font-size: 11px;
+	}
+	.markdown-body :global(.weft-include-notice) {
+		font-size: 12px;
+		color: var(--w-text-secondary);
+		font-style: italic;
 	}
 
 	/* Language chip, drawn from the data attribute the render pass records. */

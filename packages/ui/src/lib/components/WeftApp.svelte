@@ -107,6 +107,7 @@ function handleKeydown(e: KeyboardEvent) {
 				nodeId={currentNode.id}
 				nodeType={currentNode.type}
 				{anchor}
+				edges={manifest.edges}
 				onnavigate={handleNavigate}
 				{remarkPlugins}
 				{rehypePlugins}
