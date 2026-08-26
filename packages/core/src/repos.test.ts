@@ -71,6 +71,8 @@ describe("parseGitHubBlobUrl", () => {
 	});
 
 	it("returns undefined for a malformed percent encoding", () => {
-		expect(parseGitHubBlobUrl("https://github.com/acme/alpha/blob/main/%E0%A4%A.md")).toBeUndefined();
+		expect(
+			parseGitHubBlobUrl("https://github.com/acme/alpha/blob/main/%E0%A4%A.md")
+		).toBeUndefined();
 	});
 });

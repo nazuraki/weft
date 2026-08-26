@@ -9,9 +9,9 @@ import { type LoadedContribution, applyContributions, loadContributions } from "
 import { parseFrontmatter } from "./frontmatter.js";
 import { lastCommitDates } from "./git.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
-import { resolveRepos } from "./repos.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
+import { resolveRepos } from "./repos.js";
 import type {
 	Manifest,
 	ProjectManifest,

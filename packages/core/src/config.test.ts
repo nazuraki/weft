@@ -503,7 +503,9 @@ describe("resolveDocsRoots (repo-backed roots)", () => {
 
 	it("throws when a project names an unmapped repo, pointing at the local config", () => {
 		expect(() =>
-			resolveDocsRoots(config({ projects: [{ name: "Alpha", docsDir: "docs", repo: "acme/alpha" }] }))
+			resolveDocsRoots(
+				config({ projects: [{ name: "Alpha", docsDir: "docs", repo: "acme/alpha" }] })
+			)
 		).toThrow(/weft\.config\.local\.yaml/);
 	});
 

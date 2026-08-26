@@ -9,9 +9,16 @@ const MULTI: DocsRoot[] = [
 		name: "Alpha",
 		slug: "alpha",
 		dir: "products/alpha/docs",
-		absDir: "/project/products/alpha/docs", external: false,
+		absDir: "/project/products/alpha/docs",
+		external: false,
 	},
-	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs", external: false },
+	{
+		name: "Beta",
+		slug: "beta",
+		dir: "products/beta/docs",
+		absDir: "/project/products/beta/docs",
+		external: false,
+	},
 ];
 
 describe("extractSidecarLinks", () => {

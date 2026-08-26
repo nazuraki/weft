@@ -124,7 +124,11 @@ describe("multi-repo indexing", () => {
 
 describe("multi-repo manifest placement", () => {
 	afterEach(() => {
-		for (const dir of [join(meta, ".weft"), join(meta, "docs", ".weft"), join(alpha, "docs", ".weft")]) {
+		for (const dir of [
+			join(meta, ".weft"),
+			join(meta, "docs", ".weft"),
+			join(alpha, "docs", ".weft"),
+		]) {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});

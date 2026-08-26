@@ -13,10 +13,7 @@ export const REPO_IDENTITY = /^[^/\s]+\/[^/\s]+$/;
  * `~` expands to the home directory here rather than being left to the shell,
  * because the value arrives from a YAML file no shell ever touches.
  */
-export function resolveRepos(
-	repos: Record<string, string> | undefined,
-	rootDir: string
-): RepoMap {
+export function resolveRepos(repos: Record<string, string> | undefined, rootDir: string): RepoMap {
 	const map: RepoMap = new Map();
 	for (const [identity, path] of Object.entries(repos ?? {})) {
 		const expanded =
@@ -47,9 +44,10 @@ export interface BlobUrl {
  * ordinary external link.
  */
 export function parseGitHubBlobUrl(url: string): BlobUrl | undefined {
-	const match = /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+\/[^/\s]+)\/blob\/[^/\s]+\/([^#\s]+)(#.+)?$/.exec(
-		url
-	);
+	const match =
+		/^https?:\/\/(?:www\.)?github\.com\/([^/\s]+\/[^/\s]+)\/blob\/[^/\s]+\/([^#\s]+)(#.+)?$/.exec(
+			url
+		);
 	if (!match) return undefined;
 
 	let path: string;
