@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DocsRoot } from "../../config.js";
 import { extractSidecarLinks } from "../sidecar.js";
 
-const SINGLE: DocsRoot[] = [{ slug: "", dir: "docs", absDir: "/project/docs" }];
+const SINGLE: DocsRoot[] = [{ slug: "", dir: "docs", absDir: "/project/docs", external: false }];
 
 const MULTI: DocsRoot[] = [
 	{
@@ -10,8 +10,15 @@ const MULTI: DocsRoot[] = [
 		slug: "alpha",
 		dir: "products/alpha/docs",
 		absDir: "/project/products/alpha/docs",
+		external: false,
 	},
-	{ name: "Beta", slug: "beta", dir: "products/beta/docs", absDir: "/project/products/beta/docs" },
+	{
+		name: "Beta",
+		slug: "beta",
+		dir: "products/beta/docs",
+		absDir: "/project/products/beta/docs",
+		external: false,
+	},
 ];
 
 describe("extractSidecarLinks", () => {

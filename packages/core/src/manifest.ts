@@ -11,6 +11,7 @@ import { lastCommitDates } from "./git.js";
 import { extractMarkdownLinks } from "./links/markdown.js";
 import { extractSidecarLinks } from "./links/sidecar.js";
 import { resolvePublishedLinks } from "./published-links.js";
+import { resolveRepos } from "./repos.js";
 import type {
 	Manifest,
 	ProjectManifest,
@@ -76,6 +77,7 @@ export async function buildRootGraph(
 	const docsDir = root.absDir;
 	const indexedExtensions = resolveIndexedExtensions(config);
 	const extensionMap = resolveExtensionMap(config.extensions);
+	const repoMap = resolveRepos(config.repos, config.rootDir);
 
 	// Find all doc files
 	const files = await glob(`**/*.{${indexedExtensions.join(",")}}`, {
@@ -136,7 +138,7 @@ export async function buildRootGraph(
 
 		// Extract links from markdown files
 		if (docType === "markdown") {
-			edges.push(...extractMarkdownLinks(body, absPath, roots));
+			edges.push(...extractMarkdownLinks(body, absPath, roots, repoMap));
 		}
 	}
 
@@ -202,7 +204,11 @@ async function findArtifacts(
  */
 function normalizeDocOrderEntry(entry: string, roots: DocsRoot[]): string {
 	const path = entry.replace(/\\/g, "/").replace(/^\.\//, "");
-	const byDir = [...roots]
+	// A repo-backed root's `dir` is relative to its checkout, not the project
+	// root, so matching it here would collide with a sibling root that really
+	// does live at that path. Order a repo-backed root's docs by node id instead.
+	const byDir = roots
+		.filter((root) => root.repo === undefined)
 		.sort((a, b) => b.dir.length - a.dir.length)
 		.find((root) => root.dir && path.startsWith(`${root.dir}/`));
 	return byDir ? nodeIdFor(byDir, path.slice(byDir.dir.length + 1)) : path;
