@@ -105,6 +105,7 @@ function handleNavigate(id: string, hash?: string) {
 					nodeId={currentNode.id}
 					nodeType={currentNode.type}
 					{anchor}
+					edges={manifest.edges}
 					onnavigate={handleNavigate}
 					{remarkPlugins}
 					{rehypePlugins}

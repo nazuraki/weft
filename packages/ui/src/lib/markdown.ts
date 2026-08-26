@@ -9,6 +9,7 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { type PluggableList, unified } from "unified";
 import { VFile } from "vfile";
+import { type IncludeOptions, expandIncludes } from "./include-expansion.js";
 import {
 	rehypeCodeLanguage,
 	rehypeDropForgedIds,
@@ -133,6 +134,11 @@ export function buildSchema(): SanitizeSchema {
 	// This renderer's own affordances.
 	allowClass("a", "heading-anchor");
 	allowClass("div", "table-wrap");
+	// Include expansion's attribution frame and degradation notices.
+	allowClass("aside", "weft-include");
+	allowClass("div", "weft-include-source");
+	allowClass("a", "weft-include-origin");
+	allowClass("span", "weft-include-notice");
 
 	// These are allowed on every element by `defaultSchema`, and with no clobber
 	// prefix they reach the DOM as written. Any element with an `id` becomes a
@@ -172,7 +178,7 @@ export function buildSchema(): SanitizeSchema {
 		clobberPrefix: "",
 		attributes: attributes as SanitizeSchema["attributes"],
 		ancestors: ancestors as SanitizeSchema["ancestors"],
-		tagNames: unique([...(schema.tagNames ?? []), ...SVG_TAGS, "figure", "figcaption"]),
+		tagNames: unique([...(schema.tagNames ?? []), ...SVG_TAGS, "figure", "figcaption", "aside"]),
 	};
 }
 
@@ -227,6 +233,12 @@ export interface RenderOptions {
 	 * thing to get wrong.
 	 */
 	extendSchema?: (schema: SanitizeSchema) => SanitizeSchema;
+	/**
+	 * Expand the document's `includes` edges inline. Unset, an include link
+	 * renders as the ordinary link it also is — an embed host that supplies no
+	 * edges loses nothing but the expansion.
+	 */
+	includes?: IncludeOptions;
 }
 
 /**
@@ -264,21 +276,33 @@ export async function renderMarkdown(
 	);
 
 	// Stage 1 — everything a host can reach. Its output is untrusted.
-	const contributed = unified()
-		.use(remarkParse)
-		.use(remarkGfm)
-		.use(options.remarkPlugins ?? [])
-		.use(remarkRehype, { allowDangerousHtml: true })
-		.use(rehypeRaw)
-		.use(options.rehypePlugins ?? []);
+	const untrustedTree = async (source: string): Promise<Root> => {
+		const contributed = unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.use(options.remarkPlugins ?? [])
+			.use(remarkRehype, { allowDangerousHtml: true })
+			.use(rehypeRaw)
+			.use(options.rehypePlugins ?? []);
 
-	// The VFile is threaded through explicitly. `parse()` builds one internally
-	// and discards it, and `run()` without one constructs a fresh empty file — so
-	// splitting the processor silently left `file.value` undefined for every
-	// contributed plugin, and anything reading the source text (position
-	// reporting, lint-style checks, include resolution) saw nothing with no error.
-	const file = new VFile(markdown);
-	const tree = (await contributed.run(contributed.parse(file) as never, file)) as Root;
+		// The VFile is threaded through explicitly. `parse()` builds one internally
+		// and discards it, and `run()` without one constructs a fresh empty file — so
+		// splitting the processor silently left `file.value` undefined for every
+		// contributed plugin, and anything reading the source text (position
+		// reporting, lint-style checks, include resolution) saw nothing with no error.
+		const file = new VFile(source);
+		return (await contributed.run(contributed.parse(file) as never, file)) as Root;
+	};
+
+	const tree = await untrustedTree(markdown);
+
+	// Include expansion closes stage 1: fetched content renders through the same
+	// untrusted chain as the document itself, and everything spliced in still
+	// meets the sanitizer below. Running it here rather than in stage 2 is the
+	// contract — moving it later would put fetched content past the allowlist.
+	if (options.includes) {
+		await expandIncludes(tree, { ...options.includes, renderFragment: untrustedTree });
+	}
 
 	// Stage 2 — first-party, and a *separate processor* on purpose.
 	//

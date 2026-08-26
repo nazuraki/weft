@@ -6,6 +6,7 @@ export {
 	artifactValidator,
 } from "./rules/artifacts.js";
 export { NODE_DIVERGED, NODE_DUPLICATE, duplicateValidator } from "./rules/duplicates.js";
+export { INCLUDE_CYCLE, includeValidator } from "./rules/includes.js";
 export { NO_HISTORY, graphHistory } from "./history.js";
 export {
 	ASSERT_LINE_COUNT_MISMATCH,

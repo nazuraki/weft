@@ -183,6 +183,37 @@ links:
 		expect("sourceHash" in edge).toBe(false);
 	});
 
+	it("carries include options onto an includes edge", () => {
+		const content = `
+links:
+  - target: runbook.md#deploys
+    type: includes
+    headingShift: none
+    contributes: inline
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/faq.md.weft", SINGLE);
+
+		expect(edge.type).toBe("includes");
+		expect(edge.headingShift).toBe("none");
+		expect(edge.contributes).toBe("inline");
+	});
+
+	it("drops an include option it does not recognise", () => {
+		// A typo falls back to the configured default at build time rather than
+		// travelling into the manifest as an unknown mode.
+		const content = `
+links:
+  - target: runbook.md
+    type: includes
+    headingShift: sideways
+    contributes: everything
+`;
+		const [edge] = extractSidecarLinks(content, "/project/docs/faq.md.weft", SINGLE);
+
+		expect("headingShift" in edge).toBe(false);
+		expect("contributes" in edge).toBe(false);
+	});
+
 	it("defaults type to references", () => {
 		const content = `
 links:

@@ -2,21 +2,39 @@
 import type { WeftClient } from "$lib/client.js";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import type { RenderOptions } from "$lib/markdown.js";
+import type { WeftEdge } from "@weft/core/browser";
 import { getContext } from "svelte";
 import MarkdownRenderer from "./MarkdownRenderer.svelte";
 import OpenApiRenderer from "./OpenApiRenderer.svelte";
 
-interface Props extends RenderOptions {
+interface Props extends Omit<RenderOptions, "includes"> {
 	nodeId: string;
 	anchor?: string;
 	nodeType?: "markdown" | "openapi" | "artifact";
+	/** Manifest edges, so the renderer can expand this document's includes. */
+	edges?: WeftEdge[];
 	onnavigate: (nodeId: string, anchor?: string) => void;
 }
 
-let { nodeId, anchor, nodeType, onnavigate, remarkPlugins, rehypePlugins, extendSchema }: Props =
-	$props();
+let {
+	nodeId,
+	anchor,
+	nodeType,
+	edges,
+	onnavigate,
+	remarkPlugins,
+	rehypePlugins,
+	extendSchema,
+}: Props = $props();
 
 const client = getContext<WeftClient>(WEFT_CLIENT_KEY);
+
+// The render pipeline knows nothing of clients or manifests; this is where the
+// two meet. No edges supplied means include links render as the ordinary links
+// they also are.
+let includes = $derived(
+	edges ? { nodeId, edges, fetchDoc: (id: string) => client.fetchDoc(id) } : undefined
+);
 
 let content = $state("");
 let loading = $state(true);
@@ -101,6 +119,7 @@ $effect(() => {
 			{remarkPlugins}
 			{rehypePlugins}
 			{extendSchema}
+			{includes}
 		/>
 	{/if}
 </div>

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import { EXTENSION_MAP } from "./anchors/index.js";
+import { CONTRIBUTES_MODES, HEADING_SHIFTS } from "./includes.js";
 import { REPO_IDENTITY, resolveRepos } from "./repos.js";
 import type { WeftConfig, WeftProjectRef } from "./types.js";
 
@@ -42,7 +43,13 @@ const KNOWN_KEYS = new Set<string>([
 	"repos",
 	"rules",
 	"extensions",
+	"includes",
 ]);
+
+const INCLUDE_OPTION_VALUES: Record<string, readonly string[]> = {
+	headingShift: HEADING_SHIFTS,
+	contributes: CONTRIBUTES_MODES,
+};
 
 const DOC_TYPES = ["markdown", "openapi"];
 
@@ -113,6 +120,27 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 				throw new Error(
 					`weft config: "extensions[${ext}]" cannot remap ${ext} — it is a built-in extension parsed as "${builtin}" and built-in mappings cannot be overridden (in ${file})`
 				);
+			}
+		}
+	}
+
+	if ("includes" in config) {
+		const includes = config.includes;
+		if (typeof includes !== "object" || includes === null || Array.isArray(includes)) {
+			throw fail("includes", "a mapping of include options");
+		}
+		for (const [option, value] of Object.entries(includes)) {
+			const allowed = INCLUDE_OPTION_VALUES[option];
+			if (!allowed) {
+				throw fail(
+					`includes.${option}`,
+					Object.keys(INCLUDE_OPTION_VALUES)
+						.map((v) => `"${v}"`)
+						.join(" or ")
+				);
+			}
+			if (!allowed.includes(value as string)) {
+				throw fail(`includes.${option}`, allowed.map((v) => `"${v}"`).join(" or "));
 			}
 		}
 	}

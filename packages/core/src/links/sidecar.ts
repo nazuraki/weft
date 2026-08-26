@@ -1,8 +1,15 @@
 import { relative, sep } from "node:path";
 import { type Document, isMap, isSeq, parseDocument } from "yaml";
 import { type DocsRoot, nodeIdFor, rootForPath } from "../config.js";
+import { CONTRIBUTES_MODES, HEADING_SHIFTS } from "../includes.js";
 import { scalarText } from "../scalar-source.js";
-import type { Assertions, LinkRef, WeftEdge } from "../types.js";
+import type {
+	Assertions,
+	IncludeContributes,
+	IncludeHeadingShift,
+	LinkRef,
+	WeftEdge,
+} from "../types.js";
 
 interface SidecarLink {
 	anchor?: string;
@@ -12,6 +19,8 @@ interface SidecarLink {
 	pending?: boolean;
 	asserts?: Assertions;
 	sourceHash?: string;
+	headingShift?: IncludeHeadingShift;
+	contributes?: IncludeContributes;
 }
 
 interface SidecarFile {
@@ -100,6 +109,15 @@ export function extractSidecarLinks(
 			...(link.pending === true ? { pending: true } : {}),
 			...(hasAssertions(link.asserts) ? { asserts: link.asserts } : {}),
 			...(sourceHash ? { sourceHash } : {}),
+			// Only a recognised value is recorded, matching how `pending` accepts
+			// only `true` — a typo falls back to the configured default rather than
+			// travelling into the manifest as an unknown mode.
+			...(HEADING_SHIFTS.includes(link.headingShift as IncludeHeadingShift)
+				? { headingShift: link.headingShift }
+				: {}),
+			...(CONTRIBUTES_MODES.includes(link.contributes as IncludeContributes)
+				? { contributes: link.contributes }
+				: {}),
 		};
 	});
 }

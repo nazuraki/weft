@@ -220,6 +220,51 @@ describe("buildManifest", () => {
 	});
 });
 
+describe("buildManifest (includes)", () => {
+	const tempDirs: string[] = [];
+
+	afterEach(() => {
+		for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+
+	function includeFixture(): string {
+		const dir = mkdtempSync(resolve(tmpdir(), "weft-includes-"));
+		tempDirs.push(dir);
+		cpSync(resolve(FIXTURES_DIR, "docs"), resolve(dir, "docs"), { recursive: true });
+		writeFileSync(
+			resolve(dir, "docs/README.md.weft"),
+			["links:", "  - target: architecture.md#overview", "    type: includes"].join("\n")
+		);
+		return dir;
+	}
+
+	it("stamps resolved defaults onto an includes edge", async () => {
+		const manifest = await buildManifest(fixtureConfig({ rootDir: includeFixture() }));
+		const edge = manifest.edges.find((e) => e.type === "includes");
+
+		expect(edge?.headingShift).toBe("auto");
+		expect(edge?.contributes).toBe("source");
+	});
+
+	it("stamps configured defaults over built-in ones", async () => {
+		const manifest = await buildManifest(
+			fixtureConfig({ rootDir: includeFixture(), includes: { headingShift: "none" } })
+		);
+		const edge = manifest.edges.find((e) => e.type === "includes");
+
+		expect(edge?.headingShift).toBe("none");
+		expect(edge?.contributes).toBe("source");
+	});
+
+	it("leaves other edge types unstamped", async () => {
+		const manifest = await buildManifest(fixtureConfig({ rootDir: includeFixture() }));
+
+		for (const edge of manifest.edges.filter((e) => e.type !== "includes")) {
+			expect("headingShift" in edge).toBe(false);
+		}
+	});
+});
+
 describe("buildManifest (artifacts)", () => {
 	const ARTIFACTS_DIR = resolve(FIXTURES_DIR, "artifacts");
 
