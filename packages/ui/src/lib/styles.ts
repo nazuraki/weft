@@ -60,8 +60,7 @@ export function assertServableStyles(style: StyleConfig | undefined, styleUrl?: 
 	for (const name of names) {
 		if (!isBundledStyle(name)) {
 			throw new Error(
-				`Weft: unknown style "${name}" — bundled styles are ${bundledStyleNames().join(", ")}; ` +
-					`pass styleUrl to load a newer one`
+				`Weft: unknown style "${name}" — bundled styles are ${bundledStyleNames().join(", ")}; pass styleUrl to load a newer one`
 			);
 		}
 	}
