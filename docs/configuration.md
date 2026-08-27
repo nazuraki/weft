@@ -374,7 +374,22 @@ A link to `https://github.com/acme/alpha/blob/main/docs/api.md` in any indexed d
 See the [Alpha API](https://github.com/acme/alpha/blob/main/docs/api.md#endpoints).
 ```
 
-The edge records the URL as written in `resolvedFrom`. Any `blob/<ref>/` segment is accepted — weft serves the working tree, so which ref the URL claims does not affect resolution. A URL into an unmapped repo, a non-`blob` URL (`tree/`, issues, other hosts), or a path landing outside every docs root stays an ordinary external link. Nothing is ever fetched over the network.
+The edge records the URL as written in `resolvedFrom`. Any `blob/<ref>/` segment is accepted — weft serves the working tree, so which ref the URL claims does not affect resolution. A URL into an unmapped repo, a non-`blob` URL (`tree/`, issues, other hosts), or a path landing outside every docs root stays an ordinary external link. Nothing is ever fetched over the network — unless you opt in with `weft serve --repo`, below.
+
+### Serving Without a Checkout
+
+Reading a cross-repo graph should not cost what authoring one does. `weft serve --repo` fetches instead of requiring checkouts:
+
+```sh
+weft serve --repo acme/design-review          # remote HEAD
+weft serve --repo acme/design-review --ref v2 # branch, tag, or commit sha
+```
+
+Weft fetches that repo, reads its `weft.config.yaml`, fetches the repos it references, and serves the merged graph. A repo in the `repos` map that resolves to a real local path keeps winning — fetching only fills the gaps, so someone with three of five repos checked out reads their local working trees for those three and fetched copies of the rest.
+
+Fetches are blobless partial clones (`--filter=blob:none`), so each fetched root keeps its full git history — `modified` dates and the history-reading checks work exactly as over a local checkout. Clones land in a cache (`$WEFT_CACHE_DIR`, `$XDG_CACHE_HOME/weft`, or `~/.cache/weft`) keyed by resolved commit sha, so a moved branch invalidates cleanly; a branch's ref resolution is re-checked after 15 minutes, or immediately with `--refresh`. Fetched checkouts are read-only: nothing is written into them, and they are not watched for changes.
+
+Private repos authenticate with `GH_TOKEN` or `GITHUB_TOKEN`, falling back to `gh auth token` when the GitHub CLI is installed. GitHub reports a private repo it will not serve exactly like a repo that does not exist, so a not-found error always means one of the two. GitHub only; other hosts are out of scope.
 
 ### Manifest Placement
 
