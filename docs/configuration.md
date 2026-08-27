@@ -36,7 +36,9 @@ The file is validated at load time: wrong types and bad enum values fail with th
 | `siteTitle` | `string` | — | Site name used in `og:site_name` and page title (`Doc — Site`) |
 | `siteUrl` | `string` | — | Canonical base URL (e.g. `https://docs.example.com`). Required for absolute `og:image` URLs |
 | `ogImage` | `string` | — | Default `og:image`. Relative to project root or an absolute URL. Overridden per-document via frontmatter |
-| `defaultTheme` | `"light" \| "dark"` | system preference | Theme applied on first visit before the user sets a preference |
+| `style` | `string \| {dark, light}` | `{dark: luminous-precision, light: summer-cloud}` | ui-std-lib theme(s) the UI renders in. A pair follows the light/dark toggle; a single name fixes the scheme and hides it — see [theming.md](theming.md) |
+| `styleUrl` | `string` | — | Base URL serving ui-std-lib themes newer than the bundled set — see [theming.md](theming.md) |
+| `defaultTheme` | `"light" \| "dark"` | system preference | Scheme applied on first visit before the user sets a preference. Ignored when `style` is a single fixed-scheme name |
 | `layout` | `"default" \| "reader"` | `"default"` | `"reader"` hides the linked-items sidebar for a cleaner reading experience |
 | `docOrder` | `string[]` | — | Explicit order for docs in the left-hand navigation. Filenames relative to `docsDir` |
 | `docOrderStrict` | `boolean` | `false` | When `true`, only docs listed in `docOrder` appear in the LHN. Unlisted docs stay in the graph — see [Strict Ordering](#strict-ordering) |
@@ -364,7 +366,7 @@ repos:
   acme/alpha: ~/src/alpha
 ```
 
-Local entries override committed ones per identity. The local file may set **only** `repos` — any other option there is an error, so committed and local config cannot quietly diverge. A project naming a `repo` that no map supplies fails at load with an error pointing at the local file.
+Local entries override committed ones per identity. The local file may set **only** `repos`, `style`, and `styleUrl` (the last two so one developer can preview the corpus in a different theme) — any other option there is an error, so committed and local config cannot quietly diverge. A project naming a `repo` that no map supplies fails at load with an error pointing at the local file.
 
 ### GitHub Blob URLs
 

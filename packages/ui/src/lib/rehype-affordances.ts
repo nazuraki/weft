@@ -166,6 +166,13 @@ export function rehypeTableWrap() {
 				if (classNames(parent).includes("table-wrap")) return;
 			}
 
+			// The design system styles tables by class, and this pass is the one
+			// place rendered markdown can be given one.
+			const existing = classNames(node);
+			if (!existing.includes("nb-table")) {
+				node.properties = { ...node.properties, className: [...existing, "nb-table"] };
+			}
+
 			parent.children[index] = {
 				type: "element",
 				tagName: "div",

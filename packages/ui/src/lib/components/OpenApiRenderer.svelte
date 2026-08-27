@@ -172,10 +172,19 @@ function schemaTypeLabel(schema: Schema | undefined): string {
 
 function responseColor(code: string): string {
 	const n = parseInt(code);
-	if (n >= 200 && n < 300) return "status-2xx";
-	if (n >= 300 && n < 400) return "status-3xx";
-	if (n >= 400 && n < 500) return "status-4xx";
-	if (n >= 500) return "status-5xx";
+	if (n >= 200 && n < 300) return "nb-badge--success";
+	if (n >= 300 && n < 400) return "nb-badge--info";
+	if (n >= 400 && n < 500) return "nb-badge--warning";
+	if (n >= 500) return "nb-badge--danger";
+	return "";
+}
+
+/** Semantic badge hue per HTTP method — reads, writes, mutations, deletes. */
+function methodVariant(method: string): string {
+	if (method === "get") return "nb-badge--success";
+	if (method === "post") return "nb-badge--info";
+	if (method === "put" || method === "patch") return "nb-badge--warning";
+	if (method === "delete") return "nb-badge--danger";
 	return "";
 }
 </script>
@@ -191,7 +200,7 @@ function responseColor(code: string): string {
 			<div class="info-block">
 				<h1 class="spec-title">{spec.info.title ?? 'API Reference'}</h1>
 				{#if spec.info.version}
-					<span class="version-badge">{spec.info.version}</span>
+					<span class="nb-badge version-badge">{spec.info.version}</span>
 				{/if}
 				{#if spec.info.description}
 					<p class="spec-description">{spec.info.description}</p>
@@ -224,7 +233,7 @@ function responseColor(code: string): string {
 						{@const key = opId}
 						<div class="operation" id={opId}>
 							<button class="op-header" onclick={() => toggle(key)} aria-expanded={!isCollapsed(key)}>
-								<span class="method-badge method-{method}">{method.toUpperCase()}</span>
+								<span class="nb-badge method-badge {methodVariant(method)}">{method.toUpperCase()}</span>
 								<code class="op-path">{path}</code>
 								{#if operation.summary}
 									<span class="op-summary">{operation.summary}</span>
@@ -241,7 +250,7 @@ function responseColor(code: string): string {
 									<!-- Parameters -->
 									{#if operation.parameters?.length}
 										<h4 class="subsection-label">Parameters</h4>
-										<table class="params-table">
+										<table class="nb-table params-table">
 											<thead>
 												<tr><th>Name</th><th>In</th><th>Type</th><th>Required</th><th>Description</th></tr>
 											</thead>
@@ -249,7 +258,7 @@ function responseColor(code: string): string {
 												{#each operation.parameters as param}
 													<tr>
 														<td><code>{param.name}</code></td>
-														<td><span class="param-in">{param.in}</span></td>
+														<td><span class="nb-badge param-in">{param.in}</span></td>
 														<td><code class="type-label">{schemaTypeLabel(param.schema as Schema)}</code></td>
 														<td>{param.required ? '✓' : ''}</td>
 														<td>{param.description ?? ''}</td>
@@ -278,14 +287,14 @@ function responseColor(code: string): string {
 									<!-- Responses -->
 									{#if operation.responses && Object.keys(operation.responses).length > 0}
 										<h4 class="subsection-label">Responses</h4>
-										<table class="params-table">
+										<table class="nb-table params-table">
 											<thead>
 												<tr><th>Status</th><th>Description</th><th>Content Type</th></tr>
 											</thead>
 											<tbody>
 												{#each Object.entries(operation.responses) as [code, response]}
 													<tr>
-														<td><span class="status-code {responseColor(code)}">{code}</span></td>
+														<td><span class="nb-badge status-code {responseColor(code)}">{code}</span></td>
 														<td>{response.description ?? ''}</td>
 														<td>
 															{#if response.content}
@@ -316,7 +325,7 @@ function responseColor(code: string): string {
 					<div class="schema-item" id={sId}>
 						<button class="op-header" onclick={() => toggle(sId)} aria-expanded={!isCollapsed(sId)}>
 							<span class="schema-name">{name}</span>
-							{#if schema.type}<span class="param-in">{schema.type}</span>{/if}
+							{#if schema.type}<span class="nb-badge param-in">{schema.type}</span>{/if}
 							<span class="toggle-icon">{isCollapsed(sId) ? '▶' : '▼'}</span>
 						</button>
 
@@ -329,7 +338,7 @@ function responseColor(code: string): string {
 									<p class="op-description">Enum: {schema.enum.map((v) => JSON.stringify(v)).join(', ')}</p>
 								{/if}
 								{#if schema.properties && Object.keys(schema.properties).length > 0}
-									<table class="params-table">
+									<table class="nb-table params-table">
 										<thead>
 											<tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
 										</thead>
@@ -365,7 +374,7 @@ function responseColor(code: string): string {
 	.loading, .error {
 		color: var(--w-text-secondary);
 	}
-	.error { color: #d1242f; }
+	.error { color: var(--nb-danger, #b3261e); }
 
 	/* Info block */
 	.info-block {
@@ -376,14 +385,8 @@ function responseColor(code: string): string {
 		font-weight: 600;
 		margin: 0 0 8px;
 	}
+	/* Layout-only additions to the design system's badge. */
 	.version-badge {
-		display: inline-block;
-		padding: 2px 8px;
-		border-radius: 12px;
-		background: var(--w-bg-secondary);
-		border: 1px solid var(--w-border);
-		font-size: 12px;
-		font-family: var(--w-font-mono);
 		margin-bottom: 12px;
 	}
 	.spec-description {
@@ -486,26 +489,13 @@ function responseColor(code: string): string {
 		line-height: 1.6;
 	}
 
-	/* Method badges */
+	/* Layout-only additions to the design system's badge — semantic hues come
+	 * from the nb-badge variants picked in methodVariant(). */
 	.method-badge {
-		display: inline-block;
-		padding: 2px 7px;
-		border-radius: 4px;
-		font-size: 11px;
-		font-weight: 700;
-		font-family: var(--w-font-mono);
 		flex-shrink: 0;
 		min-width: 56px;
 		text-align: center;
-	}
-	.method-get    { background: #d1f0d1; color: #155c15; }
-	.method-post   { background: #d0e8ff; color: #0550ae; }
-	.method-put    { background: #fff0d0; color: #7a4500; }
-	.method-patch  { background: #ede0ff; color: #5c2d9a; }
-	.method-delete { background: #ffd0d0; color: #9a2323; }
-	.method-head, .method-options, .method-trace {
-		background: var(--w-bg-secondary);
-		color: var(--w-text-secondary);
+		justify-content: center;
 	}
 
 	/* Parameters / responses table */
@@ -517,57 +507,18 @@ function responseColor(code: string): string {
 		color: var(--w-text-secondary);
 		margin: 16px 0 8px;
 	}
+	/* Layout-only additions to the design system's table. */
 	.params-table {
-		width: 100%;
-		border-collapse: collapse;
 		font-size: 13px;
 		margin-bottom: 12px;
 	}
-	.params-table th {
-		text-align: left;
-		padding: 6px 8px;
-		border-bottom: 1px solid var(--w-border);
-		font-weight: 500;
-		color: var(--w-text-secondary);
-		font-size: 12px;
-	}
-	.params-table td {
-		padding: 6px 8px;
-		border-bottom: 1px solid var(--w-border);
-		vertical-align: top;
-	}
-	.params-table tr:last-child td {
-		border-bottom: none;
-	}
 
-	.param-in {
-		display: inline-block;
-		padding: 1px 6px;
-		border-radius: 3px;
-		background: var(--w-bg-secondary);
-		border: 1px solid var(--w-border);
-		font-size: 11px;
-		font-family: var(--w-font-mono);
-	}
 	.type-label {
 		font-family: var(--w-font-mono);
 		font-size: 12px;
 		color: var(--w-text-secondary);
 	}
 
-	/* Status codes */
-	.status-code {
-		display: inline-block;
-		padding: 1px 6px;
-		border-radius: 3px;
-		font-family: var(--w-font-mono);
-		font-size: 12px;
-		font-weight: 600;
-	}
-	.status-2xx { background: #d1f0d1; color: #155c15; }
-	.status-3xx { background: #d0e8ff; color: #0550ae; }
-	.status-4xx { background: #fff0d0; color: #7a4500; }
-	.status-5xx { background: #ffd0d0; color: #9a2323; }
 
 	/* Media type label */
 	.media-type-label {

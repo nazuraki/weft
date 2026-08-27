@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { RenderOptions } from "$lib/markdown.js";
-import { theme } from "$lib/stores/theme.svelte.js";
+import { type ThemeInitOptions, theme } from "$lib/stores/theme.svelte.js";
 import { nodeIdToPath } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core";
 import DocTree from "./DocTree.svelte";
@@ -14,6 +14,13 @@ interface Props extends RenderOptions {
 	currentNodeId: string;
 	anchor?: string;
 	navigate: (path: string) => void;
+	/**
+	 * Theme wiring for hosts that are not the whole page. The standalone app
+	 * omits this: the layout's metas carry the pair and `<html>` takes the
+	 * attributes. An embed passes its pair and its own scope container, so
+	 * nothing lands on the host's root.
+	 */
+	themeOptions?: ThemeInitOptions;
 }
 
 let {
@@ -25,6 +32,7 @@ let {
 	remarkPlugins,
 	rehypePlugins,
 	extendSchema,
+	themeOptions,
 }: Props = $props();
 
 let showSearch = $state(false);
@@ -34,7 +42,7 @@ let readerMode = $derived(layout === "reader");
 let currentNode = $derived(manifest.nodes.find((n) => n.id === currentNodeId) ?? null);
 
 $effect(() => {
-	theme.init();
+	theme.init(themeOptions);
 });
 
 $effect(() => {
@@ -70,6 +78,7 @@ function handleKeydown(e: KeyboardEvent) {
 			{/if}
 		</div>
 		<div class="header-right">
+				{#if theme.canToggle}
 				<span class="theme-toggle-wrap">
 				<button
 					class="theme-toggle"
@@ -83,7 +92,8 @@ function handleKeydown(e: KeyboardEvent) {
 					Shift/Ctrl+click to override this document
 				</span>
 			</span>
-				<button class="search-trigger" onclick={() => (showSearch = true)}>
+				{/if}
+				<button class="nb-btn search-trigger" onclick={() => (showSearch = true)}>
 					Search
 					<kbd>⌘K</kbd>
 				</button>
@@ -101,7 +111,15 @@ function handleKeydown(e: KeyboardEvent) {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main" data-theme={theme.docOverride ?? undefined}>
+	<!-- The per-doc override carries both axes: the scheme for anything keyed
+	     off data-theme, and the theme name whose token block restyles this
+	     subtree (tokens re-declare on this element, so they win over the
+	     root's by proximity, not source order). -->
+	<main
+		class="main"
+		data-theme={theme.docOverride ?? undefined}
+		data-nb-style={theme.docOverride ? theme.styleFor(theme.docOverride) : undefined}
+	>
 		{#if currentNode}
 			<DocView
 				nodeId={currentNode.id}
@@ -230,20 +248,10 @@ function handleKeydown(e: KeyboardEvent) {
 	.theme-toggle-wrap:hover .theme-tooltip {
 		display: block;
 	}
+	/* A design-system button, sized down to header chrome. */
 	.search-trigger {
-		display: flex;
-		align-items: center;
-		gap: 8px;
 		padding: 4px 12px;
-		border: 1px solid var(--w-border);
-		border-radius: 6px;
-		background: var(--w-bg-secondary);
-		color: var(--w-text-secondary);
-		cursor: pointer;
-		font-size: 13px;
-	}
-	.search-trigger:hover {
-		border-color: var(--w-text-secondary);
+		font-size: 12px;
 	}
 	.search-trigger kbd {
 		font-family: var(--w-font-sans);

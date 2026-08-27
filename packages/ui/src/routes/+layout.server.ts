@@ -3,6 +3,12 @@ import type { LayoutServerLoad } from "./$types.js";
 
 export const load: LayoutServerLoad = async () => {
 	const manifest = readManifest();
-	const { defaultTheme, layout } = manifest.site ?? {};
-	return { manifest, defaultTheme: defaultTheme ?? null, layout: layout ?? "default" };
+	const { defaultTheme, style, styleUrl, layout } = manifest.site ?? {};
+	return {
+		manifest,
+		defaultTheme: defaultTheme ?? null,
+		style: style ?? null,
+		styleUrl: styleUrl ?? null,
+		layout: layout ?? "default",
+	};
 };

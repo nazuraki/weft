@@ -2,11 +2,11 @@
  * Everything that belongs to a page Weft owns outright.
  *
  * Loaded by the standalone app only. `@weft/embed` deliberately does not import
- * this: a global reset, `html`/`body` rules and a remote font import are all
- * reasonable in an app that is the whole page, and all rude in a host's.
+ * this: a global reset and `html`/`body` rules are reasonable in an app that
+ * is the whole page, and rude in a host's. Webfonts are per-theme now —
+ * `+layout.svelte` emits the links straight from the @nazuraki/styles
+ * manifest, so no `@import` lives here either.
  */
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap");
-
 *,
 *::before,
 *::after {

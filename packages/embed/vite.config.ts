@@ -17,10 +17,18 @@ export default defineConfig({
 		cssCodeSplit: false,
 	},
 	resolve: {
-		alias: {
+		alias: [
 			// Resolve SvelteKit's $lib alias to the UI package's lib directory
-			$lib: path.resolve(__dirname, "../ui/src/lib"),
-		},
+			{ find: "$lib", replacement: path.resolve(__dirname, "../ui/src/lib") },
+			// neon-butterfly's .nb-bg page artwork is a 1.2MB PNG, and lib-mode
+			// Vite inlines every CSS asset as a data URI — shipping it in
+			// dist/weft.css for a page treatment no embed renders. A transparent
+			// pixel keeps the rule valid; the blend color still paints.
+			{
+				find: /^.*butterfly-circuit\.png$/,
+				replacement: path.resolve(__dirname, "src/transparent-pixel.png"),
+			},
+		],
 	},
 	// Prevent Vite from trying to bundle Node.js built-ins referenced by @weft/core's
 	// server-side modules (they're tree-shaken away, but need to be marked external

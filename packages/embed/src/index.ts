@@ -1,12 +1,28 @@
 import type { WeftClient } from "$lib/client.js";
 import type { RenderOptions } from "$lib/markdown.js";
-import type { Manifest } from "@weft/core/browser";
+import { loadRemoteStyles } from "$lib/style-loader.js";
+import { assertServableStyles, isBundledStyle } from "$lib/styles.js";
+import type { Manifest, StyleConfig } from "@weft/core/browser";
 import { mount, unmount } from "svelte";
 import App from "./App.svelte";
 import DocMountRoot from "./DocMountRoot.svelte";
 import { createDocState } from "./doc-state.svelte.js";
 
+// Every ui-std-lib theme, folded into dist/weft.css. Safe in a host page:
+// each rule is guarded by data-nb-style, which only Weft's own containers
+// carry.
+import "@nazuraki/styles/all";
+
 export type { WeftClient } from "$lib/client.js";
+
+/** Fetch any non-bundled theme (CSS + fonts) from the configured styleUrl. */
+function loadRemoteIfNeeded(style: StyleConfig | undefined, styleUrl: string | undefined): void {
+	if (!styleUrl || !style) return;
+	const names = (typeof style === "string" ? [style] : [style.dark, style.light]).filter(
+		(name) => !isBundledStyle(name)
+	);
+	void loadRemoteStyles(styleUrl, names, { stylesheets: true });
+}
 
 export interface EmbedConfig {
 	/** GitHub repo in "owner/repo" format. Required unless baseUrl is set. */
@@ -37,6 +53,20 @@ export interface EmbedConfig {
 	remarkPlugins?: RenderOptions["remarkPlugins"];
 	rehypePlugins?: RenderOptions["rehypePlugins"];
 	extendSchema?: RenderOptions["extendSchema"];
+	/**
+	 * ui-std-lib style: one theme name, or a {dark, light} pair the embed's
+	 * toggle switches between. Defaults to dark=luminous-precision /
+	 * light=summer-cloud. Applied to the mount's own container — the host's
+	 * page keeps its own styling.
+	 */
+	style?: StyleConfig;
+	/**
+	 * Base URL serving ui-std-lib theme CSS for names newer than the bundled
+	 * set (e.g. a jsDelivr styles/ path). Costs a stylesheet <link> injected
+	 * into the host's <head> — theme CSS cannot be scoped to a shadow of the
+	 * mount, only guarded by the attribute.
+	 */
+	styleUrl?: string;
 }
 
 /**
@@ -67,6 +97,8 @@ export function mountWeft(target: string | HTMLElement, config: EmbedConfig): ()
 	if (!container) {
 		throw new Error(`Weft: container not found: ${target}`);
 	}
+	assertServableStyles(config.style, config.styleUrl);
+	loadRemoteIfNeeded(config.style, config.styleUrl);
 
 	const app = mount(App, { target: container, props: { config } });
 	return () => unmount(app);
@@ -103,6 +135,14 @@ export interface DocMountOptions extends DocMountState {
 	remarkPlugins?: RenderOptions["remarkPlugins"];
 	rehypePlugins?: RenderOptions["rehypePlugins"];
 	extendSchema?: RenderOptions["extendSchema"];
+	/**
+	 * ui-std-lib style for the mounted reader. A pair follows the host's
+	 * nearest-ancestor `data-theme` (the mirroring contract); a single name is
+	 * fixed. Defaults to dark=luminous-precision / light=summer-cloud.
+	 */
+	style?: StyleConfig;
+	/** As on EmbedConfig: where to load a non-bundled style name from. */
+	styleUrl?: string;
 }
 
 /** A mounted reader. `update` re-points it; `destroy` removes it. */
@@ -166,6 +206,8 @@ export function mountDoc(target: string | HTMLElement, options: DocMountOptions)
 	if (!options.manifest) {
 		throw new Error("Weft: mountDoc needs a `manifest`");
 	}
+	assertServableStyles(options.style, options.styleUrl);
+	loadRemoteIfNeeded(options.style, options.styleUrl);
 
 	const state = createDocState({ nodeId: options.nodeId, anchor: options.anchor });
 
@@ -179,6 +221,7 @@ export function mountDoc(target: string | HTMLElement, options: DocMountOptions)
 			remarkPlugins: options.remarkPlugins,
 			rehypePlugins: options.rehypePlugins,
 			extendSchema: options.extendSchema,
+			style: options.style,
 			state,
 		},
 	});

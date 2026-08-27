@@ -113,4 +113,5 @@ export type {
 	SearchResult,
 	Severity,
 	SiteConfig,
+	StyleConfig,
 } from "./types.js";

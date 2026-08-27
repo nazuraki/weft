@@ -1,30 +1,86 @@
+import { untrack } from "svelte";
+
 type Theme = "light" | "dark";
+
+/**
+ * Scheme and style are two axes with one knob. The config's style pair maps
+ * each scheme to a ui-std-lib theme name; the user's choice (and localStorage)
+ * is only ever the SCHEME. Storing the style name instead would let a stale
+ * preference pin a theme the config no longer names — config decides styles,
+ * the user decides light or dark.
+ */
+/** What `init` may be told instead of reading the page's metas. */
+export interface ThemeInitOptions {
+	/** Scheme → theme-name pair. Defaults to the layout's style metas. */
+	pair?: { dark?: string; light?: string };
+	/**
+	 * Element the attributes land on. The standalone app owns its page, so it
+	 * defaults to `<html>`; an embed passes its own scope container — putting
+	 * `data-nb-style` on a host's root would push theme tokens (and a real
+	 * `color-scheme`) onto a page Weft does not own.
+	 */
+	root?: HTMLElement;
+	/** Starting scheme when the user has no saved preference. Defaults to the `weft-default-theme` meta. */
+	defaultScheme?: Theme;
+}
 
 function createThemeStore() {
 	let base = $state<Theme>("dark");
 	let docOverride = $state<Theme | null>(null);
+	let stylePair = $state<{ dark?: string; light?: string }>({});
+	let warnedSingle = false;
+	let target: HTMLElement | undefined;
+	let defaultScheme: Theme | undefined;
+
+	const readMeta = (name: string): string | null =>
+		document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") ?? null;
+
+	function availableSchemes(): Theme[] {
+		const out: Theme[] = [];
+		if (stylePair.dark) out.push("dark");
+		if (stylePair.light) out.push("light");
+		// No style metas at all (an embed host that set none): both schemes
+		// remain selectable and only the literal fallbacks change.
+		return out.length ? out : ["dark", "light"];
+	}
+
+	function clamp(theme: Theme): Theme {
+		const available = availableSchemes();
+		return available.includes(theme) ? theme : available[0];
+	}
 
 	function resolveBase(): Theme {
 		const saved = localStorage.getItem("weft-theme") as Theme | null;
-		const configDefault = document
-			.querySelector('meta[name="weft-default-theme"]')
-			?.getAttribute("content") as Theme | null;
+		const configDefault = defaultScheme ?? (readMeta("weft-default-theme") as Theme | null);
 		const sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-		return saved ?? configDefault ?? sys;
+		return clamp(saved ?? configDefault ?? sys);
 	}
 
 	function apply(theme: Theme) {
-		document.documentElement.setAttribute("data-theme", theme);
+		const el = target ?? document.documentElement;
+		el.setAttribute("data-theme", theme);
+		const style = stylePair[theme];
+		if (style) el.setAttribute("data-nb-style", style);
+		else el.removeAttribute("data-nb-style");
 	}
 
-	function init() {
-		base = resolveBase();
+	function init(options?: ThemeInitOptions) {
+		// untracked: init writes stylePair and then reads it back through
+		// resolveBase()/clamp(). Called from an $effect, that read would register
+		// the write as the effect's own dependency and loop it forever.
+		untrack(() => {
+			target = options?.root;
+			defaultScheme = options?.defaultScheme;
+			stylePair = options?.pair ?? {
+				dark: readMeta("weft-style-dark") ?? undefined,
+				light: readMeta("weft-style-light") ?? undefined,
+			};
+			base = resolveBase();
+			apply(base);
+		});
 
 		window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
-			if (
-				!localStorage.getItem("weft-theme") &&
-				!document.querySelector('meta[name="weft-default-theme"]')
-			) {
+			if (!localStorage.getItem("weft-theme") && !readMeta("weft-default-theme")) {
 				base = resolveBase();
 				if (!docOverride) apply(base);
 			}
@@ -32,8 +88,8 @@ function createThemeStore() {
 	}
 
 	function set(theme: Theme, persist = true) {
-		base = theme;
-		if (persist) localStorage.setItem("weft-theme", theme);
+		base = clamp(theme);
+		if (persist) localStorage.setItem("weft-theme", base);
 		if (!docOverride) apply(base);
 	}
 
@@ -43,10 +99,20 @@ function createThemeStore() {
 
 	function toggleDocOverride() {
 		const visible = docOverride ?? base;
-		docOverride = visible === "dark" ? "light" : "dark";
+		setDocOverride(visible === "dark" ? "light" : "dark");
 	}
 
 	function setDocOverride(theme: Theme | null) {
+		if (theme && !availableSchemes().includes(theme)) {
+			// A single-style deployment has nowhere to flip to; say so once
+			// rather than silently rendering the same scheme.
+			if (!warnedSingle) {
+				console.warn(`weft: ignoring ${theme} override — this deployment has no ${theme} style`);
+				warnedSingle = true;
+			}
+			docOverride = null;
+			return;
+		}
 		docOverride = theme;
 	}
 
@@ -56,6 +122,14 @@ function createThemeStore() {
 		},
 		get docOverride(): Theme | null {
 			return docOverride;
+		},
+		/** The theme name a scheme renders in, for override elements. */
+		styleFor(scheme: Theme): string | undefined {
+			return stylePair[scheme];
+		},
+		/** False when the config names a single style — the toggle hides. */
+		get canToggle(): boolean {
+			return availableSchemes().length > 1;
 		},
 		init,
 		toggle,

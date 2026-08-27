@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   '@biomejs/biome': true
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@nazuraki/styles@0.3.0'

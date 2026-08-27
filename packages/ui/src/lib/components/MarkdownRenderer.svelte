@@ -92,7 +92,7 @@ function handleClick(e: MouseEvent) {
 		word-wrap: break-word;
 	}
 	.render-error {
-		color: #d1242f;
+		color: var(--nb-danger, #b3261e);
 	}
 	/* h5 and h6 were omitted here too, so they rendered in the body font. */
 	.markdown-body :global(:is(h1, h2, h3, h4, h5, h6)) {
@@ -166,39 +166,22 @@ function handleClick(e: MouseEvent) {
 	 * work would mean a `max-height` region, which breaks Ctrl-F, printing and
 	 * mobile scroll chaining; no comparable docs renderer does it either.
 	 */
+	/* Visual table styling (borders, header rule, row hover) is the design
+	 * system's — rehype-affordances puts `nb-table` on every rendered table.
+	 * What stays here is layout the wrapper contract needs. */
 	.markdown-body :global(.table-wrap) {
 		overflow-x: auto;
 		margin: 1em 0;
-		border: 1px solid var(--w-border);
-		border-radius: 6px;
 	}
 	.markdown-body :global(.table-wrap table) {
-		border-collapse: collapse;
 		min-width: 100%;
 		margin: 0;
 	}
-	.markdown-body :global(table) {
-		border-collapse: collapse;
-		width: 100%;
-		margin: 1em 0;
-	}
-	.markdown-body :global(th), .markdown-body :global(td) {
-		border: 1px solid var(--w-border);
-		padding: 6px 13px;
-	}
 	.markdown-body :global(th) {
-		background: var(--w-bg-secondary);
-		font-weight: 600;
 		/* Headers only. On `td` this turns a prose column — the description
 		   columns in this repo's own docs — into one unwrappable line, trading
 		   vertical wrap for forced horizontal scrolling. */
 		white-space: nowrap;
-	}
-	.markdown-body :global(tbody tr:nth-child(even)) {
-		background: var(--w-bg-secondary);
-	}
-	.markdown-body :global(tbody tr:hover) {
-		background: var(--w-accent-subtle);
 	}
 
 	/*

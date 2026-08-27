@@ -1,3 +1,11 @@
+/**
+ * A ui-std-lib style selection: one theme name, or a scheme pair the UI's
+ * light/dark toggle switches between. Names are validated by the UI against
+ * the installed @nazuraki/styles manifest (core stays dependency-free, and a
+ * theme newer than the installed set is reachable via `styleUrl`).
+ */
+export type StyleConfig = string | { dark: string; light: string };
+
 /** A single product's docs root in a multi-project (monorepo) setup. */
 export interface WeftProject {
 	/** Display name, shown as a group header in the left-hand nav. */
@@ -60,6 +68,18 @@ export interface WeftConfig {
 	repos?: Record<string, string>;
 	/** Default theme when no user preference is saved. Falls back to system preference if unset. */
 	defaultTheme?: "light" | "dark";
+	/**
+	 * ui-std-lib style: one theme name (fixed scheme, toggle hidden) or a
+	 * {dark, light} pair the toggle switches between. Defaults to
+	 * dark=luminous-precision / light=summer-cloud.
+	 */
+	style?: StyleConfig;
+	/**
+	 * Base URL serving ui-std-lib theme CSS and manifest.json (e.g. a jsDelivr
+	 * styles/ path) — the escape hatch for themes newer than the styles
+	 * package the UI was built with.
+	 */
+	styleUrl?: string;
 	/** Site name used in og:site_name and title fallbacks. */
 	siteTitle?: string;
 	/** Canonical base URL (e.g. https://docs.example.com) — used to build absolute og:image URLs. */
@@ -307,6 +327,8 @@ export interface WeftEdge {
 /** Presentation config carried in the manifest so the UI needs no config access. */
 export interface SiteConfig {
 	defaultTheme?: "light" | "dark";
+	style?: StyleConfig;
+	styleUrl?: string;
 	layout?: "reader" | "default";
 	siteTitle?: string;
 	siteUrl?: string;

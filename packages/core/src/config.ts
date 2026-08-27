@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { EXTENSION_MAP } from "./anchors/index.js";
 import { CONTRIBUTES_MODES, HEADING_SHIFTS } from "./includes.js";
 import { REPO_IDENTITY, resolveRepos } from "./repos.js";
-import type { WeftConfig, WeftProjectRef } from "./types.js";
+import type { StyleConfig, WeftConfig, WeftProjectRef } from "./types.js";
 
 export const CONFIG_FILES = ["weft.config.yaml", "weft.config.yml", "weft.config.json"];
 const LEGACY_CONFIG_FILES = ["weft.config.ts", "weft.config.js", "weft.config.mjs"];
@@ -28,7 +28,14 @@ const DEFAULTS: Omit<WeftConfig, "rootDir"> = {
 
 type UserConfig = Partial<Omit<WeftConfig, "rootDir">>;
 
-const STRING_KEYS = ["docsDir", "entryPoint", "siteTitle", "siteUrl", "ogImage"] as const;
+const STRING_KEYS = [
+	"docsDir",
+	"entryPoint",
+	"siteTitle",
+	"siteUrl",
+	"ogImage",
+	"styleUrl",
+] as const;
 const STRING_ARRAY_KEYS = ["ignore", "docOrder", "contributions", "artifacts"] as const;
 const ENUM_KEYS = {
 	defaultTheme: ["light", "dark"],
@@ -41,6 +48,7 @@ const KNOWN_KEYS = new Set<string>([
 	"docOrderStrict",
 	"projects",
 	"repos",
+	"style",
 	"rules",
 	"extensions",
 	"includes",
@@ -86,6 +94,7 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 		throw fail("projects", "an array");
 	}
 	if ("repos" in config) validateRepos(config.repos, file);
+	if ("style" in config) validateStyle(config.style, file);
 	if ("rules" in config) {
 		const rules = config.rules;
 		if (typeof rules !== "object" || rules === null || Array.isArray(rules)) {
@@ -154,6 +163,29 @@ function validateUserConfig(raw: unknown, file: string): UserConfig {
 	return config as UserConfig;
 }
 
+/**
+ * Shape only: a name, or a {dark, light} pair. Names are checked by the UI
+ * against the installed @nazuraki/styles manifest — core validating them
+ * would pin the theme roster to a core release and defeat `styleUrl`.
+ */
+function validateStyle(style: unknown, file: string): asserts style is StyleConfig {
+	if (typeof style === "string" && style.length > 0) return;
+	if (typeof style === "object" && style !== null && !Array.isArray(style)) {
+		const keys = Object.keys(style).sort();
+		const pair = style as Record<string, unknown>;
+		if (
+			keys.join(",") === "dark,light" &&
+			typeof pair.dark === "string" &&
+			typeof pair.light === "string"
+		) {
+			return;
+		}
+	}
+	throw new Error(
+		`weft config: "style" must be a style name or a {dark, light} pair of style names (in ${file})`
+	);
+}
+
 function validateRepos(repos: unknown, file: string): asserts repos is Record<string, string> {
 	if (typeof repos !== "object" || repos === null || Array.isArray(repos)) {
 		throw new Error(`weft config: "repos" must be a mapping of org/repo to a path (in ${file})`);
@@ -170,14 +202,24 @@ function validateRepos(repos: unknown, file: string): asserts repos is Record<st
 	}
 }
 
+/** What `weft.config.local.yaml` may set. */
+interface LocalOverrides {
+	repos?: Record<string, string>;
+	style?: StyleConfig;
+	styleUrl?: string;
+}
+
+const LOCAL_KEYS = new Set(["repos", "style", "styleUrl"]);
+
 /**
- * Read `weft.config.local.yaml`, which may set only `repos`.
- *
- * The local file exists to hold what varies per machine — where checkouts live —
- * and nothing else, so an option quietly diverging from the committed config
- * cannot hide there. Its entries override committed `repos` per identity.
+ * Read `weft.config.local.yaml`, which may set only per-machine options:
+ * `repos` (where checkouts live), and `style`/`styleUrl` (one developer
+ * previewing the corpus in a different ui-std-lib theme). Nothing else, so an
+ * option quietly diverging from the committed config cannot hide there.
+ * `repos` entries override committed ones per identity; `style`/`styleUrl`
+ * replace the committed values outright.
  */
-async function loadLocalRepos(absRoot: string): Promise<Record<string, string> | undefined> {
+async function loadLocalOverrides(absRoot: string): Promise<LocalOverrides | undefined> {
 	for (const file of LOCAL_CONFIG_FILES) {
 		const path = resolve(absRoot, file);
 		if (!existsSync(path)) continue;
@@ -195,24 +237,32 @@ async function loadLocalRepos(absRoot: string): Promise<Record<string, string> |
 
 		const local = raw as Record<string, unknown>;
 		for (const key of Object.keys(local)) {
-			if (key !== "repos") {
+			if (!LOCAL_KEYS.has(key)) {
 				throw new Error(
-					`weft config: ${file} may only set "repos" — move "${key}" to the committed config`
+					`weft config: ${file} may only set ${[...LOCAL_KEYS].map((k) => `"${k}"`).join(", ")} — move "${key}" to the committed config`
 				);
 			}
 		}
 		if ("repos" in local) validateRepos(local.repos, file);
-		return local.repos as Record<string, string> | undefined;
+		if ("style" in local) validateStyle(local.style, file);
+		if ("styleUrl" in local && typeof local.styleUrl !== "string") {
+			throw new Error(`weft config: "styleUrl" must be a string (in ${file})`);
+		}
+		return local as LocalOverrides;
 	}
 	return undefined;
 }
 
 export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 	const absRoot = resolve(rootDir);
-	const localRepos = await loadLocalRepos(absRoot);
-	const withLocalRepos = (config: WeftConfig): WeftConfig => {
-		if (!localRepos) return config;
-		return { ...config, repos: { ...config.repos, ...localRepos } };
+	const local = await loadLocalOverrides(absRoot);
+	const withLocalOverrides = (config: WeftConfig): WeftConfig => {
+		if (!local) return config;
+		const merged = { ...config };
+		if (local.repos) merged.repos = { ...config.repos, ...local.repos };
+		if (local.style) merged.style = local.style;
+		if (local.styleUrl) merged.styleUrl = local.styleUrl;
+		return merged;
 	};
 
 	for (const file of CONFIG_FILES) {
@@ -227,7 +277,7 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 			throw new Error(`weft config: failed to parse ${file}: ${(err as Error).message}`);
 		}
 
-		return withLocalRepos({
+		return withLocalOverrides({
 			...DEFAULTS,
 			...validateUserConfig(raw ?? {}, file),
 			rootDir: absRoot,
@@ -250,7 +300,7 @@ export async function loadConfig(rootDir: string): Promise<WeftConfig> {
 		);
 	}
 
-	return withLocalRepos({ ...DEFAULTS, rootDir: absRoot });
+	return withLocalOverrides({ ...DEFAULTS, rootDir: absRoot });
 }
 
 /** A resolved docs root — one per configured project, or one implicit root for `docsDir`. */

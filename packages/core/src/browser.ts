@@ -26,5 +26,6 @@ export type {
 	LinkRef,
 	SearchResult,
 	SiteConfig,
+	StyleConfig,
 	WeftConfig,
 } from "./types.js";

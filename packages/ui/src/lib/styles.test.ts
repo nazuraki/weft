@@ -37,6 +37,7 @@ describe("app.css (shipped in the embed bundle)", () => {
 	it("styles no element it was not given", () => {
 		expect(tokens).not.toMatch(/^\s*html\b/m);
 		expect(tokens).not.toMatch(/^\s*body\b/m);
+		expect(tokens).not.toMatch(/(^|\})\s*:root/);
 	});
 
 	it("carries no global reset", () => {
@@ -56,20 +57,24 @@ describe("app.css (shipped in the embed bundle)", () => {
 });
 
 /**
- * The two-namespace contract. `--weft-*` is the host's input and Weft only ever
- * reads it; `--w-*` is private and declared in `app.css` alone.
- *
- * This is not naming taste. A value declared on an element beats an inherited
- * one at any specificity, so the moment Weft declares a public name a host can
- * no longer set it from an ancestor — which is the only place the docs tell
- * them to set it.
+ * The three-namespace contract. `--weft-*` is the host's input and Weft only
+ * ever reads it; `--nb-*` belongs to @nazuraki/styles and Weft only ever reads
+ * it; `--w-*` is private and declared in `app.css` alone, each one resolving
+ * host override → active theme token → literal fallback.
  */
-describe("the public/private token split", () => {
+describe("the public/theme/private token split", () => {
 	it("never declares a public token, only reads one", () => {
 		// `@property` registers a name without a `:` declaration, so it counts too.
-		expect(tokens).not.toMatch(/--weft-[\w-]+\s*:/);
+		expect(tokens).not.toMatch(/--weft-[\w-]+\s*:[^;]/);
 		expect(tokens).not.toMatch(/@property\s+--weft-/);
 		expect(tokens).toMatch(/var\(--weft-/);
+	});
+
+	it("never declares a design-system token — @nazuraki/styles owns --nb-*", () => {
+		const offenders = [resolve(SRC, "app.css"), ...styleBearingFiles()].filter((file) =>
+			/--nb-[\w-]+\s*:[^;]*;/.test(readFileSync(file, "utf-8").replace(/var\([^)]*\)/g, ""))
+		);
+		expect(offenders).toEqual([]);
 	});
 
 	it("gives every public token a fallback, so a host that sets none still renders", () => {
@@ -77,46 +82,45 @@ describe("the public/private token split", () => {
 		expect([...new Set(bare)]).toEqual([]);
 	});
 
+	it("chains every color and font through the theme layer", () => {
+		// Each --w-* color/font declaration must read a --nb-* token somewhere in
+		// its fallback chain — otherwise a theme swap silently misses it. Layout
+		// lengths (widths, heights) are Weft's own and exempt.
+		const decls = [...tokens.matchAll(/(--w-[\w-]+)\s*:([^;]+);/g)];
+		expect(decls.length).toBeGreaterThan(0);
+		const exempt = /^--w-(lhn-width|rhs-width|header-height)$/;
+		const missing = decls
+			.filter(([, name]) => !exempt.test(name))
+			.filter(([, , value]) => !value.includes("var(--nb-"))
+			.map(([, name]) => name);
+		expect(missing).toEqual([]);
+	});
+
 	it("declares its private tokens in app.css and nowhere else", () => {
 		// A component <style> introducing its own token would be un-overridable
 		// forever, and invisible to every other check here.
 		const offenders = styleBearingFiles().filter((file) =>
-			/--w(eft)?-[\w-]+\s*:/.test(readFileSync(file, "utf-8"))
+			/--w(eft)?-[\w-]+\s*:[^;]*;/.test(readFileSync(file, "utf-8").replace(/var\([^)]*\)/g, ""))
 		);
 		expect(offenders).toEqual([]);
 	});
 });
 
 /**
- * The theme blocks are the leak this rework exists to close, and the fix has a
- * sharp edge of its own.
+ * Scheme now arrives through which @nazuraki/styles theme block is active
+ * (`data-nb-style`), not through weft-owned `data-theme` token blocks. What
+ * remains pinned: Weft must never key token declarations off a bare attribute
+ * selector that could match the host's markup.
  */
-describe("the theme blocks", () => {
-	it("cannot reach the host's markup", () => {
-		// The old shape — a bare `[data-theme="dark"]` — matches ANY element with
-		// the attribute, so a host theming its own page inherited Weft's tokens and
-		// a real `color-scheme`. Anchored on a rule boundary rather than line start:
-		// the formatter de-indents top-level rules, so `^` would forbid the correct
-		// implementation while missing the bug indented or second in a comma list.
-		expect(tokens).not.toMatch(/(^|\})\s*\[data-theme="(dark|light)"\]\s*[,{]/);
+describe("theme attributes", () => {
+	it("declares no data-theme token blocks of its own", () => {
+		// The old light/dark blocks are gone; bringing one back would fork the
+		// palette from the design system again.
+		expect(tokens).not.toMatch(/\[data-theme=/);
 	});
 
-	it("keys off Weft's own markup, on the scope or inside it", () => {
-		// On the scope: the standalone app's <html>, or an embedded mount that has
-		// mirrored its host's theme onto itself. Inside it: the per-document
-		// override, which can only ever match markup Weft rendered.
-		expect(tokens).toMatch(/\.weft-scope\[data-theme="dark"\]/);
-		expect(tokens).toMatch(/\.weft-scope\s+\[data-theme="dark"\]/);
-	});
-
-	it("has no host-ancestor branch, which could not be ranked by proximity", () => {
-		// `[data-theme="dark"] .weft-scope` and its light twin both match a mount
-		// inside a themed host, at identical (0,2,0) — so source order rather than
-		// nearest ancestor would decide, and a mount asking to be dark inside a
-		// light page rendered light. CSS cannot express "nearest wins";
-		// `DocReader` resolves the value in JS instead, which is why this shape
-		// must not come back.
-		expect(tokens).not.toMatch(/\[data-theme="(dark|light)"\]\s+\.weft-scope/);
+	it("keys nothing off a bare host-reachable attribute selector", () => {
+		expect(tokens).not.toMatch(/(^|\})\s*\[data-(theme|nb-style)[^\]]*\]\s*[,{]/);
 	});
 });
 
@@ -124,16 +128,29 @@ describe("app-page.css (standalone app only)", () => {
 	it("owns the rules that belong to a page Weft controls", () => {
 		expect(page).toMatch(/^\s*\*,/m);
 		expect(page).toMatch(/^html,/m);
-		expect(page).toContain("@import");
+	});
+
+	it("imports no fonts — the layout emits per-theme links from the manifest", () => {
+		expect(page).not.toContain("@import");
 	});
 });
 
 describe("the standalone app", () => {
-	it("carries the scope class on its root element", () => {
-		// Tokens are declared on `.weft-scope` now, so without this the standalone
+	const html = readFileSync(resolve(SRC, "app.html"), "utf-8");
+
+	it("carries the scope class and the theme underlay on its root element", () => {
+		// Tokens are declared on `.weft-scope`, so without this the standalone
 		// app resolves every one of them to nothing — a failure no CSS-only check
 		// can see, because the mistake is in an HTML file.
-		const html = readFileSync(resolve(SRC, "app.html"), "utf-8");
 		expect(html).toMatch(/<html[^>]*\bclass="[^"]*\bweft-scope\b/);
+		expect(html).toMatch(/<html[^>]*\bclass="[^"]*\bnb-bg\b/);
+	});
+
+	it("pre-paints both the scheme and the theme attribute", () => {
+		// data-theme drives the doc-override contract and host mirroring;
+		// data-nb-style is what the design-system CSS actually keys off. Setting
+		// only one paints the wrong first frame.
+		expect(html).toMatch(/setAttribute\("data-theme"/);
+		expect(html).toMatch(/setAttribute\("data-nb-style"/);
 	});
 });
