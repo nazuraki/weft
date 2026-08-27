@@ -1,3 +1,5 @@
+import { untrack } from "svelte";
+
 type Theme = "light" | "dark";
 
 /**
@@ -45,12 +47,17 @@ function createThemeStore() {
 	}
 
 	function init() {
-		stylePair = {
-			dark: readMeta("weft-style-dark") ?? undefined,
-			light: readMeta("weft-style-light") ?? undefined,
-		};
-		base = resolveBase();
-		apply(base);
+		// untracked: init writes stylePair and then reads it back through
+		// resolveBase()/clamp(). Called from an $effect, that read would register
+		// the write as the effect's own dependency and loop it forever.
+		untrack(() => {
+			stylePair = {
+				dark: readMeta("weft-style-dark") ?? undefined,
+				light: readMeta("weft-style-light") ?? undefined,
+			};
+			base = resolveBase();
+			apply(base);
+		});
 
 		window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
 			if (!localStorage.getItem("weft-theme") && !readMeta("weft-default-theme")) {
