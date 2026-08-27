@@ -35,7 +35,7 @@ let {
 	extendSchema,
 }: Props = $props();
 
-const stylePair = resolveStylePair(style);
+let stylePair = $derived(resolveStylePair(style));
 
 let currentNode = $derived(manifest.nodes.find((node) => node.id === nodeId) ?? null);
 

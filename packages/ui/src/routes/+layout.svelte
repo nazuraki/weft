@@ -4,6 +4,7 @@ import "../app.css";
 import "../app-page.css";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import { ApiClient } from "$lib/clients/api.js";
+import { loadRemoteStyles } from "$lib/style-loader.js";
 import { fontsFor, isBundledStyle, resolveStylePair } from "$lib/styles.js";
 import { setContext } from "svelte";
 import type { Snippet } from "svelte";
@@ -28,6 +29,12 @@ let fontUrls = $derived(fontsFor([pair.dark, pair.light]));
 let remoteStyles = $derived(
 	data.styleUrl ? [pair.dark, pair.light].filter((s): s is string => !!s && !isBundledStyle(s)) : []
 );
+
+$effect(() => {
+	if (data.styleUrl && remoteStyles.length) {
+		loadRemoteStyles(data.styleUrl, remoteStyles, { stylesheets: false });
+	}
+});
 </script>
 
 <svelte:head>

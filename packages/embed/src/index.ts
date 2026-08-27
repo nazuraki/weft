@@ -1,6 +1,7 @@
 import type { WeftClient } from "$lib/client.js";
 import type { RenderOptions } from "$lib/markdown.js";
-import { assertServableStyles } from "$lib/styles.js";
+import { loadRemoteStyles } from "$lib/style-loader.js";
+import { assertServableStyles, isBundledStyle } from "$lib/styles.js";
 import type { Manifest, StyleConfig } from "@weft/core/browser";
 import { mount, unmount } from "svelte";
 import App from "./App.svelte";
@@ -13,6 +14,15 @@ import { createDocState } from "./doc-state.svelte.js";
 import "@nazuraki/styles/all";
 
 export type { WeftClient } from "$lib/client.js";
+
+/** Fetch any non-bundled theme (CSS + fonts) from the configured styleUrl. */
+function loadRemoteIfNeeded(style: StyleConfig | undefined, styleUrl: string | undefined): void {
+	if (!styleUrl || !style) return;
+	const names = (typeof style === "string" ? [style] : [style.dark, style.light]).filter(
+		(name) => !isBundledStyle(name)
+	);
+	void loadRemoteStyles(styleUrl, names, { stylesheets: true });
+}
 
 export interface EmbedConfig {
 	/** GitHub repo in "owner/repo" format. Required unless baseUrl is set. */
@@ -88,6 +98,7 @@ export function mountWeft(target: string | HTMLElement, config: EmbedConfig): ()
 		throw new Error(`Weft: container not found: ${target}`);
 	}
 	assertServableStyles(config.style, config.styleUrl);
+	loadRemoteIfNeeded(config.style, config.styleUrl);
 
 	const app = mount(App, { target: container, props: { config } });
 	return () => unmount(app);
@@ -196,6 +207,7 @@ export function mountDoc(target: string | HTMLElement, options: DocMountOptions)
 		throw new Error("Weft: mountDoc needs a `manifest`");
 	}
 	assertServableStyles(options.style, options.styleUrl);
+	loadRemoteIfNeeded(options.style, options.styleUrl);
 
 	const state = createDocState({ nodeId: options.nodeId, anchor: options.anchor });
 
