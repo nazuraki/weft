@@ -85,7 +85,7 @@ function handleKeydown(e: KeyboardEvent) {
 				</span>
 			</span>
 				{/if}
-				<button class="search-trigger" onclick={() => (showSearch = true)}>
+				<button class="nb-btn search-trigger" onclick={() => (showSearch = true)}>
 					Search
 					<kbd>⌘K</kbd>
 				</button>
@@ -240,20 +240,10 @@ function handleKeydown(e: KeyboardEvent) {
 	.theme-toggle-wrap:hover .theme-tooltip {
 		display: block;
 	}
+	/* A design-system button, sized down to header chrome. */
 	.search-trigger {
-		display: flex;
-		align-items: center;
-		gap: 8px;
 		padding: 4px 12px;
-		border: 1px solid var(--w-border);
-		border-radius: 6px;
-		background: var(--w-bg-secondary);
-		color: var(--w-text-secondary);
-		cursor: pointer;
-		font-size: 13px;
-	}
-	.search-trigger:hover {
-		border-color: var(--w-text-secondary);
+		font-size: 12px;
 	}
 	.search-trigger kbd {
 		font-family: var(--w-font-sans);

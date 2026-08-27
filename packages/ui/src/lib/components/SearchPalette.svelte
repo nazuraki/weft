@@ -98,20 +98,24 @@ function handleBackdropClick(e: MouseEvent) {
 	.backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.3);
+		/* The active theme's page color at low alpha, blurred — the design
+		 * system's dialog-backdrop treatment, expressed with its tokens. */
+		background: color-mix(in srgb, var(--w-bg) 55%, transparent);
+		backdrop-filter: blur(calc(var(--nb-blur, 12px) / 2));
 		display: flex;
 		justify-content: center;
 		padding-top: 120px;
 		z-index: 100;
 	}
 	.palette {
-		background: var(--w-bg);
+		background: var(--w-bg-elevated);
 		border: 1px solid var(--w-border);
-		border-radius: 12px;
+		border-radius: var(--nb-radius-lg, 12px);
 		width: 560px;
 		max-height: 400px;
 		overflow: hidden;
-		box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+		/* Elevation is glow, not grey shadow — luminous-precision's rule. */
+		box-shadow: 0 0 32px var(--w-accent-subtle);
 		display: flex;
 		flex-direction: column;
 		align-self: flex-start;
@@ -124,6 +128,11 @@ function handleBackdropClick(e: MouseEvent) {
 		font-size: 16px;
 		outline: none;
 		background: transparent;
+		color: var(--w-text);
+		font-family: var(--w-font-sans);
+	}
+	.search-input:focus {
+		border-bottom-color: var(--nb-accent, var(--w-accent));
 	}
 	.results {
 		list-style: none;

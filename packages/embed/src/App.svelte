@@ -88,6 +88,6 @@ load();
 		color: var(--w-text-secondary, #656d76);
 	}
 	.weft-load-error {
-		color: #d1242f;
+		color: var(--nb-danger, #b3261e);
 	}
 </style>
