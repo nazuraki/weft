@@ -1,4 +1,4 @@
-import { WeftService, loadConfig } from "@weft/core";
+import { WeftService, fetchRepo, loadConfig, resolveFetchedRepos } from "@weft/core";
 import { command } from "cleye";
 import { weftApiPlugin } from "../api-middleware.js";
 
@@ -20,6 +20,19 @@ export const serveCommand = command(
 				description: "Open browser on start",
 				default: true,
 			},
+			repo: {
+				type: String,
+				description: "Serve a GitHub repo (org/repo) without a checkout, fetching into a cache",
+			},
+			ref: {
+				type: String,
+				description: "Branch, tag or commit sha to fetch (with --repo; default: remote HEAD)",
+			},
+			refresh: {
+				type: Boolean,
+				description: "Re-resolve fetched refs even when the cached resolution is fresh",
+				default: false,
+			},
 		},
 	},
 	async (argv) => {
@@ -36,13 +49,34 @@ export const serveCommand = command(
 		const require = createRequire(import.meta.url);
 		const uiRoot = dirname(require.resolve("@weft/ui/package.json"));
 
-		// Resolve the root dir before the chdir below, since it defaults to the cwd.
-		const rootDir = resolve(argv._.rootDir ?? process.cwd());
+		const repo = argv.flags.repo;
+		if (repo && argv._.rootDir) {
+			console.error("serve: pass either a root directory or --repo, not both");
+			process.exit(1);
+		}
 
 		try {
+			// With --repo the root is a fetched, cache-resident checkout; otherwise
+			// resolve the root dir before the chdir below, since it defaults to the cwd.
+			let rootDir: string;
+			if (repo) {
+				console.log(`Fetching ${repo}${argv.flags.ref ? `@${argv.flags.ref}` : ""}…`);
+				rootDir = await fetchRepo(repo, {
+					ref: argv.flags.ref,
+					refresh: argv.flags.refresh,
+				});
+			} else {
+				rootDir = resolve(argv._.rootDir ?? process.cwd());
+			}
+
 			// The CLI owns the single WeftService. The UI never constructs one — it
 			// consumes /api JSON (client) and the manifest file (SSR).
-			const config = await loadConfig(rootDir);
+			let config = await loadConfig(rootDir);
+			if (repo) {
+				// Repos the fetched config references resolve the same way: a real
+				// local checkout wins, everything else is fetched at its HEAD.
+				config = await resolveFetchedRepos(config, { refresh: argv.flags.refresh });
+			}
 			const service = new WeftService(config);
 
 			await service.rebuild();
