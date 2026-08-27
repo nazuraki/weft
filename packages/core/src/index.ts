@@ -17,6 +17,11 @@ export {
 	validateContribution,
 } from "./contributions.js";
 export type { Contribution, LoadedContribution, NodePatch } from "./contributions.js";
+export { gitAuthEnv, resolveToken } from "./fetch/auth.js";
+export { cacheRoot, isCachePath, repoCacheDir } from "./fetch/cache.js";
+export { cloneAtSha, githubUrl, resolveRemoteRef } from "./fetch/clone.js";
+export { fetchRepo, resolveFetchedRepos } from "./fetch/resolve.js";
+export type { FetchOptions } from "./fetch/resolve.js";
 export { parseFrontmatter } from "./frontmatter.js";
 export type { Frontmatter } from "./frontmatter.js";
 export { checkFreshness, computeInputsHash } from "./freshness.js";

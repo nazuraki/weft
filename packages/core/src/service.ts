@@ -4,6 +4,7 @@ import chokidar from "chokidar";
 import { getDocType } from "./anchors/index.js";
 import { type DocsRoot, isNamespaced, resolveDocsRoots, rootForNodeId } from "./config.js";
 import { loadContributions } from "./contributions.js";
+import { isCachePath } from "./fetch/cache.js";
 import { checkFreshness, computeInputsHash } from "./freshness.js";
 import { type FileHistory, type HistoryDepth, fileHistory } from "./git.js";
 import { type RootGraph, buildRootGraph, mergeGraphs, splitManifest } from "./manifest.js";
@@ -355,38 +356,45 @@ export class WeftService {
 		});
 	}
 
-	/** Watch every docs root for changes, rebuilding the changed project on change. */
+	/**
+	 * Watch every docs root for changes, rebuilding the changed project on change.
+	 *
+	 * A root inside the fetch cache is a checkout pinned to a commit — nothing
+	 * edits it, so it is not watched.
+	 */
 	watch(callback?: (manifest: Manifest) => void): () => void {
-		const watchers = this.roots.map((root) => {
-			const watcher = chokidar.watch(root.absDir, {
-				ignored: [
-					/(^|[/\\])\../, // dotfiles
-					"**/.weft/**", // manifest output
-					...this.config.ignore,
-				],
-				persistent: true,
-				ignoreInitial: true,
+		const watchers = this.roots
+			.filter((root) => !isCachePath(root.absDir))
+			.map((root) => {
+				const watcher = chokidar.watch(root.absDir, {
+					ignored: [
+						/(^|[/\\])\../, // dotfiles
+						"**/.weft/**", // manifest output
+						...this.config.ignore,
+					],
+					persistent: true,
+					ignoreInitial: true,
+				});
+
+				let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+				const onChangeDebounced = () => {
+					if (debounceTimer) clearTimeout(debounceTimer);
+					debounceTimer = setTimeout(async () => {
+						const manifest = await this.rebuild(root.slug);
+						callback?.(manifest);
+					}, 200);
+				};
+
+				watcher.on("add", onChangeDebounced);
+				watcher.on("change", onChangeDebounced);
+				watcher.on("unlink", onChangeDebounced);
+
+				return () => {
+					watcher.close();
+					if (debounceTimer) clearTimeout(debounceTimer);
+				};
 			});
-
-			let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-			const onChangeDebounced = () => {
-				if (debounceTimer) clearTimeout(debounceTimer);
-				debounceTimer = setTimeout(async () => {
-					const manifest = await this.rebuild(root.slug);
-					callback?.(manifest);
-				}, 200);
-			};
-
-			watcher.on("add", onChangeDebounced);
-			watcher.on("change", onChangeDebounced);
-			watcher.on("unlink", onChangeDebounced);
-
-			return () => {
-				watcher.close();
-				if (debounceTimer) clearTimeout(debounceTimer);
-			};
-		});
 
 		return () => {
 			for (const stop of watchers) stop();
