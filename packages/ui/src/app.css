@@ -6,7 +6,7 @@
  * remote font import) lives in `app-page.css`, loaded only by the standalone
  * app.
  *
- * TWO NAMESPACES, and the split is the whole contract:
+ * THREE NAMESPACES, and the layering is the whole contract:
  *
  *   --weft-*  PUBLIC. The host's input. Weft only ever READS these, never
  *             declares one. That is not stylistic: a value declared on an
@@ -14,31 +14,31 @@
  *             Weft declares a public name, a host can no longer set it from an
  *             ancestor — which is the only place the docs tell them to set it.
  *
- *   --w-*     PRIVATE. Declared here and nowhere else, read at every use site.
- *             Deliberately unmistakable as internal, so a host's own generic
- *             tokens (`--color-bg` and friends) are never shadowed inside
- *             markup a contributed render plugin put in Weft's subtree.
+ *   --nb-*    THE DESIGN SYSTEM. Declared by @nazuraki/styles under
+ *             `[data-nb-style="<theme>"]` guards — never by Weft (styles.test
+ *             pins that). Which theme's values apply is decided by the
+ *             `data-nb-style` attribute Weft sets on its scope root (and on a
+ *             per-document override element inside it).
  *
- * `styles.test.ts` pins both halves; without it the split rots the first time
- * someone "helpfully" adds a default.
+ *   --w-*     PRIVATE. Declared here and nowhere else, read at every use site.
+ *             Each one resolves host override → active theme token → literal
+ *             fallback, so a mount with no theme attribute and no host input
+ *             still renders (in the light literals).
+ *
+ * `styles.test.ts` pins all three layers; without it the split rots the first
+ * time someone "helpfully" adds a default.
  */
 /*
  * Scoped, with no `:root` beside it. `:root` IS the host's `<html>`, at higher
  * specificity than the host's own `html` rule can reach — so declaring here
- * pushed Weft's tokens and, far worse, a real `color-scheme` onto every page
- * that loaded the bundle. That is the leak this whole split exists to close,
- * and it shipped anyway because the guard looked for `html` and `body` as
- * strings and `:root` is neither while being exactly that element.
+ * would push Weft's tokens onto every page that loaded the bundle. The
+ * standalone app carries `weft-scope` on `<html>`, and an embedded mount
+ * matches on its own root.
  *
- * Nothing needs it: the standalone app carries `weft-scope` on `<html>`, and an
- * embedded mount matches on its own root.
- *
- * The class belongs on the ROOT element in the standalone app, not on `<body>`:
- * the theme blocks set `color-scheme`, and the root's used value is what drives
- * viewport scrollbar rendering and the pre-paint canvas colour. On `<body>` you
- * get a dark app with light scrollbars and a white flash before first paint.
- * `app.html` carries a one-line pointer here rather than this explanation,
- * because that file is served to every visitor.
+ * `color-scheme` is deliberately absent: the active @nazuraki/styles theme
+ * declares it on the same `data-nb-style` element, which in the standalone
+ * app is the root — exactly where scrollbar rendering and the pre-paint
+ * canvas colour read it from.
  */
 .weft-scope {
 	--w-lhn-width: var(--weft-lhn-width, 240px);
@@ -47,108 +47,35 @@
 
 	--w-font-sans: var(
 		--weft-font-sans,
-		"Inter",
-		-apple-system,
-		BlinkMacSystemFont,
-		"Segoe UI",
-		sans-serif
+		var(--nb-font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)
 	);
-	--w-font-heading: var(--weft-font-heading, "Space Grotesk", "Inter", sans-serif);
+	--w-font-heading: var(--weft-font-heading, var(--nb-font-display, sans-serif));
 	--w-font-mono: var(
 		--weft-font-mono,
-		ui-monospace,
-		SFMono-Regular,
-		"SF Mono",
-		Menlo,
-		Consolas,
-		monospace
+		var(--nb-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)
 	);
 
-	/* Light is the base, so a mount with no `data-theme` anywhere still renders. */
-	--w-bg: var(--weft-color-bg, #fef7ff);
-	--w-bg-secondary: var(--weft-color-bg-secondary, #f4eff4);
-	--w-bg-elevated: var(--weft-color-bg-elevated, #ece6f0);
-	--w-border: var(--weft-color-border, #cac4d0);
-	--w-border-subtle: var(--weft-color-border-subtle, #e6e0e9);
-	--w-text: var(--weft-color-text, #1c1b1f);
-	--w-text-secondary: var(--weft-color-text-secondary, #49454f);
-	--w-link: var(--weft-color-link, #6750a4);
-	--w-link-hover: var(--weft-color-link-hover, #4f378a);
-	--w-accent: var(--weft-color-accent, #6750a4);
-	--w-accent-subtle: var(--weft-color-accent-subtle, #eaddff);
-	--w-code-keyword: var(--weft-code-keyword, #6750a4);
-	--w-code-string: var(--weft-code-string, #2e7d32);
-	--w-code-number: var(--weft-code-number, #b45309);
-	--w-code-comment: var(--weft-code-comment, #6b6b74);
-	--w-code-function: var(--weft-code-function, #1565c0);
-	--w-code-variable: var(--weft-code-variable, #ad1457);
-	--w-code-type: var(--weft-code-type, #00695c);
-	--w-code-meta: var(--weft-code-meta, #49454f);
-	color-scheme: light;
-}
-
-/*
- * Dark is opt-in, via `data-theme` in one of two places — both of them inside
- * Weft's own markup, which is what keeps these rules off the host's page.
- *
- * The scope element itself: the standalone app sets it on `<html>`, and an
- * embedded mount mirrors its nearest themed ancestor onto its own root (see
- * `DocReader.svelte`). There is no `[data-theme] .weft-scope` ancestor rule on
- * purpose. It would match a mount inside a themed host — but so would the
- * opposite scheme's copy, at identical (0,2,0) specificity, so source order
- * rather than proximity would decide. CSS cannot express "nearest ancestor
- * wins"; resolving the value in JS can, and does.
- *
- * A descendant carrying it: the per-document override. Safe by construction,
- * since a host's elements are never inside `.weft-scope`.
- */
-.weft-scope[data-theme="dark"],
-.weft-scope [data-theme="dark"] {
-	--w-bg: var(--weft-color-bg, #131315);
-	--w-bg-secondary: var(--weft-color-bg-secondary, #1b1b1d);
-	--w-bg-elevated: var(--weft-color-bg-elevated, #201f21);
-	--w-border: var(--weft-color-border, #494553);
-	--w-border-subtle: var(--weft-color-border-subtle, #353437);
-	--w-text: var(--weft-color-text, #e5e1e4);
-	--w-text-secondary: var(--weft-color-text-secondary, #948e9f);
-	--w-link: var(--weft-color-link, #cebdff);
-	--w-link-hover: var(--weft-color-link-hover, #e8ddff);
-	--w-accent: var(--weft-color-accent, #cebdff);
-	--w-accent-subtle: var(--weft-color-accent-subtle, #2d2543);
-	--w-code-keyword: var(--weft-code-keyword, #cebdff);
-	--w-code-string: var(--weft-code-string, #a5d6a7);
-	--w-code-number: var(--weft-code-number, #ffcc80);
-	--w-code-comment: var(--weft-code-comment, #8b8595);
-	--w-code-function: var(--weft-code-function, #8ab4f8);
-	--w-code-variable: var(--weft-code-variable, #f48fb1);
-	--w-code-type: var(--weft-code-type, #80cbc4);
-	--w-code-meta: var(--weft-code-meta, #948e9f);
-	color-scheme: dark;
-}
-
-/* Light, when something above has already asked for dark. Mirrors the set above. */
-.weft-scope[data-theme="light"],
-.weft-scope [data-theme="light"] {
-	--w-bg: var(--weft-color-bg, #fef7ff);
-	--w-bg-secondary: var(--weft-color-bg-secondary, #f4eff4);
-	--w-bg-elevated: var(--weft-color-bg-elevated, #ece6f0);
-	--w-border: var(--weft-color-border, #cac4d0);
-	--w-border-subtle: var(--weft-color-border-subtle, #e6e0e9);
-	--w-text: var(--weft-color-text, #1c1b1f);
-	--w-text-secondary: var(--weft-color-text-secondary, #49454f);
-	--w-link: var(--weft-color-link, #6750a4);
-	--w-link-hover: var(--weft-color-link-hover, #4f378a);
-	--w-accent: var(--weft-color-accent, #6750a4);
-	--w-accent-subtle: var(--weft-color-accent-subtle, #eaddff);
-	--w-code-keyword: var(--weft-code-keyword, #6750a4);
-	--w-code-string: var(--weft-code-string, #2e7d32);
-	--w-code-number: var(--weft-code-number, #b45309);
-	--w-code-comment: var(--weft-code-comment, #6b6b74);
-	--w-code-function: var(--weft-code-function, #1565c0);
-	--w-code-variable: var(--weft-code-variable, #ad1457);
-	--w-code-type: var(--weft-code-type, #00695c);
-	--w-code-meta: var(--weft-code-meta, #49454f);
-	color-scheme: light;
+	/* The literals are the pre-conversion light palette, kept as the final
+	 * fallback so a themeless mount still renders legibly. */
+	--w-bg: var(--weft-color-bg, var(--nb-bg, #fef7ff));
+	--w-bg-secondary: var(--weft-color-bg-secondary, var(--nb-bg-blend, #f4eff4));
+	--w-bg-elevated: var(--weft-color-bg-elevated, var(--nb-surface, #ece6f0));
+	--w-border: var(--weft-color-border, var(--nb-border, #cac4d0));
+	--w-border-subtle: var(--weft-color-border-subtle, var(--nb-border, #e6e0e9));
+	--w-text: var(--weft-color-text, var(--nb-on-surface, #1c1b1f));
+	--w-text-secondary: var(--weft-color-text-secondary, var(--nb-faint, #49454f));
+	--w-link: var(--weft-color-link, var(--nb-primary, #6750a4));
+	--w-link-hover: var(--weft-color-link-hover, var(--nb-accent, #4f378a));
+	--w-accent: var(--weft-color-accent, var(--nb-primary, #6750a4));
+	--w-accent-subtle: var(--weft-color-accent-subtle, var(--nb-primary-glow, #eaddff));
+	--w-code-keyword: var(--weft-code-keyword, var(--nb-code-keyword, #6750a4));
+	--w-code-string: var(--weft-code-string, var(--nb-code-string, #2e7d32));
+	--w-code-number: var(--weft-code-number, var(--nb-code-number, #b45309));
+	--w-code-comment: var(--weft-code-comment, var(--nb-code-comment, #6b6b74));
+	--w-code-function: var(--weft-code-function, var(--nb-code-function, #1565c0));
+	--w-code-variable: var(--weft-code-variable, var(--nb-code-variable, #ad1457));
+	--w-code-type: var(--weft-code-type, var(--nb-code-type, #00695c));
+	--w-code-meta: var(--weft-code-meta, var(--nb-code-meta, #49454f));
 }
 
 /*

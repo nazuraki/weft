@@ -1,6 +1,7 @@
 <!doctype html>
-<!-- weft-scope must stay on the root — see app.css -->
-<html lang="en" class="weft-scope">
+<!-- weft-scope must stay on the root — see app.css. nb-bg is the active
+     ui-std-lib theme's page underlay, inert until data-nb-style is set below. -->
+<html lang="en" class="weft-scope nb-bg">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,10 +9,17 @@
 		%sveltekit.head%
 	</head>
 	<script>
+		// Pre-paint: pick a scheme, then the theme name for it. The style metas
+		// are the config channel — a missing half means that scheme does not
+		// exist in this deployment, so the choice clamps to what is available.
+		const meta = (name) => document.querySelector(`meta[name="${name}"]`)?.content;
+		const styles = { dark: meta("weft-style-dark"), light: meta("weft-style-light") };
 		const saved = localStorage.getItem("weft-theme");
 		const sysPreferred = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-		const configDefault = document.querySelector('meta[name="weft-default-theme"]')?.content;
-		document.documentElement.setAttribute("data-theme", saved ?? configDefault ?? sysPreferred);
+		let scheme = saved ?? meta("weft-default-theme") ?? sysPreferred;
+		if (!styles[scheme]) scheme = styles.dark ? "dark" : "light";
+		document.documentElement.setAttribute("data-theme", scheme);
+		if (styles[scheme]) document.documentElement.setAttribute("data-nb-style", styles[scheme]);
 	</script>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>

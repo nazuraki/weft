@@ -131,6 +131,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@nazuraki/styles':
+        specifier: ^0.3.0
+        version: 0.3.0
       '@weft/core':
         specifier: workspace:*
         version: link:../core
@@ -440,6 +443,9 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@nazuraki/styles@0.3.0':
+    resolution: {integrity: sha512-yIYmRkMMHc+UPnOcWaLA/J77Zjhny2iwgJUB423AwlehX8of392d8SLOmqKx3XhXEVUTV+KRcEF4KJniJbzh/Q==}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -1767,6 +1773,8 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@nazuraki/styles@0.3.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 

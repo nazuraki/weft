@@ -70,6 +70,7 @@ function handleKeydown(e: KeyboardEvent) {
 			{/if}
 		</div>
 		<div class="header-right">
+				{#if theme.canToggle}
 				<span class="theme-toggle-wrap">
 				<button
 					class="theme-toggle"
@@ -83,6 +84,7 @@ function handleKeydown(e: KeyboardEvent) {
 					Shift/Ctrl+click to override this document
 				</span>
 			</span>
+				{/if}
 				<button class="search-trigger" onclick={() => (showSearch = true)}>
 					Search
 					<kbd>⌘K</kbd>
@@ -101,7 +103,15 @@ function handleKeydown(e: KeyboardEvent) {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main" data-theme={theme.docOverride ?? undefined}>
+	<!-- The per-doc override carries both axes: the scheme for anything keyed
+	     off data-theme, and the theme name whose token block restyles this
+	     subtree (tokens re-declare on this element, so they win over the
+	     root's by proximity, not source order). -->
+	<main
+		class="main"
+		data-theme={theme.docOverride ?? undefined}
+		data-nb-style={theme.docOverride ? theme.styleFor(theme.docOverride) : undefined}
+	>
 		{#if currentNode}
 			<DocView
 				nodeId={currentNode.id}
