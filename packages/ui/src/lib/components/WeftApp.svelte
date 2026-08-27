@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { RenderOptions } from "$lib/markdown.js";
-import { theme } from "$lib/stores/theme.svelte.js";
+import { type ThemeInitOptions, theme } from "$lib/stores/theme.svelte.js";
 import { nodeIdToPath } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core";
 import DocTree from "./DocTree.svelte";
@@ -14,6 +14,13 @@ interface Props extends RenderOptions {
 	currentNodeId: string;
 	anchor?: string;
 	navigate: (path: string) => void;
+	/**
+	 * Theme wiring for hosts that are not the whole page. The standalone app
+	 * omits this: the layout's metas carry the pair and `<html>` takes the
+	 * attributes. An embed passes its pair and its own scope container, so
+	 * nothing lands on the host's root.
+	 */
+	themeOptions?: ThemeInitOptions;
 }
 
 let {
@@ -25,6 +32,7 @@ let {
 	remarkPlugins,
 	rehypePlugins,
 	extendSchema,
+	themeOptions,
 }: Props = $props();
 
 let showSearch = $state(false);
@@ -34,7 +42,7 @@ let readerMode = $derived(layout === "reader");
 let currentNode = $derived(manifest.nodes.find((n) => n.id === currentNodeId) ?? null);
 
 $effect(() => {
-	theme.init();
+	theme.init(themeOptions);
 });
 
 $effect(() => {

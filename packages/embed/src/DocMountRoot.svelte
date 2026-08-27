@@ -2,7 +2,7 @@
 import { WEFT_CLIENT_KEY, type WeftClient } from "$lib/client.js";
 import DocReader from "$lib/components/DocReader.svelte";
 import type { RenderOptions } from "$lib/markdown.js";
-import type { Manifest } from "@weft/core/browser";
+import type { Manifest, StyleConfig } from "@weft/core/browser";
 import { setContext } from "svelte";
 import type { DocState } from "./doc-state.svelte.js";
 
@@ -15,6 +15,7 @@ interface Props extends RenderOptions {
 	manifest: Manifest;
 	state: DocState;
 	linkedItems?: boolean;
+	style?: StyleConfig;
 	onnavigate?: (nodeId: string, anchor?: string) => void;
 }
 
@@ -23,6 +24,7 @@ let {
 	manifest,
 	state,
 	linkedItems = false,
+	style,
 	onnavigate,
 	remarkPlugins,
 	rehypePlugins,
@@ -39,6 +41,7 @@ setContext(WEFT_CLIENT_KEY, client);
 	nodeId={state.nodeId}
 	anchor={state.anchor}
 	{linkedItems}
+	{style}
 	{onnavigate}
 	{remarkPlugins}
 	{rehypePlugins}

@@ -9,11 +9,28 @@ type Theme = "light" | "dark";
  * preference pin a theme the config no longer names — config decides styles,
  * the user decides light or dark.
  */
+/** What `init` may be told instead of reading the page's metas. */
+export interface ThemeInitOptions {
+	/** Scheme → theme-name pair. Defaults to the layout's style metas. */
+	pair?: { dark?: string; light?: string };
+	/**
+	 * Element the attributes land on. The standalone app owns its page, so it
+	 * defaults to `<html>`; an embed passes its own scope container — putting
+	 * `data-nb-style` on a host's root would push theme tokens (and a real
+	 * `color-scheme`) onto a page Weft does not own.
+	 */
+	root?: HTMLElement;
+	/** Starting scheme when the user has no saved preference. Defaults to the `weft-default-theme` meta. */
+	defaultScheme?: Theme;
+}
+
 function createThemeStore() {
 	let base = $state<Theme>("dark");
 	let docOverride = $state<Theme | null>(null);
 	let stylePair = $state<{ dark?: string; light?: string }>({});
 	let warnedSingle = false;
+	let target: HTMLElement | undefined;
+	let defaultScheme: Theme | undefined;
 
 	const readMeta = (name: string): string | null =>
 		document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") ?? null;
@@ -34,24 +51,27 @@ function createThemeStore() {
 
 	function resolveBase(): Theme {
 		const saved = localStorage.getItem("weft-theme") as Theme | null;
-		const configDefault = readMeta("weft-default-theme") as Theme | null;
+		const configDefault = defaultScheme ?? (readMeta("weft-default-theme") as Theme | null);
 		const sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 		return clamp(saved ?? configDefault ?? sys);
 	}
 
 	function apply(theme: Theme) {
-		document.documentElement.setAttribute("data-theme", theme);
+		const el = target ?? document.documentElement;
+		el.setAttribute("data-theme", theme);
 		const style = stylePair[theme];
-		if (style) document.documentElement.setAttribute("data-nb-style", style);
-		else document.documentElement.removeAttribute("data-nb-style");
+		if (style) el.setAttribute("data-nb-style", style);
+		else el.removeAttribute("data-nb-style");
 	}
 
-	function init() {
+	function init(options?: ThemeInitOptions) {
 		// untracked: init writes stylePair and then reads it back through
 		// resolveBase()/clamp(). Called from an $effect, that read would register
 		// the write as the effect's own dependency and loop it forever.
 		untrack(() => {
-			stylePair = {
+			target = options?.root;
+			defaultScheme = options?.defaultScheme;
+			stylePair = options?.pair ?? {
 				dark: readMeta("weft-style-dark") ?? undefined,
 				light: readMeta("weft-style-light") ?? undefined,
 			};

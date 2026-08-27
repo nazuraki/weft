@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { RenderOptions } from "$lib/markdown.js";
-import type { Manifest } from "@weft/core";
+import { resolveStylePair } from "$lib/styles.js";
+import type { Manifest, StyleConfig } from "@weft/core";
 import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";
 
@@ -10,6 +11,8 @@ interface Props extends RenderOptions {
 	anchor?: string;
 	/** Show the linked-items sidebar. Off by default — the host asks for it. */
 	linkedItems?: boolean;
+	/** ui-std-lib style: a pair follows the mirrored host scheme; a single name is fixed. */
+	style?: StyleConfig;
 	/**
 	 * Where a link inside the document leads.
 	 *
@@ -25,11 +28,14 @@ let {
 	nodeId,
 	anchor,
 	linkedItems = false,
+	style,
 	onnavigate,
 	remarkPlugins,
 	rehypePlugins,
 	extendSchema,
 }: Props = $props();
+
+const stylePair = resolveStylePair(style);
 
 let currentNode = $derived(manifest.nodes.find((node) => node.id === nodeId) ?? null);
 
@@ -78,6 +84,15 @@ $effect(() => {
 	return () => observer.disconnect();
 });
 
+// The mirrored scheme picks which half of the pair renders. An unthemed host
+// gets the light half when there is one — host pages are usually light, and
+// the pre-conversion base palette was light for the same reason. A scheme the
+// pair cannot serve clamps to the half that exists.
+let activeStyle = $derived.by(() => {
+	const scheme = inheritedTheme ?? (stylePair.light ? "light" : "dark");
+	return stylePair[scheme as "dark" | "light"] ?? stylePair.light ?? stylePair.dark;
+});
+
 function handleNavigate(id: string, hash?: string) {
 	onnavigate?.(id, hash);
 }
@@ -97,7 +112,12 @@ function handleNavigate(id: string, hash?: string) {
 	the cascade sees it on our own element rather than having to pick between two
 	ancestors it cannot rank.
 -->
-<div class="weft-scope weft-doc" data-theme={inheritedTheme ?? undefined} bind:this={root}>
+<div
+	class="weft-scope weft-doc"
+	data-theme={inheritedTheme ?? undefined}
+	data-nb-style={activeStyle}
+	bind:this={root}
+>
 	{#if currentNode}
 		<div class="doc" class:with-sidebar={linkedItems}>
 			<main class="reader">

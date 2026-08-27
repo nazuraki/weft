@@ -85,6 +85,9 @@ importers:
 
   packages/embed:
     dependencies:
+      '@nazuraki/styles':
+        specifier: ^0.3.0
+        version: 0.3.0
       '@weft/core':
         specifier: workspace:*
         version: link:../core

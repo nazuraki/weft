@@ -49,6 +49,24 @@ export function resolveStylePair(style?: StyleConfig): { dark?: string; light?: 
 	return { dark: style.dark, light: style.light };
 }
 
+/**
+ * Reject a theme name nothing can serve: not in the bundled manifest, and no
+ * `styleUrl` to fetch it from. Throwing beats silently rendering the literal
+ * fallback palette while the config says luminous-precision.
+ */
+export function assertServableStyles(style: StyleConfig | undefined, styleUrl?: string): void {
+	if (!style || styleUrl) return;
+	const names = typeof style === "string" ? [style] : [style.dark, style.light];
+	for (const name of names) {
+		if (!isBundledStyle(name)) {
+			throw new Error(
+				`Weft: unknown style "${name}" — bundled styles are ${bundledStyleNames().join(", ")}; ` +
+					`pass styleUrl to load a newer one`
+			);
+		}
+	}
+}
+
 /** Deduped Google Fonts URLs for the bundled themes among `names`. */
 export function fontsFor(names: Array<string | undefined>): string[] {
 	const urls = new Set<string>();

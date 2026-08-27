@@ -45,19 +45,44 @@ function splitSelectors(group) {
  * cannot see the first rule inside an `@media` block, and
  * `@media (prefers-color-scheme)` is the likeliest place for a leak to hide.
  */
+/**
+ * Whole `@keyframes` blocks, removed before selector extraction — their step
+ * selectors (`from`, `0%`) are not element selectors. The names are checked
+ * separately: a keyframe name is page-global, so a generic one (`spin`) would
+ * silently replace or be replaced by a host animation of the same name.
+ */
+const KEYFRAMES = /@keyframes\s+([\w-]+)\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g;
+
 function selectorsIn(css) {
-	const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
-	const flattened = withoutComments.replace(/@[^{]+\{/g, "");
+	const withoutKeyframes = css.replace(KEYFRAMES, "");
+	const flattened = withoutKeyframes.replace(/@[^{}]+\{/g, "");
 
 	return [...flattened.matchAll(/(^|\}|\{)([^{}]+)\{/g)].flatMap((match) =>
 		splitSelectors(match[2])
 	);
 }
 
-/** Svelte emits `.svelte-<hash>` in this build; anything Weft owns carries one or the other. */
-const SCOPED = /\.weft-scope|\.svelte-[\w-]+/;
+/**
+ * Svelte emits `.svelte-<hash>` in this build; anything Weft owns carries one
+ * of those or `.weft-scope`. `[data-nb-style` marks a @nazuraki/styles rule —
+ * guarded by an attribute only Weft's own containers carry, so it cannot
+ * reach host markup either.
+ */
+const SCOPED = /\.weft-scope|\.svelte-[\w-]+|\[data-nb-style/;
 
-const selectors = selectorsIn(readFileSync(CSS, "utf-8"));
+const source = readFileSync(CSS, "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
+
+const badKeyframes = [...source.matchAll(KEYFRAMES)]
+	.map((m) => m[1])
+	.filter((name) => !/^(weft-|nb-|svelte-)/.test(name));
+if (badKeyframes.length) {
+	console.error(
+		`weft: keyframe name(s) in dist/weft.css are not namespaced (weft-/nb-/svelte-): ${badKeyframes.join(", ")}\n`
+	);
+	process.exit(1);
+}
+
+const selectors = selectorsIn(source);
 const unscoped = [...new Set(selectors.filter((selector) => !SCOPED.test(selector)))];
 
 if (unscoped.length) {

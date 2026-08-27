@@ -1,6 +1,7 @@
 <script lang="ts">
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import WeftApp from "$lib/components/WeftApp.svelte";
+import { resolveStylePair } from "$lib/styles.js";
 import { pathToNode } from "$lib/utils/paths.js";
 import type { Manifest } from "@weft/core/browser";
 import { setContext } from "svelte";
@@ -15,6 +16,12 @@ interface Props {
 }
 
 let { config }: Props = $props();
+
+// The theme attributes land on this mount's own container: on a host's
+// documentElement they would push --nb-* tokens and a real color-scheme onto
+// a page Weft does not own.
+let scopeEl: HTMLElement | undefined = $state();
+const stylePair = resolveStylePair(config.style);
 
 // svelte-ignore state_referenced_locally — config is static after mount
 const client = new GitHubClient(config);
@@ -57,13 +64,14 @@ load();
 	global reset, so the box model and tokens have to reach the app from its own
 	container rather than from the host's document.
 -->
-<div class="weft-scope weft-app">
+<div class="weft-scope weft-app" bind:this={scopeEl}>
 {#if loadError}
 	<p class="weft-load-error">Weft: {loadError}</p>
 {:else if manifest}
 	<WeftApp
 		{manifest}
 		{currentNodeId}
+		themeOptions={{ pair: stylePair, root: scopeEl }}
 		remarkPlugins={config.remarkPlugins}
 		rehypePlugins={config.rehypePlugins}
 		extendSchema={config.extendSchema}
