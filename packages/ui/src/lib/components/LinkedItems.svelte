@@ -25,7 +25,7 @@ let incoming = $derived(items.incoming);
 	{#if item.artifact}
 		<div class="edge-link artifact" title="A generated output — there is nothing to open here">
 			<span class="edge-target">{item.label}</span>
-			{#if item.edge.label}<span class="edge-label">{item.edge.label}</span>{/if}
+			{#if item.edge.label}<span class="nb-badge edge-label">{item.edge.label}</span>{/if}
 			<span class="edge-note">generated output</span>
 		</div>
 	{:else if item.resolved}
@@ -35,14 +35,14 @@ let incoming = $derived(items.incoming);
 			onclick={() => onnavigate(item.target, item.anchor)}
 		>
 			<span class="edge-target">{item.label}</span>
-			{#if item.anchor}<span class="edge-anchor">{item.anchor}</span>{/if}
-			{#if item.edge.label}<span class="edge-label">{item.edge.label}</span>{/if}
+			{#if item.anchor}<span class="nb-badge edge-anchor">{item.anchor}</span>{/if}
+			{#if item.edge.label}<span class="nb-badge edge-label">{item.edge.label}</span>{/if}
 		</button>
 	{:else}
 		<div class="edge-link unresolved" title="No document with this id is in the graph">
 			<span class="edge-target">{item.target}</span>
-			{#if item.anchor}<span class="edge-anchor">{item.anchor}</span>{/if}
-			<span class="edge-missing">not found</span>
+			{#if item.anchor}<span class="nb-badge edge-anchor">{item.anchor}</span>{/if}
+			<span class="nb-badge nb-badge--danger edge-missing">not found</span>
 		</div>
 	{/if}
 {/snippet}
@@ -129,19 +129,13 @@ let incoming = $derived(items.incoming);
 		font-size: 12px;
 		text-decoration: line-through;
 	}
-	.edge-missing {
-		color: var(--w-text-secondary);
-		font-size: 11px;
-		font-style: italic;
-	}
-	.edge-anchor {
-		color: var(--w-text-secondary);
-		font-family: var(--w-font-mono);
-		font-size: 11px;
-	}
+	/* Chips are the design system's badges; what stays here is sizing them
+	 * down for a 13px sidebar and keeping them from stretching full-row. */
+	.edge-missing,
+	.edge-anchor,
 	.edge-label {
-		color: var(--w-text-secondary);
-		font-size: 12px;
+		font-size: 10px;
+		align-self: flex-start;
 	}
 	.empty {
 		color: var(--w-text-secondary);
