@@ -87,7 +87,7 @@ Full capability inventory mapped to use cases.
 *Supports: UC-14*
 
 - View documentation as it existed at a specific release
-- `weft serve --repo <org/project> --tag <version>` pulls docs tarball from a GitHub release
+- `weft serve --repo <org/repo> --ref <version>` serves a repo straight from GitHub — no checkout, fetched as a blobless clone so history-based checks and `modified` dates still work
 - Version selector in browser UI to switch between releases
 - Works with static export: `weft build --tag <version>` for versioned hosted sites
 
