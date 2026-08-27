@@ -479,17 +479,66 @@ describe("loadConfig (repos and local override)", () => {
 		expect(config.repos).toEqual({ "acme/alpha": "../alpha" });
 	});
 
-	it("rejects any key other than repos in the local config", async () => {
+	it("rejects any key other than the local allowlist in the local config", async () => {
 		const root = tempRoot({
 			"weft.config.yaml": "docsDir: docs\n",
 			"weft.config.local.yaml": "docsDir: elsewhere\n",
 		});
-		await expect(loadConfig(root)).rejects.toThrow(/may only set "repos"/);
+		await expect(loadConfig(root)).rejects.toThrow(/may only set "repos", "style", "styleUrl"/);
+	});
+
+	it("lets the local config override the committed style", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "style: luminous-precision\n",
+			"weft.config.local.yaml": "style: neon-butterfly\n",
+		});
+		expect((await loadConfig(root)).style).toBe("neon-butterfly");
 	});
 
 	it("tolerates an empty local config file", async () => {
 		const config = await loadConfig(tempRoot({ "weft.config.local.yaml": "" }));
 		expect(config.repos).toBeUndefined();
+	});
+
+	it("loads a single style name", async () => {
+		const root = tempRoot({ "weft.config.yaml": "style: luminous-precision\n" });
+		expect((await loadConfig(root)).style).toBe("luminous-precision");
+	});
+
+	it("loads a {dark, light} pair", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "style:\n  dark: luminous-precision\n  light: summer-cloud\n",
+		});
+		expect((await loadConfig(root)).style).toEqual({
+			dark: "luminous-precision",
+			light: "summer-cloud",
+		});
+	});
+
+	it("rejects a non-string, non-pair style", async () => {
+		const root = tempRoot({ "weft.config.yaml": "style:\n  - luminous-precision\n" });
+		await expect(loadConfig(root)).rejects.toThrow(
+			/"style" must be a style name or a \{dark, light\} pair/
+		);
+	});
+
+	it("rejects a pair missing a half", async () => {
+		const root = tempRoot({ "weft.config.yaml": "style:\n  dark: luminous-precision\n" });
+		await expect(loadConfig(root)).rejects.toThrow(/"style" must be/);
+	});
+
+	it("rejects a pair with an extra key", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "style:\n  dark: a\n  light: b\n  dim: c\n",
+		});
+		await expect(loadConfig(root)).rejects.toThrow(/"style" must be/);
+	});
+
+	it("loads styleUrl as a plain string", async () => {
+		const root = tempRoot({
+			"weft.config.yaml": "styleUrl: https://cdn.example.com/styles\n",
+		});
+		expect((await loadConfig(root)).styleUrl).toBe("https://cdn.example.com/styles");
 	});
 });
 

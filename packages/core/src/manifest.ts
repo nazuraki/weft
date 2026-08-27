@@ -281,6 +281,8 @@ export function mergeGraphs(
 function siteConfig(config: WeftConfig): SiteConfig | undefined {
 	const site: SiteConfig = {};
 	if (config.defaultTheme) site.defaultTheme = config.defaultTheme;
+	if (config.style) site.style = config.style;
+	if (config.styleUrl) site.styleUrl = config.styleUrl;
 	if (config.layout) site.layout = config.layout;
 	if (config.siteTitle) site.siteTitle = config.siteTitle;
 	if (config.siteUrl) site.siteUrl = config.siteUrl;

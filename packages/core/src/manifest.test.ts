@@ -206,6 +206,8 @@ describe("buildManifest", () => {
 		const manifest = await buildManifest(
 			fixtureConfig({
 				defaultTheme: "dark",
+				style: { dark: "luminous-precision", light: "summer-cloud" },
+				styleUrl: "https://cdn.example.com/styles",
 				layout: "reader",
 				siteTitle: "Weft Docs",
 				siteUrl: "https://docs.example.com",
@@ -215,6 +217,8 @@ describe("buildManifest", () => {
 
 		expect(manifest.site).toEqual({
 			defaultTheme: "dark",
+			style: { dark: "luminous-precision", light: "summer-cloud" },
+			styleUrl: "https://cdn.example.com/styles",
 			layout: "reader",
 			siteTitle: "Weft Docs",
 			siteUrl: "https://docs.example.com",
