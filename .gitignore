@@ -13,3 +13,5 @@ _site
 .env.*
 .idea/
 .vscode/
+weft.config.local.yaml
+weft.config.local.yml

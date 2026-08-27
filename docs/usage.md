@@ -123,7 +123,16 @@ Three things about this mount are deliberate:
 
 ### Theming contract
 
-These `--weft-*` custom properties are the integration surface. Set any of them on the mount container, or any ancestor of it, to make Weft look like the rest of your page:
+Weft's look comes from the [ui-std-lib](https://github.com/nazuraki/ui-std-lib) design system. Pick a style with the `style` option — one theme name, or a `{dark, light}` pair the reader switches between; the default pair is `dark: luminous-precision, light: summer-cloud`:
+
+```js
+Weft.mountDoc('#host', { client, manifest, nodeId: 'guide.md',
+  style: { dark: 'luminous-precision', light: 'summer-cloud' } });
+```
+
+For a pair, the mount follows the nearest ancestor's `data-theme` to pick a half; a single name is fixed. All bundled theme CSS ships inside `weft.css`, guarded by `data-nb-style` so it is inert in your page. A theme newer than the bundled set loads via `styleUrl` — a base URL serving the ui-std-lib styles layout (e.g. a pinned jsDelivr `…/styles` path); its cost is a stylesheet `<link>` injected into your `<head>`. Webfonts are your page's responsibility for bundled themes (URLs in `@nazuraki/styles/manifest`); `styleUrl` themes get theirs injected from the remote manifest.
+
+On top of the style, these `--weft-*` custom properties are the fine-grained integration surface — set any of them on the mount container, or any ancestor of it, and your value beats the active theme's:
 
 | Group | Properties |
 |-------|------------|
@@ -135,11 +144,11 @@ These `--weft-*` custom properties are the integration surface. Set any of them 
 | Code | `--weft-code-keyword`, `--weft-code-string`, `--weft-code-number`, `--weft-code-comment`, `--weft-code-function`, `--weft-code-variable`, `--weft-code-type`, `--weft-code-meta` |
 | Layout | `--weft-lhn-width`, `--weft-rhs-width`, `--weft-header-height` |
 
-**Weft never declares these — it only reads them.** That's what makes the contract hold from an ancestor: a value declared on an element beats an inherited one at any specificity, so a token Weft set on its own root could not be overridden from the container this section tells you to use. Anything you leave unset falls back to Weft's own default.
+**Weft never declares these — it only reads them.** That's what makes the contract hold from an ancestor: a value declared on an element beats an inherited one at any specificity, so a token Weft set on its own root could not be overridden from the container this section tells you to use. Resolution order for every one: your `--weft-*` value → the active style's `--nb-*` token → a built-in literal, so a mount with no style attribute and no host input still renders.
 
-Weft renders light unless something asks for dark. Set `data-theme="dark"` on the container, or anywhere above it, to select the dark defaults for whichever properties you did not set yourself. A mount's own `data-theme` always wins over a host's, so an embed can be dark inside a light page.
+Set `data-theme="dark"` or `"light"` on the container, or anywhere above it, to pick which half of the style pair renders. A mount's own `data-theme` always wins over a host's, so an embed can be dark inside a light page. An unthemed host gets the pair's light half.
 
-> The `--w-*` properties you'll see in the stylesheet are internal — the resolved values, not the inputs. Setting one does nothing useful; set the `--weft-*` name instead.
+> The `--w-*` properties you'll see in the stylesheet are internal — the resolved values, not the inputs. Setting one does nothing useful; set the `--weft-*` name instead. The `--nb-*` names belong to ui-std-lib; overriding a specific one on the container works too, but `--weft-*` is the stable surface.
 
 > **Not published yet.** Neither `@weft/cli` nor `@weft/embed` is on npm, so embedding today means building from a checkout and vendoring `weft.iife.js` and `weft.css` by hand — with no version to pin and no signal when they change.
 

@@ -1,21 +1,38 @@
 # Theming
 
-## Built-in Themes
+Weft's look comes from the [ui-std-lib](https://github.com/nazuraki/ui-std-lib)
+design system (`@nazuraki/styles`). A **style** is one of its themes; Weft
+bundles every theme the installed package ships and the manifest that
+describes them, so styles are picked by name.
 
-Weft ships with `light` and `dark` themes. Theme resolution order:
-
-1. User's saved preference (persisted in `localStorage`)
-2. `defaultTheme` from `weft.config.yaml`
-3. OS/browser system preference
-
-To set the default theme site-wide:
+## Picking a style
 
 ```yaml
 # weft.config.yaml
-defaultTheme: dark
+style: luminous-precision        # one theme — scheme fixed, toggle hidden
+# or a pair the light/dark toggle switches between:
+style:
+  dark: luminous-precision
+  light: summer-cloud
 ```
 
-To force a theme on a specific document regardless of user preference, use frontmatter:
+The default is the pair above. `weft.config.local.yaml` may also set `style`
+(and `styleUrl`) — one developer previewing the corpus in a different theme
+without touching the committed config; the local value wins.
+
+## Scheme resolution
+
+With a pair configured, which half renders is the *scheme* choice:
+
+1. User's saved preference (persisted in `localStorage` as `light`/`dark`)
+2. `defaultTheme` from `weft.config.yaml`
+3. OS/browser system preference
+
+The header toggle switches schemes and persists the choice. With a single
+style there is no second scheme, so the toggle hides and `defaultTheme` is
+ignored.
+
+To force a scheme on one document regardless of preference, use frontmatter:
 
 ```markdown
 ---
@@ -23,73 +40,46 @@ theme: light
 ---
 ```
 
-The toggle in the UI header lets users switch themes at any time; their choice persists across sessions.
+The override element re-declares the theme's tokens locally, so prose and
+code colors flip per document. (Structural component rules from two themes
+resolve by stylesheet order rather than nesting depth — an upstream CSS
+limitation — so the override is token-dominant.)
 
----
+## Token resolution
 
-## CSS Custom Properties
+Every visual property resolves through three layers, first match wins:
 
-All visual properties are defined as CSS custom properties on `[data-theme="dark"]` and `[data-theme="light"]`. Override any of them to customize the appearance.
+1. **`--weft-*`** — the host's input (see the theming contract in
+   [usage.md](usage.md)). Weft only ever reads these.
+2. **`--nb-*`** — the active style's design tokens, declared by
+   `@nazuraki/styles` under `[data-nb-style="<theme>"]` guards. Weft sets that
+   attribute on its scope root (and per-doc override elements) and never
+   declares an `--nb-*` value itself.
+3. A built-in literal, so a mount with no style attribute and no host input
+   still renders.
 
-### Layout
+The `--w-*` names in the stylesheet are the resolved internals — set the
+`--weft-*` name instead.
 
-Defined on `:root` (theme-independent):
+## Styles newer than the bundled set
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `--lhn-width` | `240px` | Left-hand navigation sidebar width |
-| `--rhs-width` | `260px` | Right-hand linked-items sidebar width |
-| `--header-height` | `48px` | Top header bar height |
+`styleUrl` names a base URL serving the ui-std-lib styles layout
+(`<base>/manifest.json`, `<base>/<name>/index.css`) — for example a pinned
+jsDelivr path:
 
-### Typography
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `--font-sans` | Inter, system-ui | Body text font stack |
-| `--font-heading` | Space Grotesk, Inter | Heading font stack |
-| `--font-mono` | ui-monospace, SF Mono, Menlo | Code font stack |
-
-### Color (per theme)
-
-These are defined on `[data-theme="dark"]` and `[data-theme="light"]`. Override on either or both.
-
-| Variable | Description |
-|----------|-------------|
-| `--color-bg` | Page background |
-| `--color-bg-secondary` | Sidebar and panel backgrounds |
-| `--color-bg-elevated` | Elevated surfaces (hover states, dropdowns) |
-| `--color-border` | Primary border color |
-| `--color-border-subtle` | Subtle/divider borders |
-| `--color-text` | Primary text |
-| `--color-text-secondary` | Secondary/muted text |
-| `--color-link` | Link color |
-| `--color-link-hover` | Link hover color |
-| `--color-accent` | Accent color (active states, highlights) |
-| `--color-accent-subtle` | Subtle accent background (selection, badges) |
-
----
-
-## Overriding Styles
-
-Weft does not yet support a user-supplied CSS file via config. To customize styles, override CSS custom properties in a document's frontmatter-driven inline style block, or fork the `@weft/ui` package.
-
-A `customCss` config option is planned (Phase 2). Until then, the most practical approach for branding is overriding variables directly on the host `html` element via a wrapper script, or pointing `--color-accent` and `--color-link` variables to your brand color by patching `packages/ui/src/app.css`.
-
-### Example: brand accent color
-
-```css
-/* In packages/ui/src/app.css, append: */
-[data-theme="light"] {
-  --color-accent: #0066cc;
-  --color-link: #0066cc;
-  --color-link-hover: #004499;
-  --color-accent-subtle: #e6f0ff;
-}
-
-[data-theme="dark"] {
-  --color-accent: #4da6ff;
-  --color-link: #4da6ff;
-  --color-link-hover: #80bfff;
-  --color-accent-subtle: #001a33;
-}
+```yaml
+style: some-future-theme
+styleUrl: https://cdn.jsdelivr.net/gh/nazuraki/ui-std-lib@v0.4.0/styles
 ```
+
+Names the bundled manifest knows come from the bundle regardless; only
+unknown names load remotely (stylesheet and webfonts both, from the remote
+manifest). If the fetch fails, Weft warns and renders the literal fallback
+palette rather than refusing to start.
+
+## Webfonts
+
+Themes do not bundle fonts. The standalone app emits the Google Fonts links
+for the configured pair straight from the styles manifest. Embed hosts add
+the links themselves (URLs in `@nazuraki/styles/manifest`) — except
+`styleUrl` themes, whose fonts are injected from the remote manifest.
