@@ -1,6 +1,6 @@
 import { WeftService, fetchRepo, loadConfig, resolveFetchedRepos } from "@weft/core";
 import { command } from "cleye";
-import { weftApiPlugin } from "../api-middleware.js";
+import { chooseUiMode, startBuiltServer, startDevServer } from "../ui-server.js";
 
 export const serveCommand = command(
 	{
@@ -20,6 +20,12 @@ export const serveCommand = command(
 				description: "Open browser on start",
 				default: true,
 			},
+			dev: {
+				type: Boolean,
+				description:
+					"Serve the UI from source through Vite with hot reload (needs a checkout of the weft repo)",
+				default: false,
+			},
 			repo: {
 				type: String,
 				description: "Serve a GitHub repo (org/repo) without a checkout, fetching into a cache",
@@ -38,7 +44,6 @@ export const serveCommand = command(
 	async (argv) => {
 		const port = argv.flags.port;
 
-		const { createServer } = await import("vite");
 		const { createRequire } = await import("node:module");
 		const { dirname, resolve } = await import("node:path");
 
@@ -56,8 +61,12 @@ export const serveCommand = command(
 		}
 
 		try {
+			// Decide how the UI is served before fetching anything, so a missing
+			// build fails fast rather than after a clone.
+			const mode = chooseUiMode(uiRoot, argv.flags.dev);
+
 			// With --repo the root is a fetched, cache-resident checkout; otherwise
-			// resolve the root dir before the chdir below, since it defaults to the cwd.
+			// resolve the root dir before the dev-mode chdir, since it defaults to the cwd.
 			let rootDir: string;
 			if (repo) {
 				console.log(`Fetching ${repo}${argv.flags.ref ? `@${argv.flags.ref}` : ""}…`);
@@ -83,22 +92,16 @@ export const serveCommand = command(
 			await service.writeManifest();
 
 			// SvelteKit's server loads read the manifest file from this path — SSR
-			// cannot reach the /api middleware through SvelteKit's internal fetch.
+			// cannot reach the /api handler through SvelteKit's internal fetch.
 			process.env.WEFT_MANIFEST_PATH = service.manifestPath;
 
-			// SvelteKit's Vite plugin overrides Vite's `root` option with process.cwd()
-			// and looks up svelte.config.js and src/app.html there, so passing `root`
-			// alone is not enough — the process has to run from the UI package.
-			process.chdir(uiRoot);
-
-			const server = await createServer({
-				root: uiRoot,
-				server: { port },
-				plugins: [weftApiPlugin(service)],
-			});
-
-			await server.listen();
-			console.log(`Weft server running at http://localhost:${port}`);
+			const server =
+				mode === "built"
+					? await startBuiltServer(service, uiRoot, port)
+					: await startDevServer(service, uiRoot, port);
+			console.log(
+				`Weft server running at http://localhost:${port}${mode === "dev" ? " (vite dev)" : ""}`
+			);
 
 			// Watch for doc changes
 			const unwatch = service.watch(async (manifest) => {

@@ -105,10 +105,8 @@ ignore:
 
 ## File Watching
 
-During `weft serve`, SvelteKit/Vite's built-in file watcher (chokidar under the hood) handles
-doc file changes — triggers manifest rebuild and pushes updates to the browser via WebSocket.
-No separate watcher needed. For CLI commands that need file watching outside of `weft serve`,
-chokidar is available as a transitive dependency from Vite. No new dependency either way.
+During `weft serve`, `WeftService.watch()` (chokidar) rebuilds the manifest when a doc changes,
+in both UI modes. With `--dev`, Vite additionally hot-reloads the UI source itself.
 
 ---
 
@@ -426,7 +424,8 @@ component (DD-12).
 ## CLI Commands
 
 ```
-weft serve              Start SvelteKit server + open browser UI (default port 7777)
+weft serve              Serve the built UI + data API (default port 7777); --dev serves the
+                        UI source through Vite with hot reload
 weft index              Rebuild manifest from embedded links (no server)
 weft check              Validate all links; report broken anchors; exit 1 if any broken
 weft check --staleness  Also flag docs whose linked code has changed

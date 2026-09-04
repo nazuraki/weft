@@ -19,7 +19,9 @@ just install
 just dev
 ```
 
-`just dev` builds the core packages and starts `weft serve` on the local docs graph.
+`just dev` builds the core packages and starts `weft serve --dev` on the local docs graph, with the
+UI served from source by Vite for hot reload. Without `--dev`, `weft serve` serves the UI's
+adapter-node build (`pnpm --filter @weft/ui build`), which is what a published package ships.
 
 ## Core Concepts
 
