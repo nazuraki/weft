@@ -424,8 +424,9 @@ component (DD-12).
 ## CLI Commands
 
 ```
-weft serve              Serve the built UI + data API (default port 7777); --dev serves the
-                        UI source through Vite with hot reload
+weft serve              Serve the built UI + data API (default port 7777); --open launches the
+                        browser; --repo/--gh org/repo serves a GitHub repo without a checkout;
+                        --dev serves the UI source through Vite with hot reload
 weft index              Rebuild manifest from embedded links (no server)
 weft check              Validate all links; report broken anchors; exit 1 if any broken
 weft check --staleness  Also flag docs whose linked code has changed
