@@ -84,7 +84,7 @@ function unique<T>(values: T[]): T[] {
  *
  * `clobberPrefix` is emptied. `defaultSchema` renames every `id` to
  * `user-content-*` to prevent DOM clobbering, which would silently break every
- * anchor in the graph: `@weft/core` extracts `#data-flow`, edges point at it,
+ * anchor in the graph: `@lepid-labs/weft-core` extracts `#data-flow`, edges point at it,
  * and search results scroll to it. Prefixed ids would make all of that resolve
  * to nothing, and GitHub parity — the reason the slugger was replaced at all —
  * would be gone. The trade is accepted knowingly: an author who can write a
@@ -263,7 +263,7 @@ export interface RenderOptions {
  *
  * `rehype-slug` gives every heading an `id`, which is what makes an anchor in
  * the graph reachable. It slugs with `github-slugger`, the same implementation
- * `@weft/core` uses to extract anchors, applied to the same parsed heading text.
+ * `@lepid-labs/weft-core` uses to extract anchors, applied to the same parsed heading text.
  * The two agree because they are one algorithm over one input, not because they
  * were kept in step by hand.
  */

@@ -38,14 +38,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build @weft/core
-        run: pnpm --filter @weft/core build
+      - name: Build @lepid-labs/weft-core
+        run: pnpm --filter @lepid-labs/weft-core build
 
       - name: Sync SvelteKit (generates .svelte-kit/tsconfig.json for embed build)
-        run: pnpm --filter @weft/ui exec svelte-kit sync
+        run: pnpm --filter @lepid-labs/weft-ui exec svelte-kit sync
 
-      - name: Build @weft/embed
-        run: pnpm --filter @weft/embed build
+      - name: Build @lepid-labs/weft-embed
+        run: pnpm --filter @lepid-labs/weft-embed build
 
       - name: Generate manifest
         run: node scripts/gen-manifest.mjs

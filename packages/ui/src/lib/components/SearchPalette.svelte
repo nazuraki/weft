@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { WeftClient } from "$lib/client.js";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
-import type { SearchResult } from "@weft/core";
+import type { SearchResult } from "@lepid-labs/weft-core";
 import { getContext } from "svelte";
 
 interface Props {

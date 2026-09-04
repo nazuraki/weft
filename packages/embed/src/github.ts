@@ -1,6 +1,6 @@
 import type { WeftClient } from "$lib/client.js";
-import { nodeIdToDocPath } from "@weft/core/browser";
-import type { Manifest, SearchResult } from "@weft/core/browser";
+import { nodeIdToDocPath } from "@lepid-labs/weft-core/browser";
+import type { Manifest, SearchResult } from "@lepid-labs/weft-core/browser";
 import MiniSearch from "minisearch";
 import type { EmbedConfig } from "./index.js";
 

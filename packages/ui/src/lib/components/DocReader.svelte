@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { RenderOptions } from "$lib/markdown.js";
 import { resolveStylePair } from "$lib/styles.js";
-import type { Manifest, StyleConfig } from "@weft/core";
+import type { Manifest, StyleConfig } from "@lepid-labs/weft-core";
 import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";
 

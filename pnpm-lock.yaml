@@ -11,24 +11,21 @@ importers:
       '@biomejs/biome':
         specifier: ^1.9.4
         version: 1.9.4
-      '@weft/cli':
+      '@lepid-labs/weft':
         specifier: workspace:*
         version: link:packages/cli
 
   packages/cli:
     dependencies:
-      '@weft/core':
+      '@lepid-labs/weft-core':
         specifier: workspace:*
         version: link:../core
-      '@weft/ui':
+      '@lepid-labs/weft-ui':
         specifier: workspace:*
         version: link:../ui
       cleye:
         specifier: ^1.3.0
         version: 1.3.4
-      vite:
-        specifier: ^6.4.3
-        version: 6.4.3(@types/node@22.19.15)(yaml@2.8.3)
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -36,6 +33,9 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+      vite:
+        specifier: ^6.4.3
+        version: 6.4.3(@types/node@22.19.15)(yaml@2.8.3)
       vitest:
         specifier: ^3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.15)(yaml@2.8.3)
@@ -85,15 +85,15 @@ importers:
 
   packages/embed:
     dependencies:
+      '@lepid-labs/weft-core':
+        specifier: workspace:*
+        version: link:../core
+      '@lepid-labs/weft-ui':
+        specifier: workspace:*
+        version: link:../ui
       '@nazuraki/styles':
         specifier: ^0.3.0
         version: 0.3.0
-      '@weft/core':
-        specifier: workspace:*
-        version: link:../core
-      '@weft/ui':
-        specifier: workspace:*
-        version: link:../ui
       minisearch:
         specifier: ^7.0.0
         version: 7.2.0
@@ -134,12 +134,12 @@ importers:
 
   packages/ui:
     dependencies:
+      '@lepid-labs/weft-core':
+        specifier: workspace:*
+        version: link:../core
       '@nazuraki/styles':
         specifier: ^0.3.0
         version: 0.3.0
-      '@weft/core':
-        specifier: workspace:*
-        version: link:../core
       rehype-highlight:
         specifier: ^7.0.2
         version: 7.0.2

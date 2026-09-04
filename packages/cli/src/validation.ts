@@ -6,7 +6,7 @@ import {
 	WeftService,
 	defaultRegistry,
 	loadConfig,
-} from "@weft/core";
+} from "@lepid-labs/weft-core";
 
 /** Severity order for reporting — worst first. */
 const SEVERITY_ORDER = ["error", "warn", "info"] as const;

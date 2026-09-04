@@ -2,7 +2,7 @@
 import { WEFT_CLIENT_KEY, type WeftClient } from "$lib/client.js";
 import DocReader from "$lib/components/DocReader.svelte";
 import type { RenderOptions } from "$lib/markdown.js";
-import type { Manifest, StyleConfig } from "@weft/core/browser";
+import type { Manifest, StyleConfig } from "@lepid-labs/weft-core/browser";
 import { setContext } from "svelte";
 import type { DocState } from "./doc-state.svelte.js";
 

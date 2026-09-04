@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { extractAnchors } from "@weft/core";
+import { extractAnchors } from "@lepid-labs/weft-core";
 import { describe, expect, it } from "vitest";
 import { renderMarkdown } from "./markdown.js";
 

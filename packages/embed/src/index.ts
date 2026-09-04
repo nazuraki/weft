@@ -2,7 +2,7 @@ import type { WeftClient } from "$lib/client.js";
 import type { RenderOptions } from "$lib/markdown.js";
 import { loadRemoteStyles } from "$lib/style-loader.js";
 import { assertServableStyles, isBundledStyle } from "$lib/styles.js";
-import type { Manifest, StyleConfig } from "@weft/core/browser";
+import type { Manifest, StyleConfig } from "@lepid-labs/weft-core/browser";
 import { mount, unmount } from "svelte";
 import App from "./App.svelte";
 import DocMountRoot from "./DocMountRoot.svelte";
@@ -78,12 +78,12 @@ export interface EmbedConfig {
  *
  * @example
  * // GitHub repo
- * import { mount } from '@weft/embed';
+ * import { mount } from '@lepid-labs/weft-embed';
  * const unmount = mount('#weft-root', { repo: 'acme/docs', branch: 'main' });
  *
  * @example
  * // Generic base URL
- * import { mount } from '@weft/embed';
+ * import { mount } from '@lepid-labs/weft-embed';
  * const unmount = mount('#weft-root', { baseUrl: 'https://example.com/docs' });
  */
 export function mountWeft(target: string | HTMLElement, config: EmbedConfig): () => void {

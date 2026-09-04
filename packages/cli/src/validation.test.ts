@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Diagnostic, ValidationResult } from "@weft/core";
-import { ValidatorRegistry } from "@weft/core";
+import type { Diagnostic, ValidationResult } from "@lepid-labs/weft-core";
+import { ValidatorRegistry } from "@lepid-labs/weft-core";
 import { describe, expect, it } from "vitest";
 import {
 	exitCodeFor,

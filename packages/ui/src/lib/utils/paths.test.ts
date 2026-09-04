@@ -1,4 +1,4 @@
-import type { WeftNode } from "@weft/core";
+import type { WeftNode } from "@lepid-labs/weft-core";
 import { describe, expect, it } from "vitest";
 import { nodeIdToPath, pathToNode } from "./paths.js";
 

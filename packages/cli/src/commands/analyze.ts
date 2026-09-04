@@ -1,4 +1,4 @@
-import { defaultRegistry } from "@weft/core";
+import { defaultRegistry } from "@lepid-labs/weft-core";
 import { command } from "cleye";
 import { formatReport, formatRules, runValidation } from "../validation.js";
 

@@ -2,7 +2,7 @@
 import type { RenderOptions } from "$lib/markdown.js";
 import { type ThemeInitOptions, theme } from "$lib/stores/theme.svelte.js";
 import { nodeIdToPath } from "$lib/utils/paths.js";
-import type { Manifest } from "@weft/core";
+import type { Manifest } from "@lepid-labs/weft-core";
 import DocTree from "./DocTree.svelte";
 import DocView from "./DocView.svelte";
 import LinkedItems from "./LinkedItems.svelte";

@@ -28,7 +28,7 @@ const tokens = rules("app.css");
 const page = rules("app-page.css");
 
 /**
- * `app.css` ships inside `@weft/embed`, which may be dropped into a document
+ * `app.css` ships inside `@lepid-labs/weft-embed`, which may be dropped into a document
  * Weft does not own. Anything global in it reaches the host's markup, so the
  * split between these two files is a contract rather than tidiness — and one
  * that is easy to undo by adding "just one" rule to the wrong file.

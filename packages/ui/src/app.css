@@ -1,7 +1,7 @@
 /*
  * Design tokens, and nothing that touches the page.
  *
- * This file ships inside `@weft/embed`, which may be dropped into a document
+ * This file ships inside `@lepid-labs/weft-embed`, which may be dropped into a document
  * Weft does not own — so anything global (a `*` reset, `html`/`body` rules, a
  * remote font import) lives in `app-page.css`, loaded only by the standalone
  * app.

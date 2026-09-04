@@ -23,7 +23,7 @@ UI, and VSCode extension. No serialization boundary between layers.
 
 | Dimension | Assessment |
 |---|---|
-| Code sharing | Full — same `@weft/core` package imported by CLI, browser, and VSCode |
+| Code sharing | Full — same `@lepid-labs/weft-core` package imported by CLI, browser, and VSCode |
 | UI/VSCode | Native fit — browser UI and VS Code extension are JS/TS (Svelte + Extension API) |
 | CLI performance | Node startup overhead (~100-300ms); acceptable for `serve`, noticeable for `check` in CI |
 | Distribution | `npm install -g weft` or `npx weft` — requires Node runtime on target machine |
@@ -80,7 +80,7 @@ executable, has faster startup than Node, and is a drop-in replacement for most 
 
 | Dimension | Assessment |
 |---|---|
-| Code sharing | Full — same `@weft/core` package imported by CLI, browser, and VSCode |
+| Code sharing | Full — same `@lepid-labs/weft-core` package imported by CLI, browser, and VSCode |
 | UI/VSCode | Same — Svelte/browser bundle + VS Code Extension API |
 | CLI performance | Better than Node — ~50ms startup, fast file I/O |
 | Distribution | `bun build --compile` produces a single binary — no runtime dependency |
@@ -327,10 +327,10 @@ Heavier server frameworks. No advantage over Hono for thin adapter routes.
 
 **SvelteKit with adapter-node. Ports-and-adapters service architecture.**
 
-Core business logic lives in `@weft/core` as a transport-agnostic `WeftService`:
+Core business logic lives in `@lepid-labs/weft-core` as a transport-agnostic `WeftService`:
 
 ```
-@weft/core — WeftService
+@lepid-labs/weft-core — WeftService
 ├── search(query) → results
 ├── traverse(nodeId, direction) → linked nodes
 ├── read(nodeId, anchor?) → content
@@ -341,13 +341,13 @@ Core business logic lives in `@weft/core` as a transport-agnostic `WeftService`:
 └── watch(callback) → unsubscribe
 ```
 
-Three thin adapter layers, each importing `@weft/core` directly:
+Three thin adapter layers, each importing `@lepid-labs/weft-core` directly:
 
-- **`@weft/ui`** — SvelteKit app. Server routes are one-liner adapters that call
+- **`@lepid-labs/weft-ui`** — SvelteKit app. Server routes are one-liner adapters that call
   `WeftService` methods. UI and API served from one process, one port.
-- **`@weft/mcp`** — MCP server (stdio transport). Tool definitions map to `WeftService`
+- **`@lepid-labs/weft-mcp`** — MCP server (stdio transport). Tool definitions map to `WeftService`
   methods. Separate process, no HTTP dependency.
-- **`@weft/cli`** — CLI commands call `WeftService` directly. Same process, no server.
+- **`@lepid-labs/weft`** — CLI commands call `WeftService` directly. Same process, no server.
 
 Each consumer instantiates its own `WeftService` from the project config. The graph is
 derived from the filesystem — no shared mutable state between processes.
@@ -355,7 +355,7 @@ derived from the filesystem — no shared mutable state between processes.
 ### Rationale
 - SvelteKit eliminates the need for a separate API framework — server routes are already
   there and the handlers are trivially thin.
-- The MCP server does not call the HTTP API — it uses `@weft/core` directly. No unnecessary
+- The MCP server does not call the HTTP API — it uses `@lepid-labs/weft-core` directly. No unnecessary
   network hop, no dependency on `weft serve` running.
 - The CLI does not need a server at all for commands like `weft check` and `weft analyze`.
 - All business logic is testable against `WeftService` without standing up HTTP or MCP.
@@ -709,7 +709,7 @@ most consumers will use.
   optional binary is a runtime swap — if it works on Node, it almost certainly works on Bun.
   The reverse is less reliable.
 - **Strict `node_modules`.** Packages can only import their declared dependencies. With
-  five packages sharing deps and cross-importing `@weft/core`, phantom dependency bugs
+  five packages sharing deps and cross-importing `@lepid-labs/weft-core`, phantom dependency bugs
   are a when, not an if. pnpm catches them at dev time; npm and Bun silently hoist.
 - **Topological build orchestration.** `pnpm -r run build` builds `core` before its
   consumers. `--filter` targets specific packages and their dependency chains. No
@@ -728,7 +728,7 @@ most consumers will use.
 ### Context
 Weft has eight CLI commands (`serve`, `import`, `index`, `check`, `analyze`, `build`,
 `new`, `log`). All are top-level — no nested sub-commands. Arguments are simple: a path,
-a flag or two, a template name. The CLI package (`@weft/cli`) needs a parser that handles
+a flag or two, a template name. The CLI package (`@lepid-labs/weft`) needs a parser that handles
 this cleanly with good TypeScript DX.
 
 ### Options considered
@@ -774,7 +774,7 @@ are flat. Built by the author of `tsx`.
 
 ### Context
 Weft is a TypeScript monorepo with five packages. The ports-and-adapters architecture
-(DD-5) concentrates business logic in `@weft/core`, with three thin adapter layers
+(DD-5) concentrates business logic in `@lepid-labs/weft-core`, with three thin adapter layers
 (`ui`, `mcp`, `cli`) and a VSCode extension. The core operates on real files — the
 graph is derived from the filesystem. The test strategy must reflect this.
 
@@ -814,26 +814,26 @@ packages/core/test/fixtures/
 
 ### Per-package testing
 
-**`@weft/core`** — bulk of the tests.
+**`@lepid-labs/weft-core`** — bulk of the tests.
 - **Unit tests:** Graph model, link parsing, anchor extraction, manifest builder, search
   index. Pure functions, no I/O.
 - **Integration tests:** WeftService methods against fixture-based temp directories.
   `search()`, `traverse()`, `read()`, `write()`, `authorLink()` against real file
   structures. Validates the full pipeline without HTTP or MCP.
 
-**`@weft/cli`** — invoke commands programmatically (not shelling out), assert on
+**`@lepid-labs/weft`** — invoke commands programmatically (not shelling out), assert on
 WeftService side effects against temp directories. Integration tests through the CLI
 entry point using the same fixture copy strategy.
 
-**`@weft/mcp`** — thin adapter. Mock WeftService to verify tool definitions map
+**`@lepid-labs/weft-mcp`** — thin adapter. Mock WeftService to verify tool definitions map
 arguments correctly. Real behavior is tested in core.
 
-**`@weft/ui`** — two concerns:
+**`@lepid-labs/weft-ui`** — two concerns:
 - **API routes:** Thin adapters over WeftService. Light tests, same as MCP.
 - **Svelte components:** Vitest + `@testing-library/svelte`. Test wiring — link click
   callbacks, pane navigation, content loading — not third-party renderer DOM output.
 
-**`@weft/vscode`** — minimal automated tests. Command registration, message passing
+**`@lepid-labs/weft-vscode`** — minimal automated tests. Command registration, message passing
 contracts. VS Code extension tests require `@vscode/test-electron` (launches a real
 VS Code instance) — slow, flaky, CI-unfriendly. Manual testing for webview integration.
 

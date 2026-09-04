@@ -1,6 +1,6 @@
 <script lang="ts">
 import { type LinkedItem, linkedItems } from "$lib/linked-items.js";
-import type { Manifest } from "@weft/core";
+import type { Manifest } from "@lepid-labs/weft-core";
 
 interface Props {
 	nodeId: string;

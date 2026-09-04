@@ -1,4 +1,4 @@
-import { WeftService, fetchRepo, loadConfig, resolveFetchedRepos } from "@weft/core";
+import { WeftService, fetchRepo, loadConfig, resolveFetchedRepos } from "@lepid-labs/weft-core";
 import { command } from "cleye";
 import { openBrowser } from "../open-browser.js";
 import { chooseUiMode, startBuiltServer, startDevServer } from "../ui-server.js";
@@ -52,12 +52,12 @@ export const serveCommand = command(
 		const { createRequire } = await import("node:module");
 		const { dirname, resolve } = await import("node:path");
 
-		// Resolve @weft/ui through node resolution rather than a path relative to
+		// Resolve @lepid-labs/weft-ui through node resolution rather than a path relative to
 		// this file: the relative depth differs between src/ and dist/, and
 		// `new URL(import.meta.url).pathname` keeps a leading slash before the
 		// drive letter on Windows (`/C:/...`), which resolve() then mangles.
 		const require = createRequire(import.meta.url);
-		const uiRoot = dirname(require.resolve("@weft/ui/package.json"));
+		const uiRoot = dirname(require.resolve("@lepid-labs/weft-ui/package.json"));
 
 		if (argv.flags.repo && argv.flags.gh && argv.flags.repo !== argv.flags.gh) {
 			console.error("serve: --repo and --gh name different repos; pass one of them");

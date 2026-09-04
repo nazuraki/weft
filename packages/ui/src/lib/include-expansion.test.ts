@@ -1,4 +1,4 @@
-import type { WeftEdge } from "@weft/core/browser";
+import type { WeftEdge } from "@lepid-labs/weft-core/browser";
 import { describe, expect, it } from "vitest";
 import type { IncludeOptions } from "./include-expansion.js";
 import { MAX_INCLUDE_DEPTH, resolveHref } from "./include-expansion.js";

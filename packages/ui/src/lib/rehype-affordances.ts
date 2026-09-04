@@ -105,7 +105,7 @@ export function rehypeDropForgedIds() {
  * way to close this: sanitizing last is a stronger property than sanitizing
  * early, and re-slugging a sanitized tree changes the text the slug is derived
  * from — a `<script>` inside a heading is dropped wholesale, so the id stops
- * matching the one `@weft/core` computed from the source.
+ * matching the one `@lepid-labs/weft-core` computed from the source.
  */
 export function rehypeDropHeadingIds() {
 	return (tree: Root) => {

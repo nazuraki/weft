@@ -4,7 +4,7 @@
 
 ```sh
 # Install globally
-npm install -g @weft/cli
+npm install -g @lepid-labs/weft
 
 # From your project root (where weft.config.yaml lives)
 weft serve
@@ -87,7 +87,7 @@ Two of these read git history. Indexing already walks `git log` once per docs ro
 
 ## Embedding
 
-`@weft/embed` offers two mounts, and which one you want depends on how much of the page is yours.
+`@lepid-labs/weft-embed` offers two mounts, and which one you want depends on how much of the page is yours.
 
 `mountWeft` gives you the whole product — header, document tree, search, theme handling — and fetches documents from a GitHub repo or a base URL:
 
@@ -150,7 +150,7 @@ Set `data-theme="dark"` or `"light"` on the container, or anywhere above it, to 
 
 > The `--w-*` properties you'll see in the stylesheet are internal — the resolved values, not the inputs. Setting one does nothing useful; set the `--weft-*` name instead. The `--nb-*` names belong to ui-std-lib; overriding a specific one on the container works too, but `--weft-*` is the stable surface.
 
-> **Not published yet.** Neither `@weft/cli` nor `@weft/embed` is on npm, so embedding today means building from a checkout and vendoring `weft.iife.js` and `weft.css` by hand — with no version to pin and no signal when they change.
+> **Not published yet.** `@lepid-labs/weft-embed` is not on npm (the CLI is), so embedding today means building from a checkout and vendoring `weft.iife.js` and `weft.css` by hand — with no version to pin and no signal when they change.
 
 ## Navigation
 
@@ -187,7 +187,7 @@ Markdown is rendered with GitHub-flavoured Markdown plus:
 
 Documents may contain raw HTML, and it is filtered through an allowlist before it reaches the page. Inline event handlers, `<iframe>`, and `javascript:` links do not survive; ordinary formatting and a plain inline `<svg>` figure do.
 
-This matters most for `@weft/embed`, where a host page renders Markdown it may not control — the person carrying the risk is not always the person who can merge to the docs repo.
+This matters most for `@lepid-labs/weft-embed`, where a host page renders Markdown it may not control — the person carrying the risk is not always the person who can merge to the docs repo.
 
 ### Contributing render passes
 

@@ -40,9 +40,9 @@ test:
 # Build the embeddable bundle. Its own build step asserts the bundle ships no
 # rule that can reach a host page — the check that source-level tests cannot do.
 build-embed:
-    pnpm --filter @weft/core build
-    pnpm --filter @weft/ui exec svelte-kit sync
-    pnpm --filter @weft/embed build
+    pnpm --filter @lepid-labs/weft-core build
+    pnpm --filter @lepid-labs/weft-ui exec svelte-kit sync
+    pnpm --filter @lepid-labs/weft-embed build
 
 # Build the GitHub Pages site into _site/
 pages: build-embed
@@ -54,6 +54,19 @@ pages: build-embed
     cp packages/embed/dist/weft.css _site/weft.css
     cp -r docs/.weft _site/docs/.weft
     cp docs/*.md _site/
+
+# Set the version of every published package, commit and tag it. Pushing the
+# tag runs the Release workflow, which publishes to npm.
+release version:
+    node scripts/set-version.mjs {{version}}
+    git add packages/*/package.json
+    git commit -m "chore: release v{{version}}"
+    git tag v{{version}}
+    @echo "Now: git push && git push origin v{{version}}"
+
+# Publish from this machine instead of CI (first release, or CI without a token)
+publish:
+    pnpm -r publish --access public
 
 # Remove build artifacts and node_modules
 clean:

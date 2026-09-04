@@ -2,7 +2,7 @@
 
 ## weft.config.yaml
 
-Place a `weft.config.yaml` (or `.yml` / `.json`) in your project root. The config is plain data — no imports, no code, no dependency on `@weft/core`:
+Place a `weft.config.yaml` (or `.yml` / `.json`) in your project root. The config is plain data — no imports, no code, no dependency on `@lepid-labs/weft-core`:
 
 ```yaml
 docsDir: docs
@@ -23,7 +23,7 @@ ignore:
 
 The file is validated at load time: wrong types and bad enum values fail with the offending field named, and unknown keys warn.
 
-> **Migrating from `weft.config.ts`?** JS/TS config files are no longer supported — they required a runtime dependency on `@weft/core` just to be loadable. The option names are identical; rewrite the exported object as YAML and delete the old file.
+> **Migrating from `weft.config.ts`?** JS/TS config files are no longer supported — they required a runtime dependency on `@lepid-labs/weft-core` just to be loadable. The option names are identical; rewrite the exported object as YAML and delete the old file.
 
 ### All Options
 
@@ -603,4 +603,4 @@ With `projects` configured, indexing writes three kinds of artifact:
 | `.weft/projects.json` | Index of every project manifest, plus the path of the merged manifest |
 | `.weft/manifest.json` | The merged graph — every node and edge, with a `projects` array |
 
-An edge belongs to the project of its source node, so a cross-project edge is stored with the product that declares it. Each project manifest can be published or versioned independently; consumers that want the whole graph in one request (such as `@weft/embed`) read the merged manifest instead.
+An edge belongs to the project of its source node, so a cross-project edge is stored with the product that declares it. Each project manifest can be published or versioned independently; consumers that want the whole graph in one request (such as `@lepid-labs/weft-embed`) read the merged manifest instead.

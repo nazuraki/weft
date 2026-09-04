@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { WeftNode, WeftProjectRef } from "@weft/core";
+import type { WeftNode, WeftProjectRef } from "@lepid-labs/weft-core";
 
 interface Props {
 	nodes: WeftNode[];

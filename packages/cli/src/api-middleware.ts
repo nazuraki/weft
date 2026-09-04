@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { WeftService } from "@weft/core";
+import type { WeftService } from "@lepid-labs/weft-core";
 import type { Plugin } from "vite";
 
 /**
