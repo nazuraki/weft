@@ -21,7 +21,7 @@ Phase 1 implementation is complete. The monorepo has three packages:
 - `weft index` — rebuilds manifest, writes to `docs/.weft/manifest.json`
 - `weft analyze` — runs the validation stage and reports; `--json`, `--list-rules`. Always exits 0
 - `weft check` — same validation, exits 1 on any error-severity diagnostic, for CI
-- `weft serve` — owns the single `WeftService`: builds it, serves the UI (`src/ui-server.ts`: the `@weft/ui` adapter-node build over `node:http` by default, or Vite over the UI source with `--dev`) with the data API in front (`src/api-middleware.ts`: `/api/manifest`, `/api/doc/*`, `/api/search?q=`, `/api/traverse?node=&direction=`), and watches for doc changes
+- `weft serve` — owns the single `WeftService`: builds it, serves the UI (`src/ui-server.ts`: the `@weft/ui` adapter-node build over `node:http` by default, or Vite over the UI source with `--dev`) with the data API in front (`src/api-middleware.ts`: `/api/manifest`, `/api/doc/*`, `/api/search?q=`, `/api/traverse?node=&direction=`), and watches for doc changes. `--repo`/`--gh org/repo` serves a fetched repo (#77); `--open` launches the browser through the platform opener (`src/open-browser.ts`: `open`/`cmd /c start`/`xdg-open`, no dependency) and is opt-in because cleye has no `--no-<flag>` negation, so a default-on flag could never be turned off
 - `pnpm dev` at the repo root is just `weft serve .` — one launch path
 
 ### `@weft/ui` (packages/ui)

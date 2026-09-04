@@ -102,7 +102,7 @@ Full capability inventory mapped to use cases.
 ## CLI
 *Supports: UC-1, UC-5, UC-9, UC-11, UC-12, UC-14, UC-15*
 
-- `weft serve` — start local server, open browser UI
+- `weft serve` — start local server; `--open` launches the browser UI
 - `weft index` — rebuild graph manifest without serving
 - `weft check` — validate all links, report broken anchors; `--staleness` flag for drift detection
 - `weft analyze` — graph analysis: coverage gaps, orphaned docs, staleness, feature↔use-case

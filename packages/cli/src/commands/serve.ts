@@ -1,5 +1,6 @@
 import { WeftService, fetchRepo, loadConfig, resolveFetchedRepos } from "@weft/core";
 import { command } from "cleye";
+import { openBrowser } from "../open-browser.js";
 import { chooseUiMode, startBuiltServer, startDevServer } from "../ui-server.js";
 
 export const serveCommand = command(
@@ -17,8 +18,8 @@ export const serveCommand = command(
 			},
 			open: {
 				type: Boolean,
-				description: "Open browser on start",
-				default: true,
+				description: "Open the browser once the server is up",
+				default: false,
 			},
 			dev: {
 				type: Boolean,
@@ -29,6 +30,10 @@ export const serveCommand = command(
 			repo: {
 				type: String,
 				description: "Serve a GitHub repo (org/repo) without a checkout, fetching into a cache",
+			},
+			gh: {
+				type: String,
+				description: "Alias of --repo",
 			},
 			ref: {
 				type: String,
@@ -54,7 +59,11 @@ export const serveCommand = command(
 		const require = createRequire(import.meta.url);
 		const uiRoot = dirname(require.resolve("@weft/ui/package.json"));
 
-		const repo = argv.flags.repo;
+		if (argv.flags.repo && argv.flags.gh && argv.flags.repo !== argv.flags.gh) {
+			console.error("serve: --repo and --gh name different repos; pass one of them");
+			process.exit(1);
+		}
+		const repo = argv.flags.repo ?? argv.flags.gh;
 		if (repo && argv._.rootDir) {
 			console.error("serve: pass either a root directory or --repo, not both");
 			process.exit(1);
@@ -99,9 +108,9 @@ export const serveCommand = command(
 				mode === "built"
 					? await startBuiltServer(service, uiRoot, port)
 					: await startDevServer(service, uiRoot, port);
-			console.log(
-				`Weft server running at http://localhost:${port}${mode === "dev" ? " (vite dev)" : ""}`
-			);
+			const url = `http://localhost:${port}`;
+			console.log(`Weft server running at ${url}${mode === "dev" ? " (vite dev)" : ""}`);
+			if (argv.flags.open) openBrowser(url);
 
 			// Watch for doc changes
 			const unwatch = service.watch(async (manifest) => {

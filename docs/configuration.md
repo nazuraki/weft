@@ -385,6 +385,7 @@ Reading a cross-repo graph should not cost what authoring one does. `weft serve 
 ```sh
 weft serve --repo acme/design-review          # remote HEAD
 weft serve --repo acme/design-review --ref v2 # branch, tag, or commit sha
+weft serve --gh acme/design-review --open     # --gh is an alias of --repo; --open launches the browser
 ```
 
 Weft fetches that repo, reads its `weft.config.yaml`, fetches the repos it references, and serves the merged graph. A repo in the `repos` map that resolves to a real local path keeps winning — fetching only fills the gaps, so someone with three of five repos checked out reads their local working trees for those three and fetched copies of the rest.
