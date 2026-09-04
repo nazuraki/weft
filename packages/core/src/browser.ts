@@ -1,5 +1,5 @@
 /**
- * Browser-safe exports from @weft/core — no Node.js built-ins.
+ * Browser-safe exports from @lepid-labs/weft-core — no Node.js built-ins.
  * Use this entry point in browser/embed builds.
  */
 export {

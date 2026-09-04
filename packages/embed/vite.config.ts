@@ -30,11 +30,11 @@ export default defineConfig({
 			},
 		],
 	},
-	// Prevent Vite from trying to bundle Node.js built-ins referenced by @weft/core's
+	// Prevent Vite from trying to bundle Node.js built-ins referenced by @lepid-labs/weft-core's
 	// server-side modules (they're tree-shaken away, but need to be marked external
 	// at the rollup level so the browser build doesn't choke on them)
 	optimizeDeps: {
-		exclude: ["@weft/core"],
+		exclude: ["@lepid-labs/weft-core"],
 	},
 	ssr: {
 		noExternal: [],

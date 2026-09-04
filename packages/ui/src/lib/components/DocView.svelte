@@ -2,7 +2,7 @@
 import type { WeftClient } from "$lib/client.js";
 import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import type { RenderOptions } from "$lib/markdown.js";
-import type { WeftEdge } from "@weft/core/browser";
+import type { WeftEdge } from "@lepid-labs/weft-core/browser";
 import { getContext } from "svelte";
 import MarkdownRenderer from "./MarkdownRenderer.svelte";
 import OpenApiRenderer from "./OpenApiRenderer.svelte";

@@ -1,4 +1,4 @@
-import { WeftService, loadConfig } from "@weft/core";
+import { WeftService, loadConfig } from "@lepid-labs/weft-core";
 import { command } from "cleye";
 
 export const indexCommand = command(

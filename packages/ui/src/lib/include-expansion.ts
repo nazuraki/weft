@@ -1,4 +1,4 @@
-import { INCLUDES, type WeftEdge, extractSection } from "@weft/core/browser";
+import { INCLUDES, type WeftEdge, extractSection } from "@lepid-labs/weft-core/browser";
 import type { Element, ElementContent, Root } from "hast";
 
 /**

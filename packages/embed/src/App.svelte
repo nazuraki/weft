@@ -3,7 +3,7 @@ import { WEFT_CLIENT_KEY } from "$lib/client.js";
 import WeftApp from "$lib/components/WeftApp.svelte";
 import { resolveStylePair } from "$lib/styles.js";
 import { pathToNode } from "$lib/utils/paths.js";
-import type { Manifest } from "@weft/core/browser";
+import type { Manifest } from "@lepid-labs/weft-core/browser";
 import { setContext } from "svelte";
 import { GitHubClient } from "./github.js";
 import type { EmbedConfig } from "./index.js";

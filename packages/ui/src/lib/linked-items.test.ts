@@ -1,4 +1,4 @@
-import type { Manifest, WeftEdge, WeftNode } from "@weft/core";
+import type { Manifest, WeftEdge, WeftNode } from "@lepid-labs/weft-core";
 import { describe, expect, it } from "vitest";
 import { linkedItems } from "./linked-items.js";
 

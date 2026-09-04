@@ -1,4 +1,4 @@
-import type { WeftNode } from "@weft/core";
+import type { WeftNode } from "@lepid-labs/weft-core";
 
 const DOC_EXT = /\.(md|markdown|yaml|yml|json)$/;
 

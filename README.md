@@ -12,7 +12,18 @@ interaction, not an afterthought.
 - [pnpm](https://pnpm.io/) 9+
 - [just](https://github.com/casey/just) (task runner)
 
-## Quickstart
+## Try It
+
+Serve any GitHub repo's docs graph without cloning it or installing anything but Node 24+ and git:
+
+```sh
+npx @lepid-labs/weft serve --gh org/repo --open
+```
+
+Repos the target's config references are fetched too, so cross-repo links resolve. Private repos
+use `GH_TOKEN`/`GITHUB_TOKEN` or `gh auth login`. To keep it around: `npm install -g @lepid-labs/weft`.
+
+## Quickstart (from a checkout)
 
 ```sh
 just install
@@ -21,7 +32,7 @@ just dev
 
 `just dev` builds the core packages and starts `weft serve --dev` on the local docs graph, with the
 UI served from source by Vite for hot reload. Without `--dev`, `weft serve` serves the UI's
-adapter-node build (`pnpm --filter @weft/ui build`), which is what a published package ships.
+adapter-node build (`pnpm --filter @lepid-labs/weft-ui build`), which is what a published package ships.
 
 ## Core Concepts
 

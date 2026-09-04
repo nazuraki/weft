@@ -1,3 +1,4 @@
+import type { StyleConfig } from "@lepid-labs/weft-core/browser";
 /**
  * The ui-std-lib theme roster, read from the installed @nazuraki/styles
  * manifest — the single source of theme names, schemes, and webfont links.
@@ -6,7 +7,6 @@
  * package does not know yet.
  */
 import styleManifest from "@nazuraki/styles/manifest";
-import type { StyleConfig } from "@weft/core/browser";
 
 interface StyleManifest {
 	contract: number;

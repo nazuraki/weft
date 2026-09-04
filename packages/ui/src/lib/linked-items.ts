@@ -1,4 +1,4 @@
-import type { Manifest, WeftEdge } from "@weft/core";
+import type { Manifest, WeftEdge } from "@lepid-labs/weft-core";
 
 /** One row in the linked-items sidebar. */
 export interface LinkedItem {

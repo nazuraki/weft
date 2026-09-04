@@ -1,7 +1,16 @@
 {
-	"name": "@weft/core",
-	"version": "0.0.1",
+	"name": "@lepid-labs/weft-core",
+	"version": "0.1.0",
+	"description": "Weft's document graph: indexing, links, validation and search over a docs tree",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Lepid-Labs/weft.git",
+		"directory": "packages/core"
+	},
+	"homepage": "https://github.com/Lepid-Labs/weft#readme",
 	"type": "module",
+	"files": ["dist"],
 	"main": "dist/index.js",
 	"types": "src/index.ts",
 	"exports": {
@@ -16,6 +25,7 @@
 	},
 	"scripts": {
 		"build": "tsc",
+		"prepublishOnly": "pnpm run build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest"
@@ -36,5 +46,19 @@
 		"@types/node": "^22.0.0",
 		"typescript": "^5.7.0",
 		"vitest": "^3.2.6"
+	},
+	"publishConfig": {
+		"access": "public",
+		"types": "dist/index.d.ts",
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"./browser": {
+				"types": "./dist/browser.d.ts",
+				"import": "./dist/browser.js"
+			}
+		}
 	}
 }

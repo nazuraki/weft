@@ -1,6 +1,6 @@
 /**
  * Generates docs/.weft/manifest.json from the project's docs/ directory.
- * Run after building @weft/core (tsc), which populates packages/core/dist/.
+ * Run after building @lepid-labs/weft-core (tsc), which populates packages/core/dist/.
  *
  *   node scripts/gen-manifest.mjs
  */

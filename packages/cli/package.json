@@ -1,25 +1,49 @@
 {
-	"name": "@weft/cli",
-	"version": "0.0.1",
+	"name": "@lepid-labs/weft",
+	"version": "0.1.0",
+	"description": "Weft CLI: serve, index and check a documentation graph, from a checkout or straight from GitHub",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Lepid-Labs/weft.git",
+		"directory": "packages/cli"
+	},
+	"homepage": "https://github.com/Lepid-Labs/weft#readme",
 	"type": "module",
+	"files": ["bin", "dist"],
 	"bin": {
 		"weft": "bin/weft.js"
 	},
 	"scripts": {
 		"build": "tsc",
+		"prepublishOnly": "pnpm run build",
 		"typecheck": "tsc --noEmit",
-		"test": "pnpm --filter @weft/core build && vitest run",
+		"test": "pnpm --filter @lepid-labs/weft-core build && vitest run",
 		"test:watch": "vitest"
 	},
 	"dependencies": {
-		"@weft/core": "workspace:*",
-		"@weft/ui": "workspace:*",
-		"cleye": "^1.3.0",
-		"vite": "^6.4.3"
+		"@lepid-labs/weft-core": "workspace:*",
+		"@lepid-labs/weft-ui": "workspace:*",
+		"cleye": "^1.3.0"
 	},
 	"devDependencies": {
 		"@types/node": "^22.0.0",
 		"typescript": "^5.7.0",
+		"vite": "^6.4.3",
 		"vitest": "^3.2.6"
+	},
+	"peerDependencies": {
+		"vite": "^6.4.3"
+	},
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": true
+		}
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }

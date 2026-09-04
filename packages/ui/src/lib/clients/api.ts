@@ -1,4 +1,4 @@
-import type { SearchResult } from "@weft/core";
+import type { SearchResult } from "@lepid-labs/weft-core";
 import type { WeftClient } from "../client.js";
 
 /** Fetches data from the SvelteKit API routes — for use in the hosted app. */

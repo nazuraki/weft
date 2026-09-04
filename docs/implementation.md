@@ -20,12 +20,12 @@
 
 ## Architecture
 
-Ports-and-adapters (DD-5). All business logic lives in `@weft/core` as a transport-agnostic
+Ports-and-adapters (DD-5). All business logic lives in `@lepid-labs/weft-core` as a transport-agnostic
 `WeftService`. Thin adapter layers consume it:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    @weft/core                       │
+│                    @lepid-labs/weft-core                       │
 │                                                     │
 │  WeftService                                        │
 │  ├── search(query) → results                        │
@@ -42,7 +42,7 @@ Ports-and-adapters (DD-5). All business logic lives in `@weft/core` as a transpo
 └──────────┬─────────────────────────┬────────────────┘
            │                         │
      ┌─────┴─────┐            ┌──────┴──────┐
-     │  @weft/ui  │            │  @weft/cli  │
+     │  @lepid-labs/weft-ui  │            │  @lepid-labs/weft  │
      │            │            │             │
      │ SvelteKit  │            │  direct     │
      │ server     │            │  calls      │
@@ -278,7 +278,7 @@ The renderer adds `rehype-slug`, which slugs with `github-slugger`. The indexer 
 
 - **The input is the heading's rendered text, not its source line.** `## See [the docs](guide.md)` renders as "See the docs", so its id is `#see-the-docs`. Slugging the raw line would give `#see-the-docsguidemd`, and no id in the page would ever match it. GitHub slugs what it rendered, and so does Weft.
 - **Collision suffixes belong to `github-slugger`**, which both sides instantiate per document, so a repeated heading gets `-1`, `-2` identically on each.
-- **OpenAPI ids come from `openApiOperationAnchor` and `openApiSchemaAnchor`**, exported from `@weft/core/browser` and called by both the extractor and `OpenApiRenderer`, for the same reason.
+- **OpenAPI ids come from `openApiOperationAnchor` and `openApiSchemaAnchor`**, exported from `@lepid-labs/weft-core/browser` and called by both the extractor and `OpenApiRenderer`, for the same reason.
 
 `packages/ui/src/lib/markdown.test.ts` renders fixtures — and this repo's own documents — and asserts that every anchor the indexer records resolves to an element id in the output.
 

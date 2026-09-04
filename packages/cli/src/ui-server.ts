@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { type IncomingMessage, type ServerResponse, createServer } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { WeftService } from "@weft/core";
+import type { WeftService } from "@lepid-labs/weft-core";
 import { handleApiRequest, weftApiPlugin } from "./api-middleware.js";
 
 /** Where the UI comes from: the adapter-node build, or Vite over the source tree. */
@@ -11,7 +11,7 @@ export type UiMode = "built" | "dev";
 /** The connect-style handler `@sveltejs/adapter-node` exports from `build/handler.js`. */
 export type UiHandler = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
 
-/** The adapter-node entry point, relative to the `@weft/ui` package root. */
+/** The adapter-node entry point, relative to the `@lepid-labs/weft-ui` package root. */
 export const BUILT_HANDLER = join("build", "handler.js");
 
 /**
@@ -25,14 +25,16 @@ export function chooseUiMode(uiRoot: string, forceDev: boolean): UiMode {
 	const hasSource = existsSync(join(uiRoot, "svelte.config.js"));
 	if (forceDev) {
 		if (!hasSource) {
-			throw new Error(`serve: --dev needs the @weft/ui source tree, and ${uiRoot} has none`);
+			throw new Error(
+				`serve: --dev needs the @lepid-labs/weft-ui source tree, and ${uiRoot} has none`
+			);
 		}
 		return "dev";
 	}
 	if (hasBuild) return "built";
 	if (hasSource) return "dev";
 	throw new Error(
-		`serve: no UI found in ${uiRoot} — expected ${BUILT_HANDLER} (run \`pnpm --filter @weft/ui build\`)`
+		`serve: no UI found in ${uiRoot} — expected ${BUILT_HANDLER} (run \`pnpm --filter @lepid-labs/weft-ui build\`)`
 	);
 }
 
@@ -93,7 +95,14 @@ export async function startDevServer(
 	uiRoot: string,
 	port: number
 ): Promise<RunningServer> {
-	const { createServer: createViteServer } = await import("vite");
+	let createViteServer: typeof import("vite")["createServer"];
+	try {
+		({ createServer: createViteServer } = await import("vite"));
+	} catch {
+		throw new Error(
+			"serve: --dev needs vite, which the published package does not install — run from a checkout of the weft repo"
+		);
+	}
 	// SvelteKit's Vite plugin overrides Vite's `root` option with process.cwd()
 	// and looks up svelte.config.js and src/app.html there, so passing `root`
 	// alone is not enough — the process has to run from the UI package.

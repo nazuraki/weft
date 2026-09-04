@@ -3,7 +3,7 @@ import { type IncomingMessage, type Server, type ServerResponse, createServer } 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { WeftService } from "@weft/core";
+import { WeftService } from "@lepid-labs/weft-core";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { BUILT_HANDLER, chooseUiMode, routeRequest } from "./ui-server.js";
 

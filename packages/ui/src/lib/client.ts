@@ -1,4 +1,4 @@
-import type { SearchResult } from "@weft/core";
+import type { SearchResult } from "@lepid-labs/weft-core";
 
 export const WEFT_CLIENT_KEY = "weft:client";
 

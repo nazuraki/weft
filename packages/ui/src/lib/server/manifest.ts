@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Manifest } from "@weft/core";
+import type { Manifest } from "@lepid-labs/weft-core";
 
 /**
  * Read the manifest written by `weft serve` (the CLI owns the WeftService and

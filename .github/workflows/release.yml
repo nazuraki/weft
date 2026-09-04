@@ -1,0 +1,46 @@
+name: Release
+
+# Publishes every public workspace package whose version is not yet on npm.
+# Trigger: push a tag `v<version>` after `just release <version>`.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the tag matches the package version
+        run: |
+          expected="v$(node -p "require('./packages/cli/package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package version $expected" >&2
+            exit 1
+          fi
+
+      # Each package's prepublishOnly builds it; pnpm skips versions already
+      # published, so re-running a release is safe.
+      - name: Publish
+        run: pnpm -r publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

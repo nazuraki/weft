@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { WeftService } from "@weft/core";
-import type { WeftEdge } from "@weft/core";
+import { WeftService } from "@lepid-labs/weft-core";
+import type { WeftEdge } from "@lepid-labs/weft-core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { handleApiRequest } from "./api-middleware.js";
 
